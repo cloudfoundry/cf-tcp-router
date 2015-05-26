@@ -75,7 +75,6 @@ var _ = Describe("ExternalPortMapHandler", func() {
 					Eventually(logger).Should(gbytes.Say("test.map_external_port.failed-to-configure"))
 				})
 			})
-
 		})
 
 		Context("when request is invalid", func() {
@@ -88,7 +87,6 @@ var _ = Describe("ExternalPortMapHandler", func() {
 					Expect(responseRecorder.Code).To(Equal(http.StatusBadRequest))
 					Eventually(logger).Should(gbytes.Say("test.map_external_port.failed-to-unmarshal"))
 				})
-
 			})
 
 			Context("when payload has invalida values", func() {
@@ -102,11 +100,7 @@ var _ = Describe("ExternalPortMapHandler", func() {
 					Expect(responseRecorder.Code).To(Equal(http.StatusBadRequest))
 					Eventually(logger).Should(gbytes.Say("test.map_external_port.invalid-payload"))
 				})
-
 			})
-
 		})
-
 	})
-
 })

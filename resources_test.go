@@ -73,6 +73,15 @@ var _ = Describe("Validate", func() {
 					Expect(err.Error()).Should(ContainSubstring("backend_port"))
 				})
 			})
+
+			Context("when empty collection of backend host info is passed", func() {
+				It("raises an error", func() {
+					backendHostInfos := cf_tcp_router.BackendHostInfos{}
+					err := backendHostInfos.Validate()
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).Should(ContainSubstring("empty"))
+				})
+			})
 		})
 	})
 

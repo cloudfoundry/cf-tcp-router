@@ -34,6 +34,9 @@ func (h BackendHostInfo) Validate() error {
 
 func (h BackendHostInfos) Validate() error {
 	var err error
+	if len(h) == 0 {
+		return ErrInvalidField{"empty"}
+	}
 	for _, hostInfo := range h {
 		err = hostInfo.Validate()
 		if err != nil {

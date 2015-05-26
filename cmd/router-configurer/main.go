@@ -4,6 +4,7 @@ import (
 	"flag"
 	"os"
 
+	"github.com/GESoftware-CF/cf-tcp-router/configurer"
 	"github.com/GESoftware-CF/cf-tcp-router/handlers"
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
@@ -21,6 +22,12 @@ var serverAddress = flag.String(
 	"The host:port that the server is bound to.",
 )
 
+var tcpLoadBalancer = flag.String(
+	"tcpLoadBalancer",
+	configurer.HaProxyConfigurer,
+	"The tcp load balancer to use.",
+)
+
 const (
 	dropsondeDestination = "localhost:3457"
 	dropsondeOrigin      = "receptor"
@@ -36,7 +43,7 @@ func main() {
 
 	initializeDropsonde(logger)
 
-	handler := handlers.New(logger, nil)
+	handler := handlers.New(logger, configurer.NewConfigurer(logger, *tcpLoadBalancer))
 	members := grouper.Members{
 		{"server", http_server.New(*serverAddress, handler)},
 	}

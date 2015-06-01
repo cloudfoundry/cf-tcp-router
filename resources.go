@@ -1,7 +1,9 @@
 package cf_tcp_router
 
 const (
-	ErrInvalidBackendHostInfo = "Invalid Backend Info"
+	ErrInvalidBackendHostInfo   = "Invalid Backend Info"
+	ErrRouterConfigFileNotFound = "Configuration file not found"
+	ErrRouterEmptyConfigFile    = "Configuration file not specified"
 )
 
 type ErrInvalidField struct {

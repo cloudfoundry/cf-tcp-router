@@ -28,6 +28,12 @@ var tcpLoadBalancer = flag.String(
 	"The tcp load balancer to use.",
 )
 
+var tcpLoadBalancerCfg = flag.String(
+	"tcpLoadBalancerConfig",
+	"",
+	"The tcp load balancer configuration file name.",
+)
+
 const (
 	dropsondeDestination = "localhost:3457"
 	dropsondeOrigin      = "receptor"
@@ -43,7 +49,7 @@ func main() {
 
 	initializeDropsonde(logger)
 
-	handler := handlers.New(logger, configurer.NewConfigurer(logger, *tcpLoadBalancer))
+	handler := handlers.New(logger, configurer.NewConfigurer(logger, *tcpLoadBalancer, *tcpLoadBalancerCfg))
 	members := grouper.Members{
 		{"server", http_server.New(*serverAddress, handler)},
 	}

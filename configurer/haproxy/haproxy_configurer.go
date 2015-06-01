@@ -1,6 +1,7 @@
 package haproxy
 
 import (
+	"errors"
 	"math/rand"
 	"net"
 
@@ -22,7 +23,7 @@ func (h HaProxyConfigurer) MapBackendHostsToAvailablePort(backendHostInfos cf_tc
 	err := backendHostInfos.Validate()
 	if err != nil {
 		h.logger.Error("invalid-backendhostinfo", err)
-		return cf_tcp_router.RouterHostInfo{}, err
+		return cf_tcp_router.RouterHostInfo{}, errors.New(cf_tcp_router.ErrInvalidBackendHostInfo)
 	}
 	externalIP, err := h.getExternalIP()
 	if err != nil {

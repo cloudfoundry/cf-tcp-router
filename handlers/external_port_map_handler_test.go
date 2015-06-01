@@ -89,10 +89,11 @@ var _ = Describe("ExternalPortMapHandler", func() {
 				})
 			})
 
-			Context("when payload has invalida values", func() {
+			Context("when payload has invalid values", func() {
 				BeforeEach(func() {
 					backendHostInfo := cf_tcp_router.NewBackendHostInfo("1.2.3.4", 0)
 					backendHostInfos := cf_tcp_router.BackendHostInfos{backendHostInfo}
+					fakeConfigurer.MapBackendHostsToAvailablePortReturns(cf_tcp_router.RouterHostInfo{}, errors.New(cf_tcp_router.ErrInvalidBackendHostInfo))
 					handler.MapExternalPort(responseRecorder, newTestRequest(backendHostInfos))
 				})
 

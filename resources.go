@@ -1,5 +1,9 @@
 package cf_tcp_router
 
+const (
+	ErrInvalidBackendHostInfo = "Invalid Backend Info"
+)
+
 type ErrInvalidField struct {
 	Field string
 }

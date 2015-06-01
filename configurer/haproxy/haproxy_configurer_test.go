@@ -25,6 +25,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 			It("should return error", func() {
 				_, err := haproxyConfigurer.MapBackendHostsToAvailablePort(cf_tcp_router.BackendHostInfos{})
 				Expect(err).Should(HaveOccurred())
+				Expect(err.Error()).To(Equal(cf_tcp_router.ErrInvalidBackendHostInfo))
 			})
 		})
 

@@ -32,17 +32,16 @@ func (h *ExternalPortMapHandler) MapExternalPort(w http.ResponseWriter, r *http.
 		writeInvalidJSONResponse(w, err)
 		return
 	}
-	err = backendHostInfos.Validate()
-	if err != nil {
-		logger.Error("invalid-payload", err)
-		writeInvalidJSONResponse(w, err)
-		return
-	}
 
 	routerHostInfo, err := h.configurer.MapBackendHostsToAvailablePort(backendHostInfos)
 	if err != nil {
-		logger.Error("failed-to-configure", err)
-		writeInternalErrorJSONResponse(w, err)
+		if err.Error() == cf_tcp_router.ErrInvalidBackendHostInfo {
+			logger.Error("invalid-payload", err)
+			writeInvalidJSONResponse(w, err)
+		} else {
+			logger.Error("failed-to-configure", err)
+			writeInternalErrorJSONResponse(w, err)
+		}
 		return
 	}
 

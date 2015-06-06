@@ -4,6 +4,9 @@ const (
 	ErrInvalidBackendHostInfo   = "Invalid Backend Info"
 	ErrRouterConfigFileNotFound = "Configuration file not found"
 	ErrRouterEmptyConfigFile    = "Configuration file not specified"
+	ErrInvalidStartFrontendPort = "Invalid start frontend port"
+
+	LowerBoundStartFrontendPort = 1024
 )
 
 type ErrInvalidField struct {

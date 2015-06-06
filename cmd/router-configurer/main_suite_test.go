@@ -8,19 +8,18 @@ import (
 	"path"
 	"time"
 
-	"github.com/GESoftware-CF/cf-tcp-router/cmd/router-configurer/testrunner"
 	"github.com/GESoftware-CF/cf-tcp-router/utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
-	"github.com/tedsuo/ifrit/ginkgomon"
 
 	"testing"
 )
 
 const (
 	haproxyCfgTemplate = "configurer/haproxy/fixtures/haproxy.cfg.template"
+	startFrontendPort  = 64000
 )
 
 var (
@@ -75,17 +74,9 @@ defaults
 	Expect(err).ShouldNot(HaveOccurred())
 	Expect(utils.FileExists(haproxyConfigFile)).To(BeTrue())
 
-	routerConfigurerArgs := testrunner.Args{
-		Address:        fmt.Sprintf("127.0.0.1:%d", routerConfigurerPort),
-		ConfigFilePath: haproxyConfigFile,
-	}
-
-	runner := testrunner.New(routerConfigurerPath, routerConfigurerArgs)
-	routerConfigurerProcess = ifrit.Invoke(runner)
 })
 
 var _ = AfterEach(func() {
-	ginkgomon.Kill(routerConfigurerProcess, 5*time.Second)
 	err := os.Remove(haproxyConfigFile)
 	Expect(err).ShouldNot(HaveOccurred())
 

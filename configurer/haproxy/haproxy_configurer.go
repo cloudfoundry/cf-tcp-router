@@ -15,10 +15,6 @@ import (
 	"github.com/pivotal-golang/lager"
 )
 
-const (
-	startPort = 60000
-)
-
 type HaProxyConfigurer struct {
 	logger           lager.Logger
 	frontendAddress  string
@@ -28,7 +24,7 @@ type HaProxyConfigurer struct {
 	configFileLock   *sync.Mutex
 }
 
-func NewHaProxyConfigurer(logger lager.Logger, configFilePath string) (*HaProxyConfigurer, error) {
+func NewHaProxyConfigurer(logger lager.Logger, configFilePath string, configStartFrontendPort uint16) (*HaProxyConfigurer, error) {
 	ip, err := getExternalIP()
 	if err != nil {
 		return nil, err
@@ -37,10 +33,14 @@ func NewHaProxyConfigurer(logger lager.Logger, configFilePath string) (*HaProxyC
 	if !utils.FileExists(configFilePath) {
 		return nil, errors.New(fmt.Sprintf("%s: [%s]", cf_tcp_router.ErrRouterConfigFileNotFound, configFilePath))
 	}
+
+	if configStartFrontendPort == 0 || configStartFrontendPort < cf_tcp_router.LowerBoundStartFrontendPort {
+		return nil, errors.New(fmt.Sprintf("%s: [%d]", cf_tcp_router.ErrInvalidStartFrontendPort, configStartFrontendPort))
+	}
 	return &HaProxyConfigurer{
 		logger:           logger,
 		frontendAddress:  ip,
-		nextFrontendPort: startPort,
+		nextFrontendPort: configStartFrontendPort,
 		configFilePath:   configFilePath,
 		portLock:         new(sync.Mutex),
 		configFileLock:   new(sync.Mutex),

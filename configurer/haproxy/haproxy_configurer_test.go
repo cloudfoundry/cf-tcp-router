@@ -21,6 +21,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 	Describe("MapBackendHostsToAvailablePort", func() {
 		const (
 			haproxyCfgTemplate = "fixtures/haproxy.cfg.template"
+			startPort          = 61000
 		)
 
 		var (
@@ -31,7 +32,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 		verifyRouterHostInfo := func(routerHostInfo cf_tcp_router.RouterHostInfo) {
 			Expect(routerHostInfo.Address).Should(Equal(externalIP))
 			Expect(routerHostInfo.Port).Should(BeNumerically("<", 65536))
-			Expect(routerHostInfo.Port).Should(BeNumerically(">=", 0))
+			Expect(routerHostInfo.Port).Should(BeNumerically(">=", startPort))
 		}
 
 		verifyHaProxyConfigContent := func(haproxyFileName, expectedContent string) {
@@ -47,7 +48,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 		Context("when invalid backend host info is passed", func() {
 			BeforeEach(func() {
 				var err error
-				haproxyConfigurer, err = haproxy.NewHaProxyConfigurer(logger, haproxyCfgTemplate)
+				haproxyConfigurer, err = haproxy.NewHaProxyConfigurer(logger, haproxyCfgTemplate, startPort)
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 
@@ -60,15 +61,31 @@ var _ = Describe("HaproxyConfigurer", func() {
 
 		Context("when empty configuration file is passed", func() {
 			It("returns a ErrRouterConfigFileNotFound error", func() {
-				_, err := haproxy.NewHaProxyConfigurer(logger, "")
+				_, err := haproxy.NewHaProxyConfigurer(logger, "", startPort)
 				Expect(err).Should(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring(cf_tcp_router.ErrRouterConfigFileNotFound))
 			})
 		})
 
+		Context("when invalid start frontend port is passed", func() {
+			Context("when the frontend port is zero", func() {
+				It("returns error", func() {
+					_, err := haproxy.NewHaProxyConfigurer(logger, haproxyCfgTemplate, 0)
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring(cf_tcp_router.ErrInvalidStartFrontendPort))
+				})
+			})
+			Context("when the frontend port is less than 1024", func() {
+				It("returns error", func() {
+					_, err := haproxy.NewHaProxyConfigurer(logger, haproxyCfgTemplate, 80)
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring(cf_tcp_router.ErrInvalidStartFrontendPort))
+				})
+			})
+		})
 		Context("when configuration file does not exist", func() {
 			It("returns a ErrRouterConfigFileNotFound error", func() {
-				_, err := haproxy.NewHaProxyConfigurer(logger, "file/path/does/not/exists")
+				_, err := haproxy.NewHaProxyConfigurer(logger, "file/path/does/not/exists", startPort)
 				Expect(err).Should(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring(cf_tcp_router.ErrRouterConfigFileNotFound))
 			})
@@ -93,7 +110,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 				haproxyCfgTemplateContent, err = ioutil.ReadFile(haproxyCfgFile)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				haproxyConfigurer, err = haproxy.NewHaProxyConfigurer(logger, haproxyCfgFile)
+				haproxyConfigurer, err = haproxy.NewHaProxyConfigurer(logger, haproxyCfgFile, startPort)
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 

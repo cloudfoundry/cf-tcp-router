@@ -16,10 +16,10 @@ type RouterConfigurer interface {
 	MapBackendHostsToAvailablePort(backendHostInfos cf_tcp_router.BackendHostInfos) (cf_tcp_router.RouterHostInfo, error)
 }
 
-func NewConfigurer(logger lager.Logger, tcpLoadBalancer string, tcpLoadBalancerCfg string) RouterConfigurer {
+func NewConfigurer(logger lager.Logger, tcpLoadBalancer string, tcpLoadBalancerCfg string, configStartFrontendPort uint16) RouterConfigurer {
 	switch tcpLoadBalancer {
 	case HaProxyConfigurer:
-		routerHostInfo, err := haproxy.NewHaProxyConfigurer(logger, tcpLoadBalancerCfg)
+		routerHostInfo, err := haproxy.NewHaProxyConfigurer(logger, tcpLoadBalancerCfg, configStartFrontendPort)
 		if err != nil {
 			logger.Fatal("could not create tcp load balancer",
 				err,

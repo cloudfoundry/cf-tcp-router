@@ -1,7 +1,9 @@
 package main
 
 import (
+	"errors"
 	"flag"
+	"math"
 	"os"
 
 	"github.com/GESoftware-CF/cf-tcp-router/configurer"
@@ -34,9 +36,16 @@ var tcpLoadBalancerCfg = flag.String(
 	"The tcp load balancer configuration file name.",
 )
 
+var startFrontendPort = flag.Uint(
+	"startFrontendPort",
+	defaultStartFrontendPort,
+	"The port number from which the router will start allocating ports when non particular port is requested.",
+)
+
 const (
-	dropsondeDestination = "localhost:3457"
-	dropsondeOrigin      = "receptor"
+	dropsondeDestination     = "localhost:3457"
+	dropsondeOrigin          = "receptor"
+	defaultStartFrontendPort = 60000
 )
 
 func main() {
@@ -49,7 +58,13 @@ func main() {
 
 	initializeDropsonde(logger)
 
-	handler := handlers.New(logger, configurer.NewConfigurer(logger, *tcpLoadBalancer, *tcpLoadBalancerCfg))
+	if *startFrontendPort > math.MaxUint16 {
+		logger.Fatal("invalid-start-frontendport", errors.New("Start FrontendPort must be within the range of 1024...65535"))
+	}
+
+	handler := handlers.New(logger, configurer.NewConfigurer(logger,
+		*tcpLoadBalancer, *tcpLoadBalancerCfg, uint16(*startFrontendPort)))
+
 	members := grouper.Members{
 		{"server", http_server.New(*serverAddress, handler)},
 	}

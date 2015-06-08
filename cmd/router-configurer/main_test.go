@@ -74,10 +74,12 @@ var _ = Describe("Main", func() {
 		Context("when start frontend port is invalid", func() {
 			var routerConfigurerArgs testrunner.Args
 			var readyChan <-chan struct{}
+			var errorChan <-chan error
 
 			JustBeforeEach(func() {
 				runner := testrunner.New(routerConfigurerPath, routerConfigurerArgs)
 				routerConfigurerProcess = ifrit.Invoke(runner)
+				errorChan = routerConfigurerProcess.Wait()
 				readyChan = routerConfigurerProcess.Ready()
 			})
 
@@ -95,27 +97,11 @@ var _ = Describe("Main", func() {
 				})
 
 				It("should fail starting the process", func() {
-					Consistently(readyChan).ShouldNot(BeClosed())
+					Eventually(errorChan).Should(Receive())
+					Expect(readyChan).ShouldNot(BeClosed())
 				})
 			})
 
-			Context("when start frontend port is less than 1024", func() {
-				BeforeEach(func() {
-					routerConfigurerArgs = testrunner.Args{
-						Address:           fmt.Sprintf("127.0.0.1:%d", routerConfigurerPort),
-						ConfigFilePath:    haproxyConfigFile,
-						StartFrontendPort: 80,
-					}
-				})
-
-				AfterEach(func() {
-					ginkgomon.Kill(routerConfigurerProcess, 5*time.Second)
-				})
-
-				It("should fail starting the process", func() {
-					Consistently(readyChan).ShouldNot(BeClosed())
-				})
-			})
 		})
 	})
 })

@@ -31,7 +31,7 @@ var _ = Describe("Main", func() {
 				routerConfigurerArgs := testrunner.Args{
 					Address:           fmt.Sprintf("127.0.0.1:%d", routerConfigurerPort),
 					ConfigFilePath:    haproxyConfigFile,
-					StartFrontendPort: startFrontendPort,
+					StartExternalPort: startExternalPort,
 				}
 
 				runner := testrunner.New(routerConfigurerPath, routerConfigurerArgs)
@@ -55,7 +55,7 @@ var _ = Describe("Main", func() {
 					err = json.Unmarshal(responseBody, &routerHostInfo)
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(routerHostInfo.Address).Should(Equal(externalIP))
-					Expect(routerHostInfo.Port).To(BeNumerically(">=", startFrontendPort))
+					Expect(routerHostInfo.Port).To(BeNumerically(">=", startExternalPort))
 					Expect(routerHostInfo.Port).To(BeNumerically("<", 65536))
 				})
 			})
@@ -71,7 +71,7 @@ var _ = Describe("Main", func() {
 			})
 		})
 
-		Context("when start frontend port is invalid", func() {
+		Context("when start external port is invalid", func() {
 			var routerConfigurerArgs testrunner.Args
 			var readyChan <-chan struct{}
 			var errorChan <-chan error
@@ -83,12 +83,12 @@ var _ = Describe("Main", func() {
 				readyChan = routerConfigurerProcess.Ready()
 			})
 
-			Context("when start frontend port is greater than 65535", func() {
+			Context("when start external port is greater than 65535", func() {
 				BeforeEach(func() {
 					routerConfigurerArgs = testrunner.Args{
 						Address:           fmt.Sprintf("127.0.0.1:%d", routerConfigurerPort),
 						ConfigFilePath:    haproxyConfigFile,
-						StartFrontendPort: 70000,
+						StartExternalPort: 70000,
 					}
 				})
 

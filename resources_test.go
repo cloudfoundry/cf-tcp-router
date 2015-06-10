@@ -100,7 +100,7 @@ var _ = Describe("Validate", func() {
 					routerHostInfo := cf_tcp_router.NewRouterHostInfo("", 12)
 					err := routerHostInfo.Validate()
 					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).Should(ContainSubstring("router_ip"))
+					Expect(err.Error()).Should(ContainSubstring("external_ip"))
 				})
 			})
 
@@ -109,7 +109,7 @@ var _ = Describe("Validate", func() {
 					routerHostInfo := cf_tcp_router.NewRouterHostInfo("1.2.3.4", 0)
 					err := routerHostInfo.Validate()
 					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).Should(ContainSubstring("router_port"))
+					Expect(err.Error()).Should(ContainSubstring("external_port"))
 				})
 			})
 		})

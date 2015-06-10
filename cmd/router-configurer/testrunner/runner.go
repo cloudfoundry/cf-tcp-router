@@ -11,14 +11,14 @@ import (
 type Args struct {
 	Address           string
 	ConfigFilePath    string
-	StartFrontendPort int
+	StartExternalPort int
 }
 
 func (args Args) ArgSlice() []string {
 	return []string{
 		"-address=" + args.Address,
 		"-tcpLoadBalancerConfig=" + args.ConfigFilePath,
-		"-startFrontendPort=" + fmt.Sprintf("%d", args.StartFrontendPort),
+		"-startExternalPort=" + fmt.Sprintf("%d", args.StartExternalPort),
 	}
 }
 

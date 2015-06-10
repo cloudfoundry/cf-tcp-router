@@ -19,7 +19,7 @@ import (
 
 const (
 	haproxyCfgTemplate = "configurer/haproxy/fixtures/haproxy.cfg.template"
-	startFrontendPort  = 64000
+	startExternalPort  = 64000
 )
 
 var (

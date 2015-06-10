@@ -56,8 +56,8 @@ func (h BackendHostInfos) Validate() error {
 }
 
 type RouterHostInfo struct {
-	Address string `json:"router_ip"`
-	Port    uint16 `json:"router_port"`
+	Address string `json:"external_ip"`
+	Port    uint16 `json:"external_port"`
 }
 
 func NewRouterHostInfo(address string, port uint16) RouterHostInfo {
@@ -69,10 +69,10 @@ func NewRouterHostInfo(address string, port uint16) RouterHostInfo {
 
 func (h RouterHostInfo) Validate() error {
 	if h.Address == "" {
-		return ErrInvalidField{"router_ip"}
+		return ErrInvalidField{"external_ip"}
 	}
 	if h.Port == 0 {
-		return ErrInvalidField{"router_port"}
+		return ErrInvalidField{"external_port"}
 	}
 	return nil
 }

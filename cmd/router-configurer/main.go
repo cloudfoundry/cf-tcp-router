@@ -36,16 +36,16 @@ var tcpLoadBalancerCfg = flag.String(
 	"The tcp load balancer configuration file name.",
 )
 
-var startFrontendPort = flag.Uint(
-	"startFrontendPort",
-	defaultStartFrontendPort,
+var startExternalPort = flag.Uint(
+	"startExternalPort",
+	defaultStartExternalPort,
 	"The port number from which the router will start allocating ports when non particular port is requested.",
 )
 
 const (
 	dropsondeDestination     = "localhost:3457"
 	dropsondeOrigin          = "receptor"
-	defaultStartFrontendPort = 60000
+	defaultStartExternalPort = 60000
 )
 
 func main() {
@@ -58,12 +58,12 @@ func main() {
 
 	initializeDropsonde(logger)
 
-	if *startFrontendPort > math.MaxUint16 {
-		logger.Fatal("invalid-start-frontendport", errors.New("Start FrontendPort must be within the range of 1024...65535"))
+	if *startExternalPort > math.MaxUint16 {
+		logger.Fatal("invalid-start-externalport", errors.New("Start ExternalPort must be within the range of 1024...65535"))
 	}
 
 	handler := handlers.New(logger, configurer.NewConfigurer(logger,
-		*tcpLoadBalancer, *tcpLoadBalancerCfg, uint16(*startFrontendPort)))
+		*tcpLoadBalancer, *tcpLoadBalancerCfg, uint16(*startExternalPort)))
 
 	members := grouper.Members{
 		{"server", http_server.New(*serverAddress, handler)},

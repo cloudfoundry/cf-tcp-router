@@ -1,7 +1,6 @@
 package handlers_test
 
 import (
-	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
@@ -34,40 +33,32 @@ var _ = Describe("ExternalPortMapHandler", func() {
 
 	Describe("MapExternalPort", func() {
 		var (
-			backendHostInfos cf_tcp_router.BackendHostInfos
+			mappingRequest cf_tcp_router.MappingRequests
 		)
 		BeforeEach(func() {
 			backendHostInfo := cf_tcp_router.NewBackendHostInfo("1.2.3.4", 1234)
-			backendHostInfos = cf_tcp_router.BackendHostInfos{backendHostInfo}
+			backendHostInfos := cf_tcp_router.BackendHostInfos{backendHostInfo}
+			mappingRequest = cf_tcp_router.MappingRequests{
+				cf_tcp_router.NewMappingRequest(1234, backendHostInfos),
+			}
 		})
 
 		JustBeforeEach(func() {
-			handler.MapExternalPort(responseRecorder, newTestRequest(backendHostInfos))
+			handler.MapExternalPort(responseRecorder, newTestRequest(mappingRequest))
 		})
 
 		Context("when request is valid", func() {
-			var expectedRouterHostInfo cf_tcp_router.RouterHostInfo
 			BeforeEach(func() {
-				expectedRouterHostInfo = cf_tcp_router.RouterHostInfo{
-					Address: "some-ip",
-					Port:    23456,
-				}
-				fakeConfigurer.MapBackendHostsToAvailablePortReturns(expectedRouterHostInfo, nil)
+				fakeConfigurer.CreateExternalPortMappingsReturns(nil)
 			})
 
-			It("responds with 201 CREATED", func() {
-				Expect(responseRecorder.Code).To(Equal(http.StatusCreated))
-			})
-
-			It("returns router host info", func() {
-				payload, err := json.Marshal(expectedRouterHostInfo)
-				Expect(err).ShouldNot(HaveOccurred())
-				Expect(responseRecorder.Body.String()).To(MatchJSON(string(payload)))
+			It("responds with 200 CREATED", func() {
+				Expect(responseRecorder.Code).To(Equal(http.StatusOK))
 			})
 
 			Context("when configurer returns an error", func() {
 				BeforeEach(func() {
-					fakeConfigurer.MapBackendHostsToAvailablePortReturns(cf_tcp_router.RouterHostInfo{}, errors.New("Kabooom"))
+					fakeConfigurer.CreateExternalPortMappingsReturns(errors.New("Kabooom"))
 				})
 
 				It("responds with 500 INTERNAL_SERVER_ERROR", func() {
@@ -93,8 +84,10 @@ var _ = Describe("ExternalPortMapHandler", func() {
 				BeforeEach(func() {
 					backendHostInfo := cf_tcp_router.NewBackendHostInfo("1.2.3.4", 0)
 					backendHostInfos := cf_tcp_router.BackendHostInfos{backendHostInfo}
-					fakeConfigurer.MapBackendHostsToAvailablePortReturns(cf_tcp_router.RouterHostInfo{}, errors.New(cf_tcp_router.ErrInvalidBackendHostInfo))
-					handler.MapExternalPort(responseRecorder, newTestRequest(backendHostInfos))
+					mappingRequest = cf_tcp_router.MappingRequests{
+						cf_tcp_router.NewMappingRequest(1234, backendHostInfos),
+					}
+					fakeConfigurer.CreateExternalPortMappingsReturns(errors.New(cf_tcp_router.ErrInvalidMapingRequest))
 				})
 
 				It("responds with 400 BAD REQUEST", func() {

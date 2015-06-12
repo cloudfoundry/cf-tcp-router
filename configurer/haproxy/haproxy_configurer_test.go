@@ -1,7 +1,6 @@
 package haproxy_test
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"math/rand"
@@ -18,7 +17,7 @@ import (
 )
 
 var _ = Describe("HaproxyConfigurer", func() {
-	Describe("MapBackendHostsToAvailablePort", func() {
+	Describe("CreateExternalPortMappings", func() {
 		const (
 			haproxyCfgTemplate = "fixtures/haproxy.cfg.template"
 			startPort          = 61000
@@ -29,23 +28,17 @@ var _ = Describe("HaproxyConfigurer", func() {
 			haproxyConfigurer *haproxy.HaProxyConfigurer
 		)
 
-		verifyRouterHostInfo := func(routerHostInfo cf_tcp_router.RouterHostInfo) {
-			Expect(routerHostInfo.Address).Should(Equal(externalIP))
-			Expect(routerHostInfo.Port).Should(BeNumerically("<", 65536))
-			Expect(routerHostInfo.Port).Should(BeNumerically(">=", startPort))
-		}
-
 		verifyHaProxyConfigContent := func(haproxyFileName, expectedContent string) {
 			data, err := ioutil.ReadFile(haproxyFileName)
 			Expect(err).ShouldNot(HaveOccurred())
-			Expect(string(data)).Should(Equal(expectedContent))
+			Expect(string(data)).Should(ContainSubstring(expectedContent))
 		}
 
 		BeforeEach(func() {
 			externalIP = testutil.GetExternalIP()
 		})
 
-		Context("when invalid backend host info is passed", func() {
+		Context("when invalid maping request is passed", func() {
 			BeforeEach(func() {
 				var err error
 				haproxyConfigurer, err = haproxy.NewHaProxyConfigurer(logger, haproxyCfgTemplate, startPort)
@@ -53,9 +46,9 @@ var _ = Describe("HaproxyConfigurer", func() {
 			})
 
 			It("returns error", func() {
-				_, err := haproxyConfigurer.MapBackendHostsToAvailablePort(cf_tcp_router.BackendHostInfos{})
+				err := haproxyConfigurer.CreateExternalPortMappings(cf_tcp_router.MappingRequests{})
 				Expect(err).Should(HaveOccurred())
-				Expect(err.Error()).To(Equal(cf_tcp_router.ErrInvalidBackendHostInfo))
+				Expect(err.Error()).To(Equal(cf_tcp_router.ErrInvalidMapingRequest))
 			})
 		})
 
@@ -91,13 +84,11 @@ var _ = Describe("HaproxyConfigurer", func() {
 			})
 		})
 
-		Context("when valid backend host info and config file is passed", func() {
+		Context("when valid mapping request and config file is passed", func() {
 			var (
 				haproxyCfgFile            string
 				haproxyCfgBackupFile      string
-				routerHostInfo            cf_tcp_router.RouterHostInfo
 				err                       error
-				expectedContent           string
 				haproxyCfgTemplateContent []byte
 			)
 
@@ -123,81 +114,143 @@ var _ = Describe("HaproxyConfigurer", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 
-			Context("when MapBackendHostsToAvailablePort is called once", func() {
-				BeforeEach(func() {
-					routerHostInfo, err = haproxyConfigurer.MapBackendHostsToAvailablePort(cf_tcp_router.BackendHostInfos{
-						cf_tcp_router.NewBackendHostInfo("some-ip-1", 1234),
-						cf_tcp_router.NewBackendHostInfo("some-ip-2", 1235),
+			Context("when CreateExternalPortMappings is called once", func() {
+				Context("when only one mapping is provided as part of request", func() {
+
+					BeforeEach(func() {
+						backends := cf_tcp_router.BackendHostInfos{
+							cf_tcp_router.NewBackendHostInfo("some-ip-1", 1234),
+							cf_tcp_router.NewBackendHostInfo("some-ip-2", 1235),
+						}
+						err = haproxyConfigurer.CreateExternalPortMappings(cf_tcp_router.MappingRequests{
+							cf_tcp_router.NewMappingRequest(2222, backends),
+						})
+						Expect(err).ShouldNot(HaveOccurred())
 					})
-					Expect(err).ShouldNot(HaveOccurred())
 
-					var buff bytes.Buffer
-					_, err = buff.Write(haproxyCfgTemplateContent)
-					Expect(err).ShouldNot(HaveOccurred())
-					listenCfg := fmt.Sprintf(
-						"\nlisten listen_cfg_%d\n  mode tcp\n  bind :%d\n  server server_some-ip-1_0 some-ip-1:1234\n  server server_some-ip-2_1 some-ip-2:1235\n",
-						routerHostInfo.Port, routerHostInfo.Port)
-					_, err = buff.WriteString(listenCfg)
-					Expect(err).ShouldNot(HaveOccurred())
-
-					expectedContent = buff.String()
+					It("appends the haproxy config with new listen configuration", func() {
+						listenCfg :=
+							"\nlisten listen_cfg_2222\n  mode tcp\n  bind :2222\n  server server_some-ip-1_0 some-ip-1:1234\n  server server_some-ip-2_1 some-ip-2:1235\n"
+						verifyHaProxyConfigContent(haproxyCfgFile, listenCfg)
+					})
 				})
 
-				It("returns valid router host info and appends the haproxy config with new listen configuration", func() {
-					verifyRouterHostInfo(routerHostInfo)
-					verifyHaProxyConfigContent(haproxyCfgFile, expectedContent)
-					data, err := ioutil.ReadFile(haproxyCfgFile)
-					Expect(err).ShouldNot(HaveOccurred())
-					Expect(string(data)).Should(Equal(expectedContent))
+				Context("when multiple mappings are provided as part of one request", func() {
+
+					BeforeEach(func() {
+						backends1 := cf_tcp_router.BackendHostInfos{
+							cf_tcp_router.NewBackendHostInfo("some-ip-1", 1234),
+							cf_tcp_router.NewBackendHostInfo("some-ip-2", 1235),
+						}
+						backends2 := cf_tcp_router.BackendHostInfos{
+							cf_tcp_router.NewBackendHostInfo("some-ip-3", 1234),
+							cf_tcp_router.NewBackendHostInfo("some-ip-4", 1235),
+						}
+						err = haproxyConfigurer.CreateExternalPortMappings(cf_tcp_router.MappingRequests{
+							cf_tcp_router.NewMappingRequest(2222, backends1),
+							cf_tcp_router.NewMappingRequest(3333, backends2),
+						})
+						Expect(err).ShouldNot(HaveOccurred())
+					})
+
+					It("appends the haproxy config with new listen configuration", func() {
+						listenCfg1 := `
+listen listen_cfg_2222
+  mode tcp
+  bind :2222
+  server server_some-ip-1_0 some-ip-1:1234
+  server server_some-ip-2_1 some-ip-2:1235
+`
+						listenCfg2 := `
+listen listen_cfg_3333
+  mode tcp
+  bind :3333
+  server server_some-ip-3_0 some-ip-3:1234
+  server server_some-ip-4_1 some-ip-4:1235
+`
+						verifyHaProxyConfigContent(haproxyCfgFile, listenCfg1)
+						verifyHaProxyConfigContent(haproxyCfgFile, listenCfg2)
+						verifyHaProxyConfigContent(haproxyCfgFile, string(haproxyCfgTemplateContent))
+					})
+				})
+
+				Context("when multiple mappings with same external port are provided as part of one request", func() {
+
+					BeforeEach(func() {
+						backends1 := cf_tcp_router.BackendHostInfos{
+							cf_tcp_router.NewBackendHostInfo("some-ip-1", 1234),
+							cf_tcp_router.NewBackendHostInfo("some-ip-2", 1235),
+						}
+						backends2 := cf_tcp_router.BackendHostInfos{
+							cf_tcp_router.NewBackendHostInfo("some-ip-3", 1234),
+							cf_tcp_router.NewBackendHostInfo("some-ip-4", 1235),
+						}
+						err = haproxyConfigurer.CreateExternalPortMappings(cf_tcp_router.MappingRequests{
+							cf_tcp_router.NewMappingRequest(2222, backends1),
+							cf_tcp_router.NewMappingRequest(2222, backends2),
+						})
+						Expect(err).ShouldNot(HaveOccurred())
+					})
+
+					It("appends the haproxy config with new listen configuration", func() {
+						listenCfg := `
+listen listen_cfg_2222
+  mode tcp
+  bind :2222
+  server server_some-ip-3_0 some-ip-3:1234
+  server server_some-ip-4_1 some-ip-4:1235
+  server server_some-ip-1_2 some-ip-1:1234
+  server server_some-ip-2_3 some-ip-2:1235
+`
+						verifyHaProxyConfigContent(haproxyCfgFile, listenCfg)
+						verifyHaProxyConfigContent(haproxyCfgFile, string(haproxyCfgTemplateContent))
+					})
 				})
 			})
 
-			Context("when MapBackendHostsToAvailablePort is called multiple times", func() {
+			Context("when CreateExternalPortMappings is called multiple times", func() {
 				BeforeEach(func() {
-					var routerHostInfo1, routerHostInfo2 cf_tcp_router.RouterHostInfo
 
-					routerHostInfo1, err = haproxyConfigurer.MapBackendHostsToAvailablePort(cf_tcp_router.BackendHostInfos{
+					backends1 := cf_tcp_router.BackendHostInfos{
 						cf_tcp_router.NewBackendHostInfo("some-ip-1", 1234),
 						cf_tcp_router.NewBackendHostInfo("some-ip-2", 1235),
+					}
+
+					err = haproxyConfigurer.CreateExternalPortMappings(cf_tcp_router.MappingRequests{
+						cf_tcp_router.NewMappingRequest(2222, backends1),
 					})
 					Expect(err).ShouldNot(HaveOccurred())
-					verifyRouterHostInfo(routerHostInfo1)
 
-					routerHostInfo2, err = haproxyConfigurer.MapBackendHostsToAvailablePort(cf_tcp_router.BackendHostInfos{
+					backends2 := cf_tcp_router.BackendHostInfos{
 						cf_tcp_router.NewBackendHostInfo("some-ip-3", 2345),
 						cf_tcp_router.NewBackendHostInfo("some-ip-4", 3456),
+					}
+					err = haproxyConfigurer.CreateExternalPortMappings(cf_tcp_router.MappingRequests{
+						cf_tcp_router.NewMappingRequest(3333, backends2),
 					})
 					Expect(err).ShouldNot(HaveOccurred())
-					verifyRouterHostInfo(routerHostInfo2)
-
-					Expect(routerHostInfo1.Port).ShouldNot(Equal(routerHostInfo2.Port))
-
-					var buff bytes.Buffer
-					_, err = buff.Write(haproxyCfgTemplateContent)
-					Expect(err).ShouldNot(HaveOccurred())
-
-					listenCfg1 := fmt.Sprintf(
-						"\nlisten listen_cfg_%d\n  mode tcp\n  bind :%d\n  server server_some-ip-1_0 some-ip-1:1234\n  server server_some-ip-2_1 some-ip-2:1235\n",
-						routerHostInfo1.Port, routerHostInfo1.Port)
-					listenCfg2 := fmt.Sprintf(
-						"\nlisten listen_cfg_%d\n  mode tcp\n  bind :%d\n  server server_some-ip-3_0 some-ip-3:2345\n  server server_some-ip-4_1 some-ip-4:3456\n",
-						routerHostInfo2.Port, routerHostInfo2.Port)
-
-					_, err = buff.WriteString(listenCfg1)
-					Expect(err).ShouldNot(HaveOccurred())
-
-					_, err = buff.WriteString(listenCfg2)
-					Expect(err).ShouldNot(HaveOccurred())
-
-					expectedContent = buff.String()
 				})
 
 				It("appends the haproxy config with new listen configuration for all the calls", func() {
-					verifyHaProxyConfigContent(haproxyCfgFile, expectedContent)
+					listenCfg := `
+listen listen_cfg_2222
+  mode tcp
+  bind :2222
+  server server_some-ip-1_0 some-ip-1:1234
+  server server_some-ip-2_1 some-ip-2:1235
+
+listen listen_cfg_3333
+  mode tcp
+  bind :3333
+  server server_some-ip-3_0 some-ip-3:2345
+  server server_some-ip-4_1 some-ip-4:3456
+`
+					verifyHaProxyConfigContent(haproxyCfgFile, listenCfg)
+					verifyHaProxyConfigContent(haproxyCfgFile, string(haproxyCfgTemplateContent))
 				})
 			})
 
-			Context("when MapBackendHostsToAvailablePort is called multiple times concurrently", func() {
+			Context("when CreateExternalPortMappings is called multiple times concurrently", func() {
 				type cfgInfo struct {
 					port uint16
 					cfg  string
@@ -216,18 +269,22 @@ var _ = Describe("HaproxyConfigurer", func() {
 							defer GinkgoRecover()
 							ip1 := fmt.Sprintf("some-ip-%d", 2*indx)
 							ip2 := fmt.Sprintf("some-ip-%d", 2*indx+1)
-							routerHostInfo, err := haproxyConfigurer.MapBackendHostsToAvailablePort(cf_tcp_router.BackendHostInfos{
-								cf_tcp_router.NewBackendHostInfo(ip1, 1234),
-								cf_tcp_router.NewBackendHostInfo(ip2, 1235),
-							})
+							externalPort := uint16(2220 + indx)
+							err := haproxyConfigurer.CreateExternalPortMappings(
+								cf_tcp_router.MappingRequests{
+									cf_tcp_router.NewMappingRequest(externalPort, cf_tcp_router.BackendHostInfos{
+										cf_tcp_router.NewBackendHostInfo(ip1, 1234),
+										cf_tcp_router.NewBackendHostInfo(ip2, 1235),
+									}),
+								})
 							Expect(err).ShouldNot(HaveOccurred())
-							verifyRouterHostInfo(routerHostInfo)
+
 							listenCfg := fmt.Sprintf(
 								"listen listen_cfg_%d\n  mode tcp\n  bind :%d\n  server server_%s_0 %s:1234\n  server server_%s_1 %s:1235",
-								routerHostInfo.Port, routerHostInfo.Port,
+								externalPort, externalPort,
 								ip1, ip1, ip2, ip2)
 							cfg := cfgInfo{
-								port: routerHostInfo.Port,
+								port: externalPort,
 								cfg:  listenCfg,
 							}
 							cfgChannel <- cfg
@@ -249,6 +306,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 					for _, listenCfg := range portMap {
 						Expect(string(data)).To(ContainSubstring(listenCfg))
 					}
+					Expect(string(data)).To(ContainSubstring(string(haproxyCfgTemplateContent)))
 				})
 			})
 		})

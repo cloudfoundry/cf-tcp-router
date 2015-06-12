@@ -18,21 +18,23 @@ func writeInternalErrorJSONResponse(w http.ResponseWriter, err error) {
 	})
 }
 
-func writeStatusCreatedResponse(w http.ResponseWriter, jsonObj interface{}) {
-	writeJSONResponse(w, http.StatusCreated, jsonObj)
+func writeStatusOKResponse(w http.ResponseWriter, jsonObj interface{}) {
+	writeJSONResponse(w, http.StatusOK, jsonObj)
 }
 
 func writeJSONResponse(w http.ResponseWriter, statusCode int, jsonObj interface{}) {
-	jsonBytes, err := json.Marshal(jsonObj)
-	if err != nil {
-		panic("Unable to encode JSON: " + err.Error())
-	}
 
-	w.Header().Set("Content-Length", strconv.Itoa(len(jsonBytes)))
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 
-	w.Write(jsonBytes)
+	if jsonObj != nil {
+		jsonBytes, err := json.Marshal(jsonObj)
+		if err != nil {
+			panic("Unable to encode JSON: " + err.Error())
+		}
+		w.Write(jsonBytes)
+		w.Header().Set("Content-Length", strconv.Itoa(len(jsonBytes)))
+	}
 }
 
 type HandlerError struct {

@@ -9,48 +9,46 @@ import (
 )
 
 type FakeRouterConfigurer struct {
-	MapBackendHostsToAvailablePortStub        func(backendHostInfos cf_tcp_router.BackendHostInfos) (cf_tcp_router.RouterHostInfo, error)
-	mapBackendHostsToAvailablePortMutex       sync.RWMutex
-	mapBackendHostsToAvailablePortArgsForCall []struct {
-		backendHostInfos cf_tcp_router.BackendHostInfos
+	CreateExternalPortMappingsStub        func(mappingRequests cf_tcp_router.MappingRequests) error
+	createExternalPortMappingsMutex       sync.RWMutex
+	createExternalPortMappingsArgsForCall []struct {
+		mappingRequests cf_tcp_router.MappingRequests
 	}
-	mapBackendHostsToAvailablePortReturns struct {
-		result1 cf_tcp_router.RouterHostInfo
-		result2 error
+	createExternalPortMappingsReturns struct {
+		result1 error
 	}
 }
 
-func (fake *FakeRouterConfigurer) MapBackendHostsToAvailablePort(backendHostInfos cf_tcp_router.BackendHostInfos) (cf_tcp_router.RouterHostInfo, error) {
-	fake.mapBackendHostsToAvailablePortMutex.Lock()
-	fake.mapBackendHostsToAvailablePortArgsForCall = append(fake.mapBackendHostsToAvailablePortArgsForCall, struct {
-		backendHostInfos cf_tcp_router.BackendHostInfos
-	}{backendHostInfos})
-	fake.mapBackendHostsToAvailablePortMutex.Unlock()
-	if fake.MapBackendHostsToAvailablePortStub != nil {
-		return fake.MapBackendHostsToAvailablePortStub(backendHostInfos)
+func (fake *FakeRouterConfigurer) CreateExternalPortMappings(mappingRequests cf_tcp_router.MappingRequests) error {
+	fake.createExternalPortMappingsMutex.Lock()
+	fake.createExternalPortMappingsArgsForCall = append(fake.createExternalPortMappingsArgsForCall, struct {
+		mappingRequests cf_tcp_router.MappingRequests
+	}{mappingRequests})
+	fake.createExternalPortMappingsMutex.Unlock()
+	if fake.CreateExternalPortMappingsStub != nil {
+		return fake.CreateExternalPortMappingsStub(mappingRequests)
 	} else {
-		return fake.mapBackendHostsToAvailablePortReturns.result1, fake.mapBackendHostsToAvailablePortReturns.result2
+		return fake.createExternalPortMappingsReturns.result1
 	}
 }
 
-func (fake *FakeRouterConfigurer) MapBackendHostsToAvailablePortCallCount() int {
-	fake.mapBackendHostsToAvailablePortMutex.RLock()
-	defer fake.mapBackendHostsToAvailablePortMutex.RUnlock()
-	return len(fake.mapBackendHostsToAvailablePortArgsForCall)
+func (fake *FakeRouterConfigurer) CreateExternalPortMappingsCallCount() int {
+	fake.createExternalPortMappingsMutex.RLock()
+	defer fake.createExternalPortMappingsMutex.RUnlock()
+	return len(fake.createExternalPortMappingsArgsForCall)
 }
 
-func (fake *FakeRouterConfigurer) MapBackendHostsToAvailablePortArgsForCall(i int) cf_tcp_router.BackendHostInfos {
-	fake.mapBackendHostsToAvailablePortMutex.RLock()
-	defer fake.mapBackendHostsToAvailablePortMutex.RUnlock()
-	return fake.mapBackendHostsToAvailablePortArgsForCall[i].backendHostInfos
+func (fake *FakeRouterConfigurer) CreateExternalPortMappingsArgsForCall(i int) cf_tcp_router.MappingRequests {
+	fake.createExternalPortMappingsMutex.RLock()
+	defer fake.createExternalPortMappingsMutex.RUnlock()
+	return fake.createExternalPortMappingsArgsForCall[i].mappingRequests
 }
 
-func (fake *FakeRouterConfigurer) MapBackendHostsToAvailablePortReturns(result1 cf_tcp_router.RouterHostInfo, result2 error) {
-	fake.MapBackendHostsToAvailablePortStub = nil
-	fake.mapBackendHostsToAvailablePortReturns = struct {
-		result1 cf_tcp_router.RouterHostInfo
-		result2 error
-	}{result1, result2}
+func (fake *FakeRouterConfigurer) CreateExternalPortMappingsReturns(result1 error) {
+	fake.CreateExternalPortMappingsStub = nil
+	fake.createExternalPortMappingsReturns = struct {
+		result1 error
+	}{result1}
 }
 
 var _ configurer.RouterConfigurer = new(FakeRouterConfigurer)

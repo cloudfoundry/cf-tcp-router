@@ -47,24 +47,34 @@ func NewHaProxyConfigurer(logger lager.Logger, configFilePath string, configStar
 	}, nil
 }
 
-func (h *HaProxyConfigurer) MapBackendHostsToAvailablePort(backendHostInfos cf_tcp_router.BackendHostInfos) (cf_tcp_router.RouterHostInfo, error) {
-	err := backendHostInfos.Validate()
+func (h *HaProxyConfigurer) CreateExternalPortMappings(mappingRequests cf_tcp_router.MappingRequests) error {
+	err := mappingRequests.Validate()
 	if err != nil {
-		h.logger.Error("invalid-backendhostinfo", err)
-		return cf_tcp_router.RouterHostInfo{}, errors.New(cf_tcp_router.ErrInvalidBackendHostInfo)
+		h.logger.Error("invalid-mapping-request", err)
+		return errors.New(cf_tcp_router.ErrInvalidMapingRequest)
 	}
-	frontendPort := h.getFrontendPort()
+	externalPortMap := make(map[uint16]cf_tcp_router.BackendHostInfos)
 
-	listenConfiguration := h.getListenConfiguration(backendHostInfos, frontendPort)
+	for _, mappingRequest := range mappingRequests {
+		backends := mappingRequest.Backends
+		if existingBackends, ok := externalPortMap[mappingRequest.ExternalPort]; ok {
+			backends = append(backends, existingBackends...)
+		}
+		externalPortMap[mappingRequest.ExternalPort] = backends
 
-	err = h.applyListenConfiguration(listenConfiguration)
-	if err != nil {
-		h.logger.Error("failed-applying-configuration", err)
-		return cf_tcp_router.RouterHostInfo{}, nil
+	}
+	return h.handleMappingRequest(externalPortMap)
+}
+
+func (h *HaProxyConfigurer) handleMappingRequest(externalPortMap map[uint16]cf_tcp_router.BackendHostInfos) error {
+
+	listenCfgs := make([]ListenConfigurationInfo, 0, len(externalPortMap))
+
+	for externalPort, backends := range externalPortMap {
+		listenCfgs = append(listenCfgs, h.getListenConfiguration(backends, externalPort))
 	}
 
-	// This is dummy implementation and needs to be changed once we integrate with haproxy
-	return cf_tcp_router.NewRouterHostInfo(h.frontendAddress, frontendPort), nil
+	return h.applyListenConfiguration(listenCfgs)
 }
 
 func (h *HaProxyConfigurer) getListenConfiguration(
@@ -110,7 +120,7 @@ func (h *HaProxyConfigurer) appendListenConfiguration(listenCfg ListenConfigurat
 	return buff.Bytes(), nil
 }
 
-func (h *HaProxyConfigurer) applyListenConfiguration(listenCfg ListenConfigurationInfo) error {
+func (h *HaProxyConfigurer) applyListenConfiguration(listenCfgs []ListenConfigurationInfo) error {
 	h.configFileLock.Lock()
 	defer h.configFileLock.Unlock()
 
@@ -121,20 +131,34 @@ func (h *HaProxyConfigurer) applyListenConfiguration(listenCfg ListenConfigurati
 		return err
 	}
 
+	err = h.createConfigBackup(cfgContent)
+	if err != nil {
+		return err
+	}
+
+	for _, listenCfg := range listenCfgs {
+		cfgContent, err = h.appendListenConfiguration(listenCfg, cfgContent)
+		if err != nil {
+			return err
+		}
+	}
+
+	return h.writeToConfig(cfgContent)
+}
+
+func (h *HaProxyConfigurer) createConfigBackup(cfgContent []byte) error {
 	backupConfigFileName := fmt.Sprintf("%s.bak", h.configFilePath)
-	err = utils.WriteToFile(cfgContent, backupConfigFileName)
+	err := utils.WriteToFile(cfgContent, backupConfigFileName)
 	if err != nil {
 		h.logger.Error("failed-to-backup-config", err, lager.Data{"config-file": h.configFilePath})
 		return err
 	}
+	return nil
+}
 
-	newCfgContent, err := h.appendListenConfiguration(listenCfg, cfgContent)
-	if err != nil {
-		return err
-	}
-
+func (h *HaProxyConfigurer) writeToConfig(cfgContent []byte) error {
 	tmpConfigFileName := fmt.Sprintf("%s.tmp", h.configFilePath)
-	err = utils.WriteToFile(newCfgContent, tmpConfigFileName)
+	err := utils.WriteToFile(cfgContent, tmpConfigFileName)
 	if err != nil {
 		h.logger.Error("failed-to-write-temp-config", err, lager.Data{"temp-config-file": tmpConfigFileName})
 		return err

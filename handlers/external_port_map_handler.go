@@ -25,17 +25,17 @@ func (h *ExternalPortMapHandler) MapExternalPort(w http.ResponseWriter, r *http.
 	logger := h.logger.Session("map_external_port")
 	logger.Info("map-external-port")
 
-	var backendHostInfos cf_tcp_router.BackendHostInfos
-	err := json.NewDecoder(r.Body).Decode(&backendHostInfos)
+	var mappingRequest cf_tcp_router.MappingRequests
+	err := json.NewDecoder(r.Body).Decode(&mappingRequest)
 	if err != nil {
 		logger.Error("failed-to-unmarshal", err)
 		writeInvalidJSONResponse(w, err)
 		return
 	}
 
-	routerHostInfo, err := h.configurer.MapBackendHostsToAvailablePort(backendHostInfos)
+	err = h.configurer.CreateExternalPortMappings(mappingRequest)
 	if err != nil {
-		if err.Error() == cf_tcp_router.ErrInvalidBackendHostInfo {
+		if err.Error() == cf_tcp_router.ErrInvalidMapingRequest {
 			logger.Error("invalid-payload", err)
 			writeInvalidJSONResponse(w, err)
 		} else {
@@ -45,5 +45,5 @@ func (h *ExternalPortMapHandler) MapExternalPort(w http.ResponseWriter, r *http.
 		return
 	}
 
-	writeStatusCreatedResponse(w, routerHostInfo)
+	writeStatusOKResponse(w, nil)
 }

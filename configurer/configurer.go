@@ -13,7 +13,7 @@ const (
 )
 
 type RouterConfigurer interface {
-	MapBackendHostsToAvailablePort(backendHostInfos cf_tcp_router.BackendHostInfos) (cf_tcp_router.RouterHostInfo, error)
+	CreateExternalPortMappings(mappingRequests cf_tcp_router.MappingRequests) error
 }
 
 func NewConfigurer(logger lager.Logger, tcpLoadBalancer string, tcpLoadBalancerCfg string, configStartFrontendPort uint16) RouterConfigurer {

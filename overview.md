@@ -12,30 +12,35 @@ POST /v0/external_ports
 
 ```
 [
-  {"backend_ip": "10.244.0.16", "backend_port":5222}
+  {
+   "external_port": 2222, 
+   "backends" : [
+      {"ip": "10.244.0.16", "port":5222}
+   ]
+  }
 ]
 ```
 
 The request must contain at least one element in the array. Each elements includes the following properties:
 
-#####`backend_ip` [required]
+#####`external_port` [required]
 
-The `backend_ip` property refers to the host ip, where the application is hosted.
+The `external_port` property refers to the external port that needs to be mapped to the given backends. 
 
-#####`backend_port` [required]
+#####`backends` [required]
 
-The `backend_port` property refers to the host port, where the application is listening for incoming TCP requests.
+The `backends` property refers to list of backend ips and ports to be mapped to the given external port. 
 
-#### Response sample
+Each element of the backend collections has the following properties:
 
-```
-{"router_ip": "10.244.0.34", "router_port":5222}
-```
+######`ip` [required]
 
-#####`router_ip`
+The `ip` property refers to the host ip, where the application is hosted.
 
-The `router_ip` property refers to the external IP of the TCP router.
+######`port` [required]
 
-#####`router_port`
+The `port` property refers to the host port, where the application is listening for incoming TCP requests.
 
-The `router_port` property refers to the external port of the TCP router, to which the backend IP and port are mapped.
+#### Response
+
+No response body is returned, and the 200 HTTP status code is returned for successful calls.

@@ -7,7 +7,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/GESoftware-CF/cf-tcp-router/utils"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

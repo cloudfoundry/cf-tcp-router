@@ -6,10 +6,10 @@ import (
 	"math"
 	"os"
 
-	"github.com/GESoftware-CF/cf-tcp-router/configurer"
-	"github.com/GESoftware-CF/cf-tcp-router/handlers"
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/handlers"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"

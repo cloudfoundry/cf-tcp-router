@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/GESoftware-CF/cf-tcp-router/cmd/router-configurer/testrunner"
-	"github.com/GESoftware-CF/cf-tcp-router/testutil"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/cmd/router-configurer/testrunner"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/testutil"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"

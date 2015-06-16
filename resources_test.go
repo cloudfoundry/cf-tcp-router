@@ -1,7 +1,7 @@
 package cf_tcp_router_test
 
 import (
-	cf_tcp_router "github.com/GESoftware-CF/cf-tcp-router"
+	cf_tcp_router "github.com/cloudfoundry-incubator/cf-tcp-router"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

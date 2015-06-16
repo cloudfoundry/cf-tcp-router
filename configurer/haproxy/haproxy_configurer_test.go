@@ -7,10 +7,10 @@ import (
 	"os"
 	"time"
 
-	cf_tcp_router "github.com/GESoftware-CF/cf-tcp-router"
-	"github.com/GESoftware-CF/cf-tcp-router/configurer/haproxy"
-	"github.com/GESoftware-CF/cf-tcp-router/testutil"
-	"github.com/GESoftware-CF/cf-tcp-router/utils"
+	cf_tcp_router "github.com/cloudfoundry-incubator/cf-tcp-router"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer/haproxy"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/testutil"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

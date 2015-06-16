@@ -5,9 +5,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 
-	cf_tcp_router "github.com/GESoftware-CF/cf-tcp-router"
-	"github.com/GESoftware-CF/cf-tcp-router/configurer/fakes"
-	"github.com/GESoftware-CF/cf-tcp-router/handlers"
+	cf_tcp_router "github.com/cloudfoundry-incubator/cf-tcp-router"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer/fakes"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/handlers"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 

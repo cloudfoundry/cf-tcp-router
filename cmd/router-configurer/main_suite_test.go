@@ -8,7 +8,7 @@ import (
 	"path"
 	"time"
 
-	"github.com/GESoftware-CF/cf-tcp-router/utils"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
@@ -36,7 +36,7 @@ func TestRouterConfigurer(t *testing.T) {
 }
 
 var _ = SynchronizedBeforeSuite(func() []byte {
-	routerConfigurer, err := gexec.Build("github.com/GESoftware-CF/cf-tcp-router/cmd/router-configurer", "-race")
+	routerConfigurer, err := gexec.Build("github.com/cloudfoundry-incubator/cf-tcp-router/cmd/router-configurer", "-race")
 	Expect(err).NotTo(HaveOccurred())
 	payload, err := json.Marshal(map[string]string{
 		"router-configurer": routerConfigurer,

@@ -9,9 +9,9 @@ import (
 	"os"
 	"sync"
 
-	"github.com/GESoftware-CF/cf-tcp-router/utils"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/utils"
 
-	cf_tcp_router "github.com/GESoftware-CF/cf-tcp-router"
+	cf_tcp_router "github.com/cloudfoundry-incubator/cf-tcp-router"
 	"github.com/pivotal-golang/lager"
 )
 

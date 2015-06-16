@@ -3,8 +3,8 @@ package handlers
 import (
 	"net/http"
 
-	cf_tcp_router "github.com/GESoftware-CF/cf-tcp-router"
-	"github.com/GESoftware-CF/cf-tcp-router/configurer"
+	cf_tcp_router "github.com/cloudfoundry-incubator/cf-tcp-router"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/rata"
 )

@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"fmt"
 
-	"github.com/GESoftware-CF/cf-tcp-router"
+	cf_tcp_router "github.com/cloudfoundry-incubator/cf-tcp-router"
 )
 
 type BackendServerInfo struct {

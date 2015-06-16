@@ -3,8 +3,8 @@ package configurer_test
 import (
 	"reflect"
 
-	"github.com/GESoftware-CF/cf-tcp-router/configurer"
-	"github.com/GESoftware-CF/cf-tcp-router/configurer/haproxy"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer/haproxy"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

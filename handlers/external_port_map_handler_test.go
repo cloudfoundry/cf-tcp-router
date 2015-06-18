@@ -6,8 +6,8 @@ import (
 	"net/http/httptest"
 
 	cf_tcp_router "github.com/cloudfoundry-incubator/cf-tcp-router"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer/fakes"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/handlers"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/routing_table/fakes"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 
@@ -21,14 +21,14 @@ var _ = Describe("ExternalPortMapHandler", func() {
 		handler          *handlers.ExternalPortMapHandler
 		logger           lager.Logger
 		responseRecorder *httptest.ResponseRecorder
-		fakeConfigurer   *fakes.FakeRouterConfigurer
+		fakeUpdater      *fakes.FakeUpdater
 	)
 
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
 		responseRecorder = httptest.NewRecorder()
-		fakeConfigurer = new(fakes.FakeRouterConfigurer)
-		handler = handlers.NewExternalPortMapHandler(logger, fakeConfigurer)
+		fakeUpdater = new(fakes.FakeUpdater)
+		handler = handlers.NewExternalPortMapHandler(logger, fakeUpdater)
 	})
 
 	Describe("MapExternalPort", func() {
@@ -49,21 +49,21 @@ var _ = Describe("ExternalPortMapHandler", func() {
 
 		Context("when request is valid", func() {
 			BeforeEach(func() {
-				fakeConfigurer.CreateExternalPortMappingsReturns(nil)
+				fakeUpdater.UpdateReturns(nil)
 			})
 
 			It("responds with 200 CREATED", func() {
 				Expect(responseRecorder.Code).To(Equal(http.StatusOK))
 			})
 
-			Context("when configurer returns an error", func() {
+			Context("when updater returns an error", func() {
 				BeforeEach(func() {
-					fakeConfigurer.CreateExternalPortMappingsReturns(errors.New("Kabooom"))
+					fakeUpdater.UpdateReturns(errors.New("Kabooom"))
 				})
 
 				It("responds with 500 INTERNAL_SERVER_ERROR", func() {
 					Expect(responseRecorder.Code).To(Equal(http.StatusInternalServerError))
-					Eventually(logger).Should(gbytes.Say("test.map_external_port.failed-to-configure"))
+					Eventually(logger).Should(gbytes.Say("test.map_external_port.failed-to-update"))
 				})
 			})
 		})
@@ -87,7 +87,7 @@ var _ = Describe("ExternalPortMapHandler", func() {
 					mappingRequest = cf_tcp_router.MappingRequests{
 						cf_tcp_router.NewMappingRequest(1234, backendHostInfos),
 					}
-					fakeConfigurer.CreateExternalPortMappingsReturns(errors.New(cf_tcp_router.ErrInvalidMapingRequest))
+					fakeUpdater.UpdateReturns(errors.New(cf_tcp_router.ErrInvalidMapingRequest))
 				})
 
 				It("responds with 400 BAD REQUEST", func() {

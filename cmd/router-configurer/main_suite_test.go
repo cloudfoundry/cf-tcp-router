@@ -19,7 +19,6 @@ import (
 
 const (
 	haproxyCfgTemplate = "configurer/haproxy/fixtures/haproxy.cfg.template"
-	startExternalPort  = 64000
 )
 
 var (
@@ -73,7 +72,6 @@ defaults
 		haproxyConfigFile)
 	Expect(err).ShouldNot(HaveOccurred())
 	Expect(utils.FileExists(haproxyConfigFile)).To(BeTrue())
-
 })
 
 var _ = AfterEach(func() {

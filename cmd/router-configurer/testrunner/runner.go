@@ -1,7 +1,6 @@
 package testrunner
 
 import (
-	"fmt"
 	"os/exec"
 	"time"
 
@@ -9,16 +8,16 @@ import (
 )
 
 type Args struct {
-	Address           string
-	ConfigFilePath    string
-	StartExternalPort int
+	Address            string
+	BaseConfigFilePath string
+	ConfigFilePath     string
 }
 
 func (args Args) ArgSlice() []string {
 	return []string{
 		"-address=" + args.Address,
 		"-tcpLoadBalancerConfig=" + args.ConfigFilePath,
-		"-startExternalPort=" + fmt.Sprintf("%d", args.StartExternalPort),
+		"-tcpLoadBalancerBaseConfig=" + args.ConfigFilePath,
 	}
 }
 

@@ -4,49 +4,49 @@ package fakes
 import (
 	"sync"
 
-	cf_tcp_router "github.com/cloudfoundry-incubator/cf-tcp-router"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
 )
 
 type FakeRouterConfigurer struct {
-	CreateExternalPortMappingsStub        func(mappingRequests cf_tcp_router.MappingRequests) error
-	createExternalPortMappingsMutex       sync.RWMutex
-	createExternalPortMappingsArgsForCall []struct {
-		mappingRequests cf_tcp_router.MappingRequests
+	ConfigureStub        func(routingTable models.RoutingTable) error
+	configureMutex       sync.RWMutex
+	configureArgsForCall []struct {
+		routingTable models.RoutingTable
 	}
-	createExternalPortMappingsReturns struct {
+	configureReturns struct {
 		result1 error
 	}
 }
 
-func (fake *FakeRouterConfigurer) CreateExternalPortMappings(mappingRequests cf_tcp_router.MappingRequests) error {
-	fake.createExternalPortMappingsMutex.Lock()
-	fake.createExternalPortMappingsArgsForCall = append(fake.createExternalPortMappingsArgsForCall, struct {
-		mappingRequests cf_tcp_router.MappingRequests
-	}{mappingRequests})
-	fake.createExternalPortMappingsMutex.Unlock()
-	if fake.CreateExternalPortMappingsStub != nil {
-		return fake.CreateExternalPortMappingsStub(mappingRequests)
+func (fake *FakeRouterConfigurer) Configure(routingTable models.RoutingTable) error {
+	fake.configureMutex.Lock()
+	fake.configureArgsForCall = append(fake.configureArgsForCall, struct {
+		routingTable models.RoutingTable
+	}{routingTable})
+	fake.configureMutex.Unlock()
+	if fake.ConfigureStub != nil {
+		return fake.ConfigureStub(routingTable)
 	} else {
-		return fake.createExternalPortMappingsReturns.result1
+		return fake.configureReturns.result1
 	}
 }
 
-func (fake *FakeRouterConfigurer) CreateExternalPortMappingsCallCount() int {
-	fake.createExternalPortMappingsMutex.RLock()
-	defer fake.createExternalPortMappingsMutex.RUnlock()
-	return len(fake.createExternalPortMappingsArgsForCall)
+func (fake *FakeRouterConfigurer) ConfigureCallCount() int {
+	fake.configureMutex.RLock()
+	defer fake.configureMutex.RUnlock()
+	return len(fake.configureArgsForCall)
 }
 
-func (fake *FakeRouterConfigurer) CreateExternalPortMappingsArgsForCall(i int) cf_tcp_router.MappingRequests {
-	fake.createExternalPortMappingsMutex.RLock()
-	defer fake.createExternalPortMappingsMutex.RUnlock()
-	return fake.createExternalPortMappingsArgsForCall[i].mappingRequests
+func (fake *FakeRouterConfigurer) ConfigureArgsForCall(i int) models.RoutingTable {
+	fake.configureMutex.RLock()
+	defer fake.configureMutex.RUnlock()
+	return fake.configureArgsForCall[i].routingTable
 }
 
-func (fake *FakeRouterConfigurer) CreateExternalPortMappingsReturns(result1 error) {
-	fake.CreateExternalPortMappingsStub = nil
-	fake.createExternalPortMappingsReturns = struct {
+func (fake *FakeRouterConfigurer) ConfigureReturns(result1 error) {
+	fake.ConfigureStub = nil
+	fake.configureReturns = struct {
 		result1 error
 	}{result1}
 }

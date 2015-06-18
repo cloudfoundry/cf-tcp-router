@@ -2,36 +2,28 @@ package haproxy_test
 
 import (
 	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer/haproxy"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("HaproxyConfiguration", func() {
-	Describe("BackendServerInfo", func() {
+	Describe("BackendServerInfoToHaProxyConfig", func() {
 		Context("when configuration is valid", func() {
 			It("returns a valid haproxy configuration representation", func() {
-				bs := haproxy.NewBackendServerInfo("some-name", "some-ip", 1234)
-				str, err := bs.ToHaProxyConfig()
+				bs := models.BackendServerInfo{Address: "some-ip", Port: 1234}
+				str, err := haproxy.BackendServerInfoToHaProxyConfig(bs)
 				Expect(err).ShouldNot(HaveOccurred())
-				Expect(str).Should(Equal("server some-name some-ip:1234\n"))
+				Expect(str).Should(Equal("server server_some-ip_1234 some-ip:1234\n"))
 			})
 		})
 
 		Context("when configuration is invalid", func() {
-			Context("when name is empty", func() {
-				It("returns an error", func() {
-					bs := haproxy.NewBackendServerInfo("", "some-ip", 1234)
-					_, err := bs.ToHaProxyConfig()
-					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("backend_server.name"))
-				})
-			})
-
 			Context("when address is empty", func() {
 				It("returns an error", func() {
-					bs := haproxy.NewBackendServerInfo("some-name", "", 1234)
-					_, err := bs.ToHaProxyConfig()
+					bs := models.BackendServerInfo{Address: "", Port: 1234}
+					_, err := haproxy.BackendServerInfoToHaProxyConfig(bs)
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).To(ContainSubstring("backend_server.address"))
 				})
@@ -39,8 +31,8 @@ var _ = Describe("HaproxyConfiguration", func() {
 
 			Context("when port is invalid", func() {
 				It("returns an error", func() {
-					bs := haproxy.NewBackendServerInfo("some-name", "some-ip", 0)
-					_, err := bs.ToHaProxyConfig()
+					bs := models.BackendServerInfo{Address: "some-ip", Port: 0}
+					_, err := haproxy.BackendServerInfoToHaProxyConfig(bs)
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).To(ContainSubstring("backend_server.port"))
 				})
@@ -48,46 +40,50 @@ var _ = Describe("HaproxyConfiguration", func() {
 		})
 	})
 
-	Describe("ListenConfigurationInfo", func() {
+	Describe("RoutingTableEntryToHaProxyConfig", func() {
 		Context("when configuration is valid", func() {
 			Context("when single backend server info is provided", func() {
 				It("returns a valid haproxy configuration representation", func() {
-					bs := haproxy.NewBackendServerInfo("some-name", "some-ip", 1234)
-					lc := haproxy.NewListenConfigurationInfo("listen-1", 8880, []haproxy.BackendServerInfo{bs})
-					str, err := lc.ToHaProxyConfig()
+					routingKey := models.RoutingKey{Port: 8880}
+					routingTableEntry := models.RoutingTableEntry{
+						Backends: map[models.BackendServerInfo]struct{}{
+							models.BackendServerInfo{"some-ip", 1234}: struct{}{},
+						},
+					}
+					str, err := haproxy.RoutingTableEntryToHaProxyConfig(routingKey, routingTableEntry)
 					Expect(err).ShouldNot(HaveOccurred())
-					Expect(str).Should(Equal("listen listen-1\n  mode tcp\n  bind :8880\n  server some-name some-ip:1234\n"))
+					Expect(str).Should(Equal("listen listen_cfg_8880\n  mode tcp\n  bind :8880\n  server server_some-ip_1234 some-ip:1234\n"))
 				})
 			})
 
 			Context("when multiple backend server infos are provided", func() {
 				It("returns a valid haproxy configuration representation", func() {
-					bs1 := haproxy.NewBackendServerInfo("some-name-1", "some-ip-1", 1234)
-					bs2 := haproxy.NewBackendServerInfo("some-name-2", "some-ip-2", 1235)
-					lc := haproxy.NewListenConfigurationInfo("listen-1", 8880, []haproxy.BackendServerInfo{bs1, bs2})
-					str, err := lc.ToHaProxyConfig()
+					routingKey := models.RoutingKey{Port: 8880}
+					routingTableEntry := models.RoutingTableEntry{
+						Backends: map[models.BackendServerInfo]struct{}{
+							models.BackendServerInfo{"some-ip-1", 1234}: struct{}{},
+							models.BackendServerInfo{"some-ip-2", 1235}: struct{}{},
+						},
+					}
+					str, err := haproxy.RoutingTableEntryToHaProxyConfig(routingKey, routingTableEntry)
 					Expect(err).ShouldNot(HaveOccurred())
-					Expect(str).Should(Equal("listen listen-1\n  mode tcp\n  bind :8880\n  server some-name-1 some-ip-1:1234\n  server some-name-2 some-ip-2:1235\n"))
+					Expect(str).Should(ContainSubstring("listen listen_cfg_8880\n  mode tcp\n  bind :8880\n"))
+					Expect(str).Should(ContainSubstring("server server_some-ip-1_1234 some-ip-1:1234\n"))
+					Expect(str).Should(ContainSubstring("server server_some-ip-2_1235 some-ip-2:1235\n"))
 				})
 			})
 		})
 
 		Context("when configuration is invalid", func() {
-			Context("when name is empty", func() {
-				It("returns an error", func() {
-					bs := haproxy.NewBackendServerInfo("some-name", "some-ip", 1234)
-					lc := haproxy.NewListenConfigurationInfo("", 8880, []haproxy.BackendServerInfo{bs})
-					_, err := lc.ToHaProxyConfig()
-					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("listen_configuration.name"))
-				})
-			})
-
 			Context("when front end port is invalid", func() {
 				It("returns an error", func() {
-					bs := haproxy.NewBackendServerInfo("some-name", "some-ip", 1234)
-					lc := haproxy.NewListenConfigurationInfo("some-name", 0, []haproxy.BackendServerInfo{bs})
-					_, err := lc.ToHaProxyConfig()
+					routingKey := models.RoutingKey{Port: 0}
+					routingTableEntry := models.RoutingTableEntry{
+						Backends: map[models.BackendServerInfo]struct{}{
+							models.BackendServerInfo{"some-ip", 1234}: struct{}{},
+						},
+					}
+					_, err := haproxy.RoutingTableEntryToHaProxyConfig(routingKey, routingTableEntry)
 					Expect(err).Should(HaveOccurred())
 					Expect(err.Error()).To(ContainSubstring("listen_configuration.port"))
 				})
@@ -95,11 +91,15 @@ var _ = Describe("HaproxyConfiguration", func() {
 
 			Context("when backend server is invalid", func() {
 				It("returns an error", func() {
-					bs := haproxy.NewBackendServerInfo("", "some-ip", 1234)
-					lc := haproxy.NewListenConfigurationInfo("some-name", 8880, []haproxy.BackendServerInfo{bs})
-					_, err := lc.ToHaProxyConfig()
+					routingKey := models.RoutingKey{Port: 8080}
+					routingTableEntry := models.RoutingTableEntry{
+						Backends: map[models.BackendServerInfo]struct{}{
+							models.BackendServerInfo{"", 1234}: struct{}{},
+						},
+					}
+					_, err := haproxy.RoutingTableEntryToHaProxyConfig(routingKey, routingTableEntry)
 					Expect(err).Should(HaveOccurred())
-					Expect(err.Error()).To(ContainSubstring("backend_server.name"))
+					Expect(err.Error()).To(ContainSubstring("backend_server.address"))
 				})
 			})
 		})

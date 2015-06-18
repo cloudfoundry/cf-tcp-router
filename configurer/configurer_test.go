@@ -19,7 +19,7 @@ var _ = Describe("Configurer", func() {
 		Context("when 'haproxy' tcp load balancer is passed", func() {
 			It("should return haproxy configurer", func() {
 				routeConfigurer := configurer.NewConfigurer(logger,
-					configurer.HaProxyConfigurer, "haproxy/fixtures/haproxy.cfg.template", startPort)
+					configurer.HaProxyConfigurer, "haproxy/fixtures/haproxy.cfg.template", "haproxy/fixtures/haproxy.cfg")
 				Expect(routeConfigurer).ShouldNot(BeNil())
 				expectedType := reflect.PtrTo(reflect.TypeOf(haproxy.HaProxyConfigurer{}))
 				value := reflect.ValueOf(routeConfigurer)
@@ -29,7 +29,15 @@ var _ = Describe("Configurer", func() {
 			Context("when invalid config file is passed", func() {
 				It("should panic", func() {
 					Expect(func() {
-						configurer.NewConfigurer(logger, configurer.HaProxyConfigurer, "", startPort)
+						configurer.NewConfigurer(logger, configurer.HaProxyConfigurer, "haproxy/fixtures/haproxy.cfg.template", "")
+					}).Should(Panic())
+				})
+			})
+
+			Context("when invalid base config file is passed", func() {
+				It("should panic", func() {
+					Expect(func() {
+						configurer.NewConfigurer(logger, configurer.HaProxyConfigurer, "", "haproxy/fixtures/haproxy.cfg")
 					}).Should(Panic())
 				})
 			})
@@ -38,7 +46,7 @@ var _ = Describe("Configurer", func() {
 		Context("when non-supported tcp load balancer is passed", func() {
 			It("should panic", func() {
 				Expect(func() {
-					configurer.NewConfigurer(logger, "not-supported", "some-config-file", startPort)
+					configurer.NewConfigurer(logger, "not-supported", "some-base-config-file", "some-config-file")
 				}).Should(Panic())
 			})
 		})
@@ -46,15 +54,7 @@ var _ = Describe("Configurer", func() {
 		Context("when empty tcp load balancer is passed", func() {
 			It("should panic", func() {
 				Expect(func() {
-					configurer.NewConfigurer(logger, "", "some-config-file", startPort)
-				}).Should(Panic())
-			})
-		})
-
-		Context("when invalid start front end port is passed", func() {
-			It("should panic", func() {
-				Expect(func() {
-					configurer.NewConfigurer(logger, configurer.HaProxyConfigurer, "haproxy/fixtures/haproxy.cfg.template", 0)
+					configurer.NewConfigurer(logger, "", "some-base-config-file", "some-config-file")
 				}).Should(Panic())
 			})
 		})

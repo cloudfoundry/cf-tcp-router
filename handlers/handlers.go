@@ -4,13 +4,13 @@ import (
 	"net/http"
 
 	cf_tcp_router "github.com/cloudfoundry-incubator/cf-tcp-router"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/routing_table"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/rata"
 )
 
-func New(logger lager.Logger, configurer configurer.RouterConfigurer) http.Handler {
-	externalPortMapHandler := NewExternalPortMapHandler(logger, configurer)
+func New(logger lager.Logger, updater routing_table.Updater) http.Handler {
+	externalPortMapHandler := NewExternalPortMapHandler(logger, updater)
 	actions := rata.Handlers{
 		// External port mapping
 		cf_tcp_router.MapExternalPortRoute: route(externalPortMapHandler.MapExternalPort),

@@ -5,19 +5,19 @@ import (
 	"net/http"
 
 	cf_tcp_router "github.com/cloudfoundry-incubator/cf-tcp-router"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/routing_table"
 	"github.com/pivotal-golang/lager"
 )
 
 type ExternalPortMapHandler struct {
-	configurer configurer.RouterConfigurer
-	logger     lager.Logger
+	updater routing_table.Updater
+	logger  lager.Logger
 }
 
-func NewExternalPortMapHandler(logger lager.Logger, configurer configurer.RouterConfigurer) *ExternalPortMapHandler {
+func NewExternalPortMapHandler(logger lager.Logger, updater routing_table.Updater) *ExternalPortMapHandler {
 	return &ExternalPortMapHandler{
-		logger:     logger,
-		configurer: configurer,
+		logger:  logger,
+		updater: updater,
 	}
 }
 
@@ -33,13 +33,13 @@ func (h *ExternalPortMapHandler) MapExternalPort(w http.ResponseWriter, r *http.
 		return
 	}
 
-	err = h.configurer.CreateExternalPortMappings(mappingRequest)
+	err = h.updater.Update(mappingRequest)
 	if err != nil {
 		if err.Error() == cf_tcp_router.ErrInvalidMapingRequest {
 			logger.Error("invalid-payload", err)
 			writeInvalidJSONResponse(w, err)
 		} else {
-			logger.Error("failed-to-configure", err)
+			logger.Error("failed-to-update", err)
 			writeInternalErrorJSONResponse(w, err)
 		}
 		return

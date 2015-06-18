@@ -26,9 +26,9 @@ var _ = Describe("Main", func() {
 		Context("when valid arguments are passed", func() {
 			BeforeEach(func() {
 				routerConfigurerArgs := testrunner.Args{
-					Address:           fmt.Sprintf("127.0.0.1:%d", routerConfigurerPort),
-					ConfigFilePath:    haproxyConfigFile,
-					StartExternalPort: startExternalPort,
+					Address:            fmt.Sprintf("127.0.0.1:%d", routerConfigurerPort),
+					BaseConfigFilePath: haproxyCfgTemplate,
+					ConfigFilePath:     haproxyConfigFile,
 				}
 
 				runner := testrunner.New(routerConfigurerPath, routerConfigurerArgs)
@@ -66,39 +66,6 @@ var _ = Describe("Main", func() {
 					Expect(resp.StatusCode).Should(Equal(http.StatusBadRequest))
 				})
 			})
-		})
-
-		Context("when start external port is invalid", func() {
-			var routerConfigurerArgs testrunner.Args
-			var readyChan <-chan struct{}
-			var errorChan <-chan error
-
-			JustBeforeEach(func() {
-				runner := testrunner.New(routerConfigurerPath, routerConfigurerArgs)
-				routerConfigurerProcess = ifrit.Invoke(runner)
-				errorChan = routerConfigurerProcess.Wait()
-				readyChan = routerConfigurerProcess.Ready()
-			})
-
-			Context("when start external port is greater than 65535", func() {
-				BeforeEach(func() {
-					routerConfigurerArgs = testrunner.Args{
-						Address:           fmt.Sprintf("127.0.0.1:%d", routerConfigurerPort),
-						ConfigFilePath:    haproxyConfigFile,
-						StartExternalPort: 70000,
-					}
-				})
-
-				AfterEach(func() {
-					ginkgomon.Kill(routerConfigurerProcess, 5*time.Second)
-				})
-
-				It("should fail starting the process", func() {
-					Eventually(errorChan).Should(Receive())
-					Expect(readyChan).ShouldNot(BeClosed())
-				})
-			})
-
 		})
 	})
 })

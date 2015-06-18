@@ -3,8 +3,8 @@ package configurer
 import (
 	"errors"
 
-	cf_tcp_router "github.com/cloudfoundry-incubator/cf-tcp-router"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer/haproxy"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -12,14 +12,15 @@ const (
 	HaProxyConfigurer = "HAProxy"
 )
 
+//go:generate counterfeiter -o fakes/fake_configurer.go . RouterConfigurer
 type RouterConfigurer interface {
-	CreateExternalPortMappings(mappingRequests cf_tcp_router.MappingRequests) error
+	Configure(routingTable models.RoutingTable) error
 }
 
-func NewConfigurer(logger lager.Logger, tcpLoadBalancer string, tcpLoadBalancerCfg string, configStartFrontendPort uint16) RouterConfigurer {
+func NewConfigurer(logger lager.Logger, tcpLoadBalancer string, tcpLoadBalancerBaseCfg string, tcpLoadBalancerCfg string) RouterConfigurer {
 	switch tcpLoadBalancer {
 	case HaProxyConfigurer:
-		routerHostInfo, err := haproxy.NewHaProxyConfigurer(logger, tcpLoadBalancerCfg, configStartFrontendPort)
+		routerHostInfo, err := haproxy.NewHaProxyConfigurer(logger, tcpLoadBalancerBaseCfg, tcpLoadBalancerCfg)
 		if err != nil {
 			logger.Fatal("could not create tcp load balancer",
 				err,

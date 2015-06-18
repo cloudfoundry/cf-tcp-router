@@ -1,15 +1,15 @@
 package main
 
 import (
-	"errors"
 	"flag"
-	"math"
 	"os"
 
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/handlers"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/routing_table"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
@@ -30,22 +30,21 @@ var tcpLoadBalancer = flag.String(
 	"The tcp load balancer to use.",
 )
 
+var tcpLoadBalancerBaseCfg = flag.String(
+	"tcpLoadBalancerBaseConfig",
+	"",
+	"The tcp load balancer base configuration file name. This contains the basic header information.",
+)
+
 var tcpLoadBalancerCfg = flag.String(
 	"tcpLoadBalancerConfig",
 	"",
 	"The tcp load balancer configuration file name.",
 )
 
-var startExternalPort = flag.Uint(
-	"startExternalPort",
-	defaultStartExternalPort,
-	"The port number from which the router will start allocating ports when non particular port is requested.",
-)
-
 const (
-	dropsondeDestination     = "localhost:3457"
-	dropsondeOrigin          = "receptor"
-	defaultStartExternalPort = 60000
+	dropsondeDestination = "localhost:3457"
+	dropsondeOrigin      = "receptor"
 )
 
 func main() {
@@ -58,12 +57,12 @@ func main() {
 
 	initializeDropsonde(logger)
 
-	if *startExternalPort > math.MaxUint16 {
-		logger.Fatal("invalid-start-externalport", errors.New("Start ExternalPort must be within the range of 1024...65535"))
-	}
+	routingTable := models.NewRoutingTable()
+	configurer := configurer.NewConfigurer(logger,
+		*tcpLoadBalancer, *tcpLoadBalancerBaseCfg, *tcpLoadBalancerCfg)
+	updater := routing_table.NewUpdater(logger, routingTable, configurer)
 
-	handler := handlers.New(logger, configurer.NewConfigurer(logger,
-		*tcpLoadBalancer, *tcpLoadBalancerCfg, uint16(*startExternalPort)))
+	handler := handlers.New(logger, updater)
 
 	members := grouper.Members{
 		{"server", http_server.New(*serverAddress, handler)},

@@ -21,6 +21,8 @@ POST /v0/external_ports
 ]
 ```
 
+The request is collection of external port resource. A given external port resource will be added if it doesn't exist. If it already exists then the resource will be replaced with the given input resource representation, which means backends for given external port will be replaced with new set as specified in the input of the request.
+
 The request must contain at least one element in the array. Each elements includes the following properties:
 
 #####`external_port` [required]

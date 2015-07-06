@@ -3,13 +3,12 @@ package haproxy_test
 import (
 	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"os"
-	"time"
 
 	cf_tcp_router "github.com/cloudfoundry-incubator/cf-tcp-router"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer/haproxy"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/testutil"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/utils"
 
 	. "github.com/onsi/ginkgo"
@@ -109,8 +108,8 @@ var _ = Describe("HaproxyConfigurer", func() {
 			)
 
 			BeforeEach(func() {
-				rand.Seed(17 * time.Now().UTC().UnixNano())
-				generatedHaproxyCfgFile = fmt.Sprintf("fixtures/haproxy_%d.cfg", rand.Int31())
+
+				generatedHaproxyCfgFile = testutil.RandomFileName("fixtures/haproxy_", ".cfg")
 				haproxyCfgBackupFile = fmt.Sprintf("%s.bak", generatedHaproxyCfgFile)
 				utils.CopyFile(haproxyConfigTemplate, generatedHaproxyCfgFile)
 

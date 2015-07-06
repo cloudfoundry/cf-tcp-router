@@ -1,12 +1,10 @@
 package utils_test
 
 import (
-	"fmt"
 	"io/ioutil"
-	"math/rand"
 	"os"
-	"time"
 
+	"github.com/cloudfoundry-incubator/cf-tcp-router/testutil"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/utils"
 
 	. "github.com/onsi/ginkgo"
@@ -15,7 +13,6 @@ import (
 
 var _ = Describe("Fileutils", func() {
 	Describe("WriteToFile", func() {
-
 		Context("when valid path is passed", func() {
 			var (
 				fileName    string
@@ -23,8 +20,7 @@ var _ = Describe("Fileutils", func() {
 			)
 
 			BeforeEach(func() {
-				rand.Seed(17 * time.Now().UTC().UnixNano())
-				fileName = fmt.Sprintf("fixtures/file_%d", rand.Int31())
+				fileName = testutil.RandomFileName("fixtures/file_", "")
 				fileContent = "some content"
 			})
 
@@ -56,7 +52,7 @@ var _ = Describe("Fileutils", func() {
 
 		Context("when invalid file path", func() {
 			It("returns error", func() {
-				invalidFileName := fmt.Sprintf("fixtures-invalid-path/file_%d", rand.Int31n(65536))
+				invalidFileName := testutil.RandomFileName("fixtures-invalid-path/file_", "")
 				err := utils.WriteToFile([]byte("some content"), invalidFileName)
 				Expect(err).Should(HaveOccurred())
 			})
@@ -72,8 +68,7 @@ var _ = Describe("Fileutils", func() {
 				)
 
 				BeforeEach(func() {
-					rand.Seed(17 * time.Now().UTC().UnixNano())
-					fileName = fmt.Sprintf("fixtures/file_%d", rand.Int31())
+					fileName = testutil.RandomFileName("fixtures/file_", "")
 				})
 
 				AfterEach(func() {

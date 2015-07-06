@@ -1,9 +1,12 @@
 package testutil
 
 import (
+	"fmt"
 	"net"
 
 	. "github.com/onsi/gomega"
+
+	uuid "github.com/nu7hatch/gouuid"
 )
 
 func GetExternalIP() string {
@@ -20,4 +23,10 @@ func GetExternalIP() string {
 		}
 	}
 	return externalIP
+}
+
+func RandomFileName(prefix string, suffix string) string {
+	guid, err := uuid.NewV4()
+	Expect(err).ShouldNot(HaveOccurred())
+	return fmt.Sprintf("%s%s%s", prefix, guid, suffix)
 }

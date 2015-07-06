@@ -3,11 +3,10 @@ package main_test
 import (
 	"encoding/json"
 	"fmt"
-	"math/rand"
 	"os"
 	"path"
-	"time"
 
+	"github.com/cloudfoundry-incubator/cf-tcp-router/testutil"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/utils"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -55,8 +54,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 })
 
 var _ = BeforeEach(func() {
-	rand.Seed(17 * time.Now().UTC().UnixNano())
-	randomFileName := fmt.Sprintf("haproxy_%d.cfg", rand.Int31())
+	randomFileName := testutil.RandomFileName("haproxy_", ".cfg")
 	randomBackupFileName := fmt.Sprintf("%s.bak", randomFileName)
 	haproxyConfigFile = path.Join(os.TempDir(), randomFileName)
 	haproxyConfigBackupFile = path.Join(os.TempDir(), randomBackupFileName)

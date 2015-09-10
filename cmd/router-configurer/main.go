@@ -44,7 +44,7 @@ var tcpLoadBalancerCfg = flag.String(
 
 const (
 	dropsondeDestination = "localhost:3457"
-	dropsondeOrigin      = "receptor"
+	dropsondeOrigin      = "router-configurer"
 )
 
 func main() {

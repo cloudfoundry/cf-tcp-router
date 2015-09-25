@@ -50,6 +50,34 @@ func (table RoutingTable) Set(key RoutingKey, newEntry RoutingTableEntry) bool {
 	return true
 }
 
+func (table RoutingTable) UpsertBackendServerInfo(key RoutingKey, backendServerInfo BackendServerInfo) bool {
+	existingEntry, ok := table.Entries[key]
+	updated := false
+	if ok == false {
+		existingEntry = NewRoutingTableEntry(BackendServerInfos{})
+		table.Entries[key] = existingEntry
+	}
+	_, backendFound := existingEntry.Backends[backendServerInfo]
+	if backendFound == false {
+		existingEntry.Backends[backendServerInfo] = struct{}{}
+		updated = true
+	}
+	return updated
+}
+
+func (table RoutingTable) DeleteBackendServerInfo(key RoutingKey, backendServerInfo BackendServerInfo) bool {
+	existingEntry, ok := table.Entries[key]
+	deleted := false
+	if ok == true {
+		_, backendFound := existingEntry.Backends[backendServerInfo]
+		if backendFound == true {
+			delete(existingEntry.Backends, backendServerInfo)
+			deleted = true
+		}
+	}
+	return deleted
+}
+
 func (table RoutingTable) Get(key RoutingKey) RoutingTableEntry {
 	return table.Entries[key]
 }

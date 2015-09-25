@@ -125,4 +125,109 @@ var _ = Describe("RoutingTable", func() {
 			})
 		})
 	})
+
+	Describe("UpsertBackendServerInfo", func() {
+		var (
+			routingKey        models.RoutingKey
+			backendServerInfo models.BackendServerInfo
+		)
+		BeforeEach(func() {
+			routingKey = models.RoutingKey{12}
+			backendServerInfo = models.BackendServerInfo{"some-ip", 1234}
+		})
+		Context("when the routing key does not exist", func() {
+			It("inserts the routing key with its backends", func() {
+				routingTableEntry := models.RoutingTableEntry{
+					Backends: map[models.BackendServerInfo]struct{}{
+						backendServerInfo: struct{}{},
+					},
+				}
+				ok := routingTable.UpsertBackendServerInfo(routingKey, backendServerInfo)
+				Expect(ok).To(BeTrue())
+				Expect(routingTable.Get(routingKey)).Should(Equal(routingTableEntry))
+			})
+		})
+		Context("when the routing key does exist", func() {
+			BeforeEach(func() {
+				existingRoutingTableEntry := models.RoutingTableEntry{
+					Backends: map[models.BackendServerInfo]struct{}{
+						backendServerInfo: struct{}{},
+					},
+				}
+				ok := routingTable.Set(routingKey, existingRoutingTableEntry)
+				Expect(ok).To(BeTrue())
+			})
+			Context("and no changed in the backends are provided", func() {
+				It("it does not update the routing entry", func() {
+					sameBackendServerInfo := models.BackendServerInfo{"some-ip", 1234}
+					ok := routingTable.UpsertBackendServerInfo(routingKey, sameBackendServerInfo)
+					Expect(ok).To(BeFalse())
+				})
+			})
+			Context("and a new backend is provided", func() {
+				It("it updates the routing entry's backends", func() {
+					routingTableEntry := models.RoutingTableEntry{
+						Backends: map[models.BackendServerInfo]struct{}{
+							models.BackendServerInfo{"some-ip", 1234}:       struct{}{},
+							models.BackendServerInfo{"some-other-ip", 1234}: struct{}{},
+						},
+					}
+					differentBackendServerInfo := models.BackendServerInfo{"some-other-ip", 1234}
+					ok := routingTable.UpsertBackendServerInfo(routingKey, differentBackendServerInfo)
+					Expect(ok).To(BeTrue())
+					Expect(routingTable.Get(routingKey)).Should(Equal(routingTableEntry))
+				})
+			})
+		})
+	})
+
+	Describe("DeleteBackendServerInfo", func() {
+		var (
+			routingKey                models.RoutingKey
+			backendServerInfo         models.BackendServerInfo
+			existingRoutingTableEntry models.RoutingTableEntry
+		)
+		BeforeEach(func() {
+			routingKey = models.RoutingKey{12}
+			backendServerInfo = models.BackendServerInfo{"some-ip", 1234}
+		})
+		Context("when the routing key does not exist", func() {
+			It("it does not causes any changes or errors", func() {
+				ok := routingTable.DeleteBackendServerInfo(routingKey, backendServerInfo)
+				Expect(ok).To(BeFalse())
+			})
+		})
+		Context("when the routing key does exist", func() {
+			BeforeEach(func() {
+				existingRoutingTableEntry = models.RoutingTableEntry{
+					Backends: map[models.BackendServerInfo]struct{}{
+						backendServerInfo:                               struct{}{},
+						models.BackendServerInfo{"some-other-ip", 1235}: struct{}{},
+					},
+				}
+				ok := routingTable.Set(routingKey, existingRoutingTableEntry)
+				Expect(ok).To(BeTrue())
+			})
+			Context("and the backend does not exist ", func() {
+				It("it does not causes any changes or errors", func() {
+					someBackendServerInfo := models.BackendServerInfo{"some-missing-ip", 1236}
+					ok := routingTable.DeleteBackendServerInfo(routingKey, someBackendServerInfo)
+					Expect(ok).To(BeFalse())
+					Expect(routingTable.Get(routingKey)).Should(Equal(existingRoutingTableEntry))
+				})
+			})
+			Context("and the backend does exist", func() {
+				It("it deletes the backend", func() {
+					ok := routingTable.DeleteBackendServerInfo(routingKey, backendServerInfo)
+					Expect(ok).To(BeTrue())
+					expectedRoutingTableEntry := models.RoutingTableEntry{
+						Backends: map[models.BackendServerInfo]struct{}{
+							models.BackendServerInfo{"some-other-ip", 1235}: struct{}{},
+						},
+					}
+					Expect(routingTable.Get(routingKey)).Should(Equal(expectedRoutingTableEntry))
+				})
+			})
+		})
+	})
 })

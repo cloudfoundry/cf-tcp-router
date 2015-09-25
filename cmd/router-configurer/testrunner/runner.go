@@ -8,16 +8,19 @@ import (
 )
 
 type Args struct {
-	Address            string
-	BaseConfigFilePath string
-	ConfigFilePath     string
+	Address                        string
+	BaseLoadBalancerConfigFilePath string
+	LoadBalancerConfigFilePath     string
+	ConfigFilePath                 string
 }
 
 func (args Args) ArgSlice() []string {
 	return []string{
 		"-address=" + args.Address,
-		"-tcpLoadBalancerConfig=" + args.ConfigFilePath,
-		"-tcpLoadBalancerBaseConfig=" + args.ConfigFilePath,
+		"-tcpLoadBalancerConfig=" + args.LoadBalancerConfigFilePath,
+		"-tcpLoadBalancerBaseConfig=" + args.LoadBalancerConfigFilePath,
+		"-config=" + args.ConfigFilePath,
+		"-logLevel=debug",
 	}
 }
 

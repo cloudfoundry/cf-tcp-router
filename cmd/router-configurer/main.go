@@ -2,14 +2,19 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"os"
 
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/config"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/handlers"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/routing_table"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/watcher"
+	"github.com/cloudfoundry-incubator/routing-api"
+	token_fetcher "github.com/cloudfoundry-incubator/uaa-token-fetcher"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
@@ -42,6 +47,18 @@ var tcpLoadBalancerCfg = flag.String(
 	"The tcp load balancer configuration file name.",
 )
 
+var subscriptionRetryInterval = flag.Int(
+	"subscriptionRetryInterval",
+	5,
+	"Retry interval between retries to subscribe for tcp events from routing api (in seconds)",
+)
+
+var configFile = flag.String(
+	"config",
+	"/var/vcap/jobs/router_configurer/config/router_configurer.yml",
+	"The Router configurer yml config.",
+)
+
 const (
 	dropsondeDestination = "localhost:3457"
 	dropsondeOrigin      = "router-configurer"
@@ -60,12 +77,26 @@ func main() {
 	routingTable := models.NewRoutingTable()
 	configurer := configurer.NewConfigurer(logger,
 		*tcpLoadBalancer, *tcpLoadBalancerBaseCfg, *tcpLoadBalancerCfg)
+
+	cfg, err := config.New(*configFile)
+	if err != nil {
+		logger.Error("failed-to-unmarshal-config-file", err)
+		os.Exit(1)
+	}
+	tokenFetcher := token_fetcher.NewTokenFetcher(&cfg.OAuth)
+
+	routingApiAddress := fmt.Sprintf("%s:%d", cfg.RoutingApi.Uri, cfg.RoutingApi.Port)
+	logger.Debug("creating-routing-api-client", lager.Data{"api-location": routingApiAddress})
+	routingApiClient := routing_api.NewClient(routingApiAddress)
+
 	updater := routing_table.NewUpdater(logger, routingTable, configurer)
+	watcher := watcher.New(routingApiClient, updater, tokenFetcher, *subscriptionRetryInterval, logger)
 
 	handler := handlers.New(logger, updater)
 
 	members := grouper.Members{
 		{"server", http_server.New(*serverAddress, handler)},
+		{"watcher", watcher},
 	}
 
 	if dbgAddr := cf_debug_server.DebugAddress(flag.CommandLine); dbgAddr != "" {
@@ -80,7 +111,7 @@ func main() {
 
 	logger.Info("started")
 
-	err := <-monitor.Wait()
+	err = <-monitor.Wait()
 	if err != nil {
 		logger.Error("exited-with-failure", err)
 		os.Exit(1)

@@ -8,7 +8,6 @@ import (
 )
 
 type Args struct {
-	Address                        string
 	BaseLoadBalancerConfigFilePath string
 	LoadBalancerConfigFilePath     string
 	ConfigFilePath                 string
@@ -16,7 +15,6 @@ type Args struct {
 
 func (args Args) ArgSlice() []string {
 	return []string{
-		"-address=" + args.Address,
 		"-tcpLoadBalancerConfig=" + args.LoadBalancerConfigFilePath,
 		"-tcpLoadBalancerBaseConfig=" + args.LoadBalancerConfigFilePath,
 		"-config=" + args.ConfigFilePath,

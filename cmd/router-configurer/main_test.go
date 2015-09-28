@@ -1,7 +1,6 @@
 package main_test
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -68,7 +67,6 @@ var _ = Describe("Main", func() {
 				Expect(utils.FileExists(configFile)).To(BeTrue())
 
 				routerConfigurerArgs := testrunner.Args{
-					Address: fmt.Sprintf("127.0.0.1:%d", routerConfigurerPort),
 					BaseLoadBalancerConfigFilePath: haproxyCfgTemplate,
 					LoadBalancerConfigFilePath:     haproxyConfigFile,
 					ConfigFilePath:                 configFile,
@@ -118,33 +116,6 @@ var _ = Describe("Main", func() {
 				}, 5*time.Second).Should(BeNumerically(">=", 1))
 			})
 
-			Context("when valid backend host info is passed", func() {
-				It("should return valid external IP and Port", func() {
-					backendHostInfos := `[
-					{"external_port":2222,
-					"backends":[
-						{"ip": "some-ip", "port":1234},
-						{"ip": "some-ip-1", "port":12345}
-					]}]`
-					payload := []byte(backendHostInfos)
-					resp, err := http.Post(
-						fmt.Sprintf("http://127.0.0.1:%d/v0/external_ports", routerConfigurerPort),
-						"application/json", bytes.NewBuffer(payload))
-					Expect(err).ShouldNot(HaveOccurred())
-					Expect(resp.StatusCode).Should(Equal(http.StatusOK))
-				})
-			})
-
-			Context("when malformed json is passed", func() {
-				It("should return 400", func() {
-					backendHostInfos := `{abcd`
-					payload := []byte(backendHostInfos)
-					resp, err := http.Post(fmt.Sprintf("http://127.0.0.1:%d/v0/external_ports",
-						routerConfigurerPort), "application/json", bytes.NewBuffer(payload))
-					Expect(err).ShouldNot(HaveOccurred())
-					Expect(resp.StatusCode).Should(Equal(http.StatusBadRequest))
-				})
-			})
 		})
 	})
 })

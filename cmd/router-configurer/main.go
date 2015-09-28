@@ -9,7 +9,6 @@ import (
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/config"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/handlers"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/routing_table"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/watcher"
@@ -19,14 +18,7 @@ import (
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
-	"github.com/tedsuo/ifrit/http_server"
 	"github.com/tedsuo/ifrit/sigmon"
-)
-
-var serverAddress = flag.String(
-	"address",
-	"",
-	"The host:port that the server is bound to.",
 )
 
 var tcpLoadBalancer = flag.String(
@@ -92,10 +84,7 @@ func main() {
 	updater := routing_table.NewUpdater(logger, routingTable, configurer)
 	watcher := watcher.New(routingApiClient, updater, tokenFetcher, *subscriptionRetryInterval, logger)
 
-	handler := handlers.New(logger, updater)
-
 	members := grouper.Members{
-		{"server", http_server.New(*serverAddress, handler)},
 		{"watcher", watcher},
 	}
 

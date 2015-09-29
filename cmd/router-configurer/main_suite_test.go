@@ -8,10 +8,12 @@ import (
 
 	"github.com/cloudfoundry-incubator/cf-tcp-router/testutil"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/utils"
+	routingtestrunner "github.com/cloudfoundry-incubator/routing-api/cmd/routing-api/testrunner"
+	"github.com/cloudfoundry/storeadapter"
+	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gexec"
-	"github.com/tedsuo/ifrit"
 
 	"testing"
 )
@@ -22,10 +24,21 @@ const (
 
 var (
 	routerConfigurerPath    string
+	routingAPIBinPath       string
 	routerConfigurerPort    int
-	routerConfigurerProcess ifrit.Process
 	haproxyConfigFile       string
 	haproxyConfigBackupFile string
+
+	etcdPort    int
+	etcdUrl     string
+	etcdRunner  *etcdstorerunner.ETCDClusterRunner
+	etcdAdapter storeadapter.StoreAdapter
+
+	routingAPIAddress      string
+	routingAPIArgs         routingtestrunner.Args
+	routingAPIPort         uint16
+	routingAPIIP           string
+	routingAPISystemDomain string
 )
 
 func TestRouterConfigurer(t *testing.T) {
@@ -36,8 +49,11 @@ func TestRouterConfigurer(t *testing.T) {
 var _ = SynchronizedBeforeSuite(func() []byte {
 	routerConfigurer, err := gexec.Build("github.com/cloudfoundry-incubator/cf-tcp-router/cmd/router-configurer", "-race")
 	Expect(err).NotTo(HaveOccurred())
+	routingAPIBin, err := gexec.Build("github.com/cloudfoundry-incubator/routing-api/cmd/routing-api", "-race")
+	Expect(err).NotTo(HaveOccurred())
 	payload, err := json.Marshal(map[string]string{
 		"router-configurer": routerConfigurer,
+		"routing-api":       routingAPIBin,
 	})
 
 	Expect(err).NotTo(HaveOccurred())
@@ -51,6 +67,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	routerConfigurerPort = 7000 + GinkgoParallelNode()
 	routerConfigurerPath = context["router-configurer"]
+	routingAPIBinPath = context["routing-api"]
 })
 
 var _ = BeforeEach(func() {
@@ -70,6 +87,27 @@ defaults
 		haproxyConfigFile)
 	Expect(err).ShouldNot(HaveOccurred())
 	Expect(utils.FileExists(haproxyConfigFile)).To(BeTrue())
+
+	etcdPort = 4001 + GinkgoParallelNode()
+	etcdUrl = fmt.Sprintf("http://127.0.0.1:%d", etcdPort)
+	etcdRunner = etcdstorerunner.NewETCDClusterRunner(etcdPort, 1, nil)
+	etcdRunner.Start()
+
+	etcdAdapter = etcdRunner.Adapter(nil)
+
+	routingAPIPort = uint16(6900 + GinkgoParallelNode())
+	routingAPIIP = "127.0.0.1"
+	routingAPISystemDomain = "example.com"
+	routingAPIAddress = fmt.Sprintf("%s:%d", routingAPIIP, routingAPIPort)
+
+	routingAPIArgs = routingtestrunner.Args{
+		Port:         routingAPIPort,
+		IP:           routingAPIIP,
+		SystemDomain: routingAPISystemDomain,
+		ConfigPath:   createConfig(),
+		EtcdCluster:  etcdUrl,
+		DevMode:      true,
+	}
 })
 
 var _ = AfterEach(func() {
@@ -77,9 +115,45 @@ var _ = AfterEach(func() {
 	Expect(err).ShouldNot(HaveOccurred())
 
 	os.Remove(haproxyConfigBackupFile)
+
+	etcdAdapter.Disconnect()
+	etcdRunner.Reset()
+	etcdRunner.Stop()
 })
 
 var _ = SynchronizedAfterSuite(func() {
 }, func() {
 	gexec.CleanupBuildArtifacts()
 })
+
+func createConfig() string {
+	configFilePath := fmt.Sprintf("/tmp/example_%d.yml", GinkgoParallelNode())
+	err := utils.WriteToFile(
+		[]byte(
+			`log_guid: "my_logs"
+uaa_verification_key: "-----BEGIN PUBLIC KEY-----
+
+      MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDHFr+KICms+tuT1OXJwhCUmR2d
+
+      KVy7psa8xzElSyzqx7oJyfJ1JZyOzToj9T5SfTIq396agbHJWVfYphNahvZ/7uMX
+
+      qHxf+ZH9BL1gk9Y6kCnbM5R60gfwjyW1/dQPjOzn9N394zd2FJoFHwdq9Qs0wBug
+
+      spULZVNRxq7veq/fzwIDAQAB
+
+      -----END PUBLIC KEY-----"
+
+debug_address: "1.2.3.4:1234"
+metron_config:
+  address: "1.2.3.4"
+  port: "4567"
+metrics_reporting_interval: "500ms"
+statsd_endpoint: "localhost:8125"
+statsd_client_flush_interval: "10ms"
+max_concurrent_etcd_requests: 10`),
+		configFilePath)
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(utils.FileExists(configFilePath)).To(BeTrue())
+
+	return configFilePath
+}

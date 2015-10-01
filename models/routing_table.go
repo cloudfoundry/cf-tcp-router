@@ -1,10 +1,6 @@
 package models
 
-import (
-	"reflect"
-
-	cf_tcp_router "github.com/cloudfoundry-incubator/cf-tcp-router"
-)
+import "reflect"
 
 type RoutingKey struct {
 	Port uint16
@@ -80,19 +76,4 @@ func (table RoutingTable) DeleteBackendServerInfo(key RoutingKey, backendServerI
 
 func (table RoutingTable) Get(key RoutingKey) RoutingTableEntry {
 	return table.Entries[key]
-}
-
-func ToRoutingTableEntry(mappingRequest cf_tcp_router.MappingRequest) (RoutingKey, RoutingTableEntry) {
-	routingKey := RoutingKey{mappingRequest.ExternalPort}
-	routingTableEntry := RoutingTableEntry{
-		Backends: make(map[BackendServerInfo]struct{}),
-	}
-	for _, backend := range mappingRequest.Backends {
-		backendServerInfo := BackendServerInfo{
-			Address: backend.Address,
-			Port:    backend.Port,
-		}
-		routingTableEntry.Backends[backendServerInfo] = struct{}{}
-	}
-	return routingKey, routingTableEntry
 }

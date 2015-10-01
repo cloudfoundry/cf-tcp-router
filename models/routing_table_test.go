@@ -1,7 +1,6 @@
 package models_test
 
 import (
-	cf_tcp_router "github.com/cloudfoundry-incubator/cf-tcp-router"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
 
 	. "github.com/onsi/ginkgo"
@@ -102,26 +101,6 @@ var _ = Describe("RoutingTable", func() {
 					Expect(ok).To(BeFalse())
 					Expect(routingTable.Get(routingKey)).Should(Equal(existingRoutingTableEntry))
 				})
-			})
-		})
-	})
-
-	Describe("ToRouterTableEntry", func() {
-		Context("when a Mapping Request is passed", func() {
-			It("returns the equivalent RoutingKey and RoutingTableEntry", func() {
-				backends := cf_tcp_router.BackendHostInfos{
-					cf_tcp_router.NewBackendHostInfo("some-ip-1", 2345),
-					cf_tcp_router.NewBackendHostInfo("some-ip-2", 2345),
-				}
-				externalPort := uint16(2222)
-				mappingRequest := cf_tcp_router.NewMappingRequest(externalPort, backends)
-				key, entry := models.ToRoutingTableEntry(mappingRequest)
-				Expect(key.Port).Should(Equal(externalPort))
-				Expect(entry.Backends).To(HaveLen(len(backends)))
-				for _, backend := range backends {
-					backendServerInfo := models.BackendServerInfo{backend.Address, backend.Port}
-					Expect(entry.Backends).To(HaveKey(backendServerInfo))
-				}
 			})
 		})
 	})

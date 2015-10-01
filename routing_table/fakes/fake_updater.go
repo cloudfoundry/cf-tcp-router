@@ -4,20 +4,11 @@ package fakes
 import (
 	"sync"
 
-	cf_tcp_router "github.com/cloudfoundry-incubator/cf-tcp-router"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/routing_table"
 	"github.com/cloudfoundry-incubator/routing-api"
 )
 
 type FakeUpdater struct {
-	UpdateStub        func(mappingRequests cf_tcp_router.MappingRequests) error
-	updateMutex       sync.RWMutex
-	updateArgsForCall []struct {
-		mappingRequests cf_tcp_router.MappingRequests
-	}
-	updateReturns struct {
-		result1 error
-	}
 	HandleEventStub        func(event routing_api.TcpEvent) error
 	handleEventMutex       sync.RWMutex
 	handleEventArgsForCall []struct {
@@ -26,38 +17,6 @@ type FakeUpdater struct {
 	handleEventReturns struct {
 		result1 error
 	}
-}
-
-func (fake *FakeUpdater) Update(mappingRequests cf_tcp_router.MappingRequests) error {
-	fake.updateMutex.Lock()
-	fake.updateArgsForCall = append(fake.updateArgsForCall, struct {
-		mappingRequests cf_tcp_router.MappingRequests
-	}{mappingRequests})
-	fake.updateMutex.Unlock()
-	if fake.UpdateStub != nil {
-		return fake.UpdateStub(mappingRequests)
-	} else {
-		return fake.updateReturns.result1
-	}
-}
-
-func (fake *FakeUpdater) UpdateCallCount() int {
-	fake.updateMutex.RLock()
-	defer fake.updateMutex.RUnlock()
-	return len(fake.updateArgsForCall)
-}
-
-func (fake *FakeUpdater) UpdateArgsForCall(i int) cf_tcp_router.MappingRequests {
-	fake.updateMutex.RLock()
-	defer fake.updateMutex.RUnlock()
-	return fake.updateArgsForCall[i].mappingRequests
-}
-
-func (fake *FakeUpdater) UpdateReturns(result1 error) {
-	fake.UpdateStub = nil
-	fake.updateReturns = struct {
-		result1 error
-	}{result1}
 }
 
 func (fake *FakeUpdater) HandleEvent(event routing_api.TcpEvent) error {

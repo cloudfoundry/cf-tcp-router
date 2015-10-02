@@ -17,6 +17,15 @@ type FakeUpdater struct {
 	handleEventReturns struct {
 		result1 error
 	}
+	SyncStub        func()
+	syncMutex       sync.RWMutex
+	syncArgsForCall []struct{}
+	SyncingStub        func() bool
+	syncingMutex       sync.RWMutex
+	syncingArgsForCall []struct{}
+	syncingReturns struct {
+		result1 bool
+	}
 }
 
 func (fake *FakeUpdater) HandleEvent(event routing_api.TcpEvent) error {
@@ -48,6 +57,45 @@ func (fake *FakeUpdater) HandleEventReturns(result1 error) {
 	fake.HandleEventStub = nil
 	fake.handleEventReturns = struct {
 		result1 error
+	}{result1}
+}
+
+func (fake *FakeUpdater) Sync() {
+	fake.syncMutex.Lock()
+	fake.syncArgsForCall = append(fake.syncArgsForCall, struct{}{})
+	fake.syncMutex.Unlock()
+	if fake.SyncStub != nil {
+		fake.SyncStub()
+	}
+}
+
+func (fake *FakeUpdater) SyncCallCount() int {
+	fake.syncMutex.RLock()
+	defer fake.syncMutex.RUnlock()
+	return len(fake.syncArgsForCall)
+}
+
+func (fake *FakeUpdater) Syncing() bool {
+	fake.syncingMutex.Lock()
+	fake.syncingArgsForCall = append(fake.syncingArgsForCall, struct{}{})
+	fake.syncingMutex.Unlock()
+	if fake.SyncingStub != nil {
+		return fake.SyncingStub()
+	} else {
+		return fake.syncingReturns.result1
+	}
+}
+
+func (fake *FakeUpdater) SyncingCallCount() int {
+	fake.syncingMutex.RLock()
+	defer fake.syncingMutex.RUnlock()
+	return len(fake.syncingArgsForCall)
+}
+
+func (fake *FakeUpdater) SyncingReturns(result1 bool) {
+	fake.SyncingStub = nil
+	fake.syncingReturns = struct {
+		result1 bool
 	}{result1}
 }
 

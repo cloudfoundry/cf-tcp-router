@@ -8,6 +8,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/cf-tcp-router/testutil"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/utils"
+	"github.com/cloudfoundry-incubator/routing-api"
 	routingtestrunner "github.com/cloudfoundry-incubator/routing-api/cmd/routing-api/testrunner"
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
@@ -18,16 +19,13 @@ import (
 	"testing"
 )
 
-const (
-	haproxyCfgTemplate = "configurer/haproxy/fixtures/haproxy.cfg.template"
-)
-
 var (
 	routerConfigurerPath    string
 	routingAPIBinPath       string
 	routerConfigurerPort    int
 	haproxyConfigFile       string
 	haproxyConfigBackupFile string
+	haproxyBaseConfigFile   string
 
 	etcdPort    int
 	etcdUrl     string
@@ -39,6 +37,7 @@ var (
 	routingAPIPort         uint16
 	routingAPIIP           string
 	routingAPISystemDomain string
+	routingApiClient       routing_api.Client
 )
 
 func TestRouterConfigurer(t *testing.T) {
@@ -73,8 +72,11 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 var _ = BeforeEach(func() {
 	randomFileName := testutil.RandomFileName("haproxy_", ".cfg")
 	randomBackupFileName := fmt.Sprintf("%s.bak", randomFileName)
+	randomBaseFileName := testutil.RandomFileName("haproxy_base_", ".cfg")
 	haproxyConfigFile = path.Join(os.TempDir(), randomFileName)
 	haproxyConfigBackupFile = path.Join(os.TempDir(), randomBackupFileName)
+	haproxyBaseConfigFile = path.Join(os.TempDir(), randomBaseFileName)
+
 	err := utils.WriteToFile(
 		[]byte(
 			`global maxconn 4096
@@ -84,7 +86,11 @@ defaults
   timeout client 300000
   timeout server 300000
   maxconn 2000`),
-		haproxyConfigFile)
+		haproxyBaseConfigFile)
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(utils.FileExists(haproxyBaseConfigFile)).To(BeTrue())
+
+	err = utils.CopyFile(haproxyBaseConfigFile, haproxyConfigFile)
 	Expect(err).ShouldNot(HaveOccurred())
 	Expect(utils.FileExists(haproxyConfigFile)).To(BeTrue())
 
@@ -98,7 +104,7 @@ defaults
 	routingAPIPort = uint16(6900 + GinkgoParallelNode())
 	routingAPIIP = "127.0.0.1"
 	routingAPISystemDomain = "example.com"
-	routingAPIAddress = fmt.Sprintf("%s:%d", routingAPIIP, routingAPIPort)
+	routingAPIAddress = fmt.Sprintf("http://%s:%d", routingAPIIP, routingAPIPort)
 
 	routingAPIArgs = routingtestrunner.Args{
 		Port:         routingAPIPort,
@@ -108,6 +114,7 @@ defaults
 		EtcdCluster:  etcdUrl,
 		DevMode:      true,
 	}
+	routingApiClient = routing_api.NewClient(routingAPIAddress)
 })
 
 var _ = AfterEach(func() {

@@ -31,6 +31,7 @@ var _ = Describe("Watcher", func() {
 		process          ifrit.Process
 		eventChannel     chan routing_api.TcpEvent
 		errorChannel     chan error
+		syncChannel         chan struct{}
 		updater          *fake_routing_table.FakeUpdater
 	)
 
@@ -46,7 +47,8 @@ var _ = Describe("Watcher", func() {
 		tokenFetcher.FetchTokenReturns(token, nil)
 
 		routingApiClient.SubscribeToTcpEventsReturns(eventSource, nil)
-		testWatcher = watcher.New(routingApiClient, updater, tokenFetcher, 1, logger)
+		syncChannel = make(chan struct{})
+		testWatcher = watcher.New(routingApiClient, updater, tokenFetcher, 1, syncChannel, logger)
 
 		eventChannel = make(chan routing_api.TcpEvent)
 		errorChannel = make(chan error)
@@ -131,6 +133,16 @@ var _ = Describe("Watcher", func() {
 		})
 	})
 
+	Context("handle Sync Event", func() {
+		JustBeforeEach(func() {
+			syncChannel <- struct{}{}
+		})
+
+		It("calls updater Sync", func() {
+			Eventually(updater.SyncCallCount, 5*time.Second, 300*time.Millisecond).Should(Equal(1))
+		})
+	})
+
 	Context("when eventSource returns error", func() {
 		JustBeforeEach(func() {
 			Eventually(routingApiClient.SubscribeToTcpEventsCallCount).Should(Equal(1))
@@ -160,7 +172,7 @@ var _ = Describe("Watcher", func() {
 				return eventSource, nil
 			}
 
-			testWatcher = watcher.New(routingApiClient, updater, tokenFetcher, 1, logger)
+			testWatcher = watcher.New(routingApiClient, updater, tokenFetcher, 1, syncChannel, logger)
 		})
 
 		JustBeforeEach(func() {

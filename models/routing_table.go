@@ -77,3 +77,7 @@ func (table RoutingTable) DeleteBackendServerInfo(key RoutingKey, backendServerI
 func (table RoutingTable) Get(key RoutingKey) RoutingTableEntry {
 	return table.Entries[key]
 }
+
+func (table RoutingTable) Size() int {
+	return len(table.Entries)
+}

@@ -25,7 +25,8 @@ var _ = Describe("RoutingTable", func() {
 				}
 				ok := routingTable.Set(routingKey, routingTableEntry)
 				Expect(ok).To(BeTrue())
-				Expect(routingTable.Get(routingKey)).Should(Equal(routingTableEntry))
+				Expect(routingTable.Get(routingKey)).To(Equal(routingTableEntry))
+				Expect(routingTable.Size()).To(Equal(1))
 			})
 		})
 
@@ -44,6 +45,7 @@ var _ = Describe("RoutingTable", func() {
 				}
 				ok := routingTable.Set(routingKey, existingRoutingTableEntry)
 				Expect(ok).To(BeTrue())
+				Expect(routingTable.Size()).To(Equal(1))
 			})
 
 			Context("with different value", func() {
@@ -124,6 +126,7 @@ var _ = Describe("RoutingTable", func() {
 				ok := routingTable.UpsertBackendServerInfo(routingKey, backendServerInfo)
 				Expect(ok).To(BeTrue())
 				Expect(routingTable.Get(routingKey)).Should(Equal(routingTableEntry))
+				Expect(routingTable.Size()).To(Equal(1))
 			})
 		})
 		Context("when the routing key does exist", func() {
@@ -136,13 +139,15 @@ var _ = Describe("RoutingTable", func() {
 				ok := routingTable.Set(routingKey, existingRoutingTableEntry)
 				Expect(ok).To(BeTrue())
 			})
-			Context("and no changed in the backends are provided", func() {
+
+			Context("and no change in the backends are provided", func() {
 				It("it does not update the routing entry", func() {
 					sameBackendServerInfo := models.BackendServerInfo{"some-ip", 1234}
 					ok := routingTable.UpsertBackendServerInfo(routingKey, sameBackendServerInfo)
 					Expect(ok).To(BeFalse())
 				})
 			})
+
 			Context("and a new backend is provided", func() {
 				It("it updates the routing entry's backends", func() {
 					routingTableEntry := models.RoutingTableEntry{
@@ -170,12 +175,14 @@ var _ = Describe("RoutingTable", func() {
 			routingKey = models.RoutingKey{12}
 			backendServerInfo = models.BackendServerInfo{"some-ip", 1234}
 		})
+
 		Context("when the routing key does not exist", func() {
 			It("it does not causes any changes or errors", func() {
 				ok := routingTable.DeleteBackendServerInfo(routingKey, backendServerInfo)
 				Expect(ok).To(BeFalse())
 			})
 		})
+
 		Context("when the routing key does exist", func() {
 			BeforeEach(func() {
 				existingRoutingTableEntry = models.RoutingTableEntry{

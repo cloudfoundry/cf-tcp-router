@@ -16,7 +16,7 @@ type Args struct {
 func (args Args) ArgSlice() []string {
 	return []string{
 		"-tcpLoadBalancerConfig=" + args.LoadBalancerConfigFilePath,
-		"-tcpLoadBalancerBaseConfig=" + args.LoadBalancerConfigFilePath,
+		"-tcpLoadBalancerBaseConfig=" + args.BaseLoadBalancerConfigFilePath,
 		"-config=" + args.ConfigFilePath,
 		"-logLevel=debug",
 	}

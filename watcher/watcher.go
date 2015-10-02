@@ -16,6 +16,7 @@ type Watcher struct {
 	updater                   routing_table.Updater
 	tokenFetcher              token_fetcher.TokenFetcher
 	subscriptionRetryInterval int
+	syncChannel               chan struct{}
 	logger                    lager.Logger
 }
 
@@ -24,6 +25,7 @@ func New(
 	updater routing_table.Updater,
 	tokenFetcher token_fetcher.TokenFetcher,
 	subscriptionRetryInterval int,
+	syncChannel chan struct{},
 	logger lager.Logger,
 ) *Watcher {
 	return &Watcher{
@@ -31,7 +33,8 @@ func New(
 		updater:                   updater,
 		tokenFetcher:              tokenFetcher,
 		subscriptionRetryInterval: subscriptionRetryInterval,
-		logger: logger.Session("watcher"),
+		syncChannel:               syncChannel,
+		logger:                    logger.Session("watcher"),
 	}
 }
 
@@ -89,6 +92,9 @@ func (watcher *Watcher) Run(signals <-chan os.Signal, ready chan<- struct{}) err
 		select {
 		case event := <-eventChan:
 			watcher.updater.HandleEvent(event)
+
+		case <-watcher.syncChannel:
+			watcher.updater.Sync()
 
 		case <-signals:
 			watcher.logger.Info("stopping")

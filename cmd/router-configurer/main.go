@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/cloudfoundry-incubator/cf-debug-server"
 	"github.com/cloudfoundry-incubator/cf-lager"
@@ -11,10 +12,12 @@ import (
 	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/routing_table"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/syncer"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/watcher"
 	"github.com/cloudfoundry-incubator/routing-api"
 	token_fetcher "github.com/cloudfoundry-incubator/uaa-token-fetcher"
 	"github.com/cloudfoundry/dropsonde"
+	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
@@ -51,6 +54,12 @@ var configFile = flag.String(
 	"The Router configurer yml config.",
 )
 
+var syncInterval = flag.Duration(
+	"syncInterval",
+	time.Minute,
+	"The interval between syncs of the routing table from routing api.",
+)
+
 const (
 	dropsondeDestination = "localhost:3457"
 	dropsondeOrigin      = "router-configurer"
@@ -81,11 +90,15 @@ func main() {
 	logger.Debug("creating-routing-api-client", lager.Data{"api-location": routingApiAddress})
 	routingApiClient := routing_api.NewClient(routingApiAddress)
 
-	updater := routing_table.NewUpdater(logger, routingTable, configurer)
-	watcher := watcher.New(routingApiClient, updater, tokenFetcher, *subscriptionRetryInterval, logger)
+	updater := routing_table.NewUpdater(logger, &routingTable, configurer, routingApiClient, tokenFetcher)
+	syncChannel := make(chan struct{})
+	clock := clock.NewClock()
+	syncRunner := syncer.New(clock, *syncInterval, syncChannel, logger)
+	watcher := watcher.New(routingApiClient, updater, tokenFetcher, *subscriptionRetryInterval, syncChannel, logger)
 
 	members := grouper.Members{
 		{"watcher", watcher},
+		{"syncer", syncRunner},
 	}
 
 	if dbgAddr := cf_debug_server.DebugAddress(flag.CommandLine); dbgAddr != "" {

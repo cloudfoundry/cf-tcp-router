@@ -80,7 +80,7 @@ func (u *updater) Sync() {
 	// Create a new map and populate using tcp route mappings we got from routing api
 	u.routingTable.Entries = make(map[models.RoutingKey]models.RoutingTableEntry)
 	for _, routeMapping := range tcpRouteMappings {
-		routingKey, backendServerInfo := u.toRoutingTableEntry(routeMapping)
+		routingKey, backendServerInfo := u.toRoutingTableEntry(logger, routeMapping)
 		logger.Debug("creating-routing-table-entry", lager.Data{"key": routingKey, "value": backendServerInfo})
 		u.routingTable.UpsertBackendServerInfo(routingKey, backendServerInfo)
 	}
@@ -128,7 +128,8 @@ func (u *updater) handleEvent(event routing_api.TcpEvent) error {
 	return nil
 }
 
-func (u *updater) toRoutingTableEntry(routeMapping db.TcpRouteMapping) (models.RoutingKey, models.BackendServerInfo) {
+func (u *updater) toRoutingTableEntry(logger lager.Logger, routeMapping db.TcpRouteMapping) (models.RoutingKey, models.BackendServerInfo) {
+	logger.Debug("converting-tcp-route-mapping", lager.Data{"tcp-route": routeMapping})
 	routingKey := models.RoutingKey{Port: routeMapping.TcpRoute.ExternalPort}
 	backendServerInfo := models.BackendServerInfo{
 		Address: routeMapping.HostIP,
@@ -139,7 +140,7 @@ func (u *updater) toRoutingTableEntry(routeMapping db.TcpRouteMapping) (models.R
 
 func (u *updater) handleUpsert(logger lager.Logger, routeMapping db.TcpRouteMapping) error {
 	defer logger.Debug("handle-upsert-done")
-	routingKey, backendServerInfo := u.toRoutingTableEntry(routeMapping)
+	routingKey, backendServerInfo := u.toRoutingTableEntry(logger, routeMapping)
 	logger.Debug("creating-routing-table-entry", lager.Data{"key": routingKey})
 	if u.routingTable.UpsertBackendServerInfo(routingKey, backendServerInfo) && !u.syncing {
 		logger.Debug("calling-configurer")
@@ -151,7 +152,7 @@ func (u *updater) handleUpsert(logger lager.Logger, routeMapping db.TcpRouteMapp
 
 func (u *updater) handleDelete(logger lager.Logger, routeMapping db.TcpRouteMapping) error {
 	defer logger.Debug("handle-delete-done")
-	routingKey, backendServerInfo := u.toRoutingTableEntry(routeMapping)
+	routingKey, backendServerInfo := u.toRoutingTableEntry(logger, routeMapping)
 	logger.Debug("deleting-routing-table-entry", lager.Data{"key": routingKey})
 	if u.routingTable.DeleteBackendServerInfo(routingKey, backendServerInfo) && !u.syncing {
 		logger.Debug("calling-configurer")

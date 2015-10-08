@@ -51,28 +51,34 @@ func (h *HaProxyConfigurer) Configure(routingTable models.RoutingTable) error {
 		h.logger.Error("failed-reading-base-config-file", err, lager.Data{"base-config-file": h.baseConfigFilePath})
 		return err
 	}
+	var buff bytes.Buffer
+	_, err = buff.Write(cfgContent)
+	if err != nil {
+		h.logger.Error("failed-copying-config-file", err, lager.Data{"config-file": h.configFilePath})
+		return err
+	}
+
 	for key, entry := range routingTable.Entries {
-		cfgContent, err = h.appendListenConfiguration(key, entry, cfgContent)
+		cfgContent, err = h.getListenConfiguration(key, entry, cfgContent)
 		if err != nil {
+			continue
+		}
+		_, err = buff.Write(cfgContent)
+		if err != nil {
+			h.logger.Error("failed-writing-to-buffer", err)
 			return err
 		}
 	}
 
-	return h.writeToConfig(cfgContent)
+	return h.writeToConfig(buff.Bytes())
 }
 
-func (h *HaProxyConfigurer) appendListenConfiguration(
+func (h *HaProxyConfigurer) getListenConfiguration(
 	key models.RoutingKey,
 	entry models.RoutingTableEntry,
 	cfgContent []byte) ([]byte, error) {
 	var buff bytes.Buffer
-	_, err := buff.Write(cfgContent)
-	if err != nil {
-		h.logger.Error("failed-copying-config-file", err, lager.Data{"config-file": h.configFilePath})
-		return nil, err
-	}
-
-	_, err = buff.WriteString("\n")
+	_, err := buff.WriteString("\n")
 	if err != nil {
 		h.logger.Error("failed-writing-to-buffer", err)
 		return nil, err

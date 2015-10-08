@@ -70,32 +70,65 @@ var _ = Describe("HaproxyConfigurer", func() {
 
 		Context("when invalid routing table is passed", func() {
 			var (
-				expectedContent []byte
+				haproxyConfigTemplateContent []byte
+				generatedHaproxyCfgFile      string
+				haproxyCfgBackupFile         string
+				err                          error
 			)
 			BeforeEach(func() {
-				var err error
-				haproxyConfigurer, err = haproxy.NewHaProxyConfigurer(logger, haproxyConfigTemplate, haproxyConfigFile)
+				generatedHaproxyCfgFile = testutil.RandomFileName("fixtures/haproxy_", ".cfg")
+				haproxyCfgBackupFile = fmt.Sprintf("%s.bak", generatedHaproxyCfgFile)
+				utils.CopyFile(haproxyConfigTemplate, generatedHaproxyCfgFile)
+
+				haproxyConfigTemplateContent, err = ioutil.ReadFile(generatedHaproxyCfgFile)
 				Expect(err).ShouldNot(HaveOccurred())
-				expectedContent, err = ioutil.ReadFile(haproxyConfigFile)
+
+				haproxyConfigurer, err = haproxy.NewHaProxyConfigurer(logger, haproxyConfigTemplate, generatedHaproxyCfgFile)
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 
-			It("returns error and doesn't update config file", func() {
-				routingKey := models.RoutingKey{Port: 0}
-				routingTableEntry := models.RoutingTableEntry{
+			AfterEach(func() {
+				err := os.Remove(generatedHaproxyCfgFile)
+				Expect(err).ShouldNot(HaveOccurred())
+
+				Expect(utils.FileExists(haproxyCfgBackupFile)).To(BeTrue())
+				err = os.Remove(haproxyCfgBackupFile)
+				Expect(err).ShouldNot(HaveOccurred())
+			})
+
+			It("doesn't update config file with invalid routing table entry", func() {
+				invalidRoutingKey := models.RoutingKey{Port: 0}
+				invalidRoutingTableEntry := models.RoutingTableEntry{
 					Backends: map[models.BackendServerInfo]struct{}{
-						models.BackendServerInfo{"some-ip", 1234}: struct{}{},
+						models.BackendServerInfo{"some-ip-1", 1234}: struct{}{},
 					},
 				}
 				routingTable := models.NewRoutingTable()
-				ok := routingTable.Set(routingKey, routingTableEntry)
+				ok := routingTable.Set(invalidRoutingKey, invalidRoutingTableEntry)
 				Expect(ok).To(BeTrue())
+
+				routingKey := models.RoutingKey{Port: 80}
+				routingTableEntry := models.RoutingTableEntry{
+					Backends: map[models.BackendServerInfo]struct{}{
+						models.BackendServerInfo{"some-ip-2", 1234}: struct{}{},
+					},
+				}
+				ok = routingTable.Set(routingKey, routingTableEntry)
+				Expect(ok).To(BeTrue())
+
 				err := haproxyConfigurer.Configure(routingTable)
-				Expect(err).Should(HaveOccurred())
-				Expect(err.Error()).Should(ContainSubstring("listen_configuration.port"))
-				content, err := ioutil.ReadFile(haproxyConfigFile)
 				Expect(err).ShouldNot(HaveOccurred())
-				Expect(content).Should(Equal(expectedContent))
+
+				validListenCfg := "\nlisten listen_cfg_80\n  mode tcp\n  bind :80\n"
+				validServerConfig := "server server_some-ip-2_1234 some-ip-2:1234"
+				verifyHaProxyConfigContent(generatedHaproxyCfgFile, validListenCfg, true)
+				verifyHaProxyConfigContent(generatedHaproxyCfgFile, validServerConfig, true)
+				verifyHaProxyConfigContent(generatedHaproxyCfgFile, string(haproxyConfigTemplateContent), true)
+
+				invalidListenCfg := "\nlisten listen_cfg_0\n  mode tcp\n  bind :0\n"
+				invalidServerConfig := "server server_some-ip-1_1234 some-ip-1:1234"
+				verifyHaProxyConfigContent(generatedHaproxyCfgFile, invalidListenCfg, false)
+				verifyHaProxyConfigContent(generatedHaproxyCfgFile, invalidServerConfig, false)
 			})
 		})
 
@@ -108,7 +141,6 @@ var _ = Describe("HaproxyConfigurer", func() {
 			)
 
 			BeforeEach(func() {
-
 				generatedHaproxyCfgFile = testutil.RandomFileName("fixtures/haproxy_", ".cfg")
 				haproxyCfgBackupFile = fmt.Sprintf("%s.bak", generatedHaproxyCfgFile)
 				utils.CopyFile(haproxyConfigTemplate, generatedHaproxyCfgFile)

@@ -23,6 +23,9 @@ func RoutingTableEntryToHaProxyConfig(routingKey models.RoutingKey, routingTable
 	if routingKey.Port == 0 {
 		return "", cf_tcp_router.ErrInvalidField{"listen_configuration.port"}
 	}
+	if len(routingTableEntry.Backends) == 0 {
+		return "", cf_tcp_router.ErrInvalidField{"listen_configuration.backends"}
+	}
 	name := fmt.Sprintf("listen_cfg_%d", routingKey.Port)
 	var buff bytes.Buffer
 

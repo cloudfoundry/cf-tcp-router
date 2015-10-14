@@ -194,6 +194,7 @@ var _ = Describe("RoutingTable", func() {
 				ok := routingTable.Set(routingKey, existingRoutingTableEntry)
 				Expect(ok).To(BeTrue())
 			})
+
 			Context("and the backend does not exist ", func() {
 				It("it does not causes any changes or errors", func() {
 					someBackendServerInfo := models.BackendServerInfo{"some-missing-ip", 1236}
@@ -202,6 +203,7 @@ var _ = Describe("RoutingTable", func() {
 					Expect(routingTable.Get(routingKey)).Should(Equal(existingRoutingTableEntry))
 				})
 			})
+
 			Context("and the backend does exist", func() {
 				It("it deletes the backend", func() {
 					ok := routingTable.DeleteBackendServerInfo(routingKey, backendServerInfo)
@@ -212,6 +214,18 @@ var _ = Describe("RoutingTable", func() {
 						},
 					}
 					Expect(routingTable.Get(routingKey)).Should(Equal(expectedRoutingTableEntry))
+				})
+
+				Context("when there are no more backends left", func() {
+					It("deletes the entry", func() {
+						ok := routingTable.DeleteBackendServerInfo(routingKey, backendServerInfo)
+						Expect(ok).To(BeTrue())
+
+						ok = routingTable.DeleteBackendServerInfo(routingKey, models.BackendServerInfo{"some-other-ip", 1235})
+						Expect(ok).To(BeTrue())
+
+						Expect(routingTable.Size()).Should(Equal(0))
+					})
 				})
 			})
 		})

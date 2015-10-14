@@ -69,6 +69,9 @@ func (table RoutingTable) DeleteBackendServerInfo(key RoutingKey, backendServerI
 		if backendFound == true {
 			delete(existingEntry.Backends, backendServerInfo)
 			deleted = true
+			if len(existingEntry.Backends) == 0 {
+				delete(table.Entries, key)
+			}
 		}
 	}
 	return deleted

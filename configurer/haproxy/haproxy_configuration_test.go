@@ -102,6 +102,18 @@ var _ = Describe("HaproxyConfiguration", func() {
 					Expect(err.Error()).To(ContainSubstring("backend_server.address"))
 				})
 			})
+
+			Context("when no backend servers are provided", func() {
+				It("returns an error", func() {
+					routingKey := models.RoutingKey{Port: 8080}
+					routingTableEntry := models.RoutingTableEntry{
+						Backends: map[models.BackendServerInfo]struct{}{},
+					}
+					_, err := haproxy.RoutingTableEntryToHaProxyConfig(routingKey, routingTableEntry)
+					Expect(err).Should(HaveOccurred())
+					Expect(err.Error()).To(ContainSubstring("listen_configuration.backends"))
+				})
+			})
 		})
 	})
 })

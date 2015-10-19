@@ -2,6 +2,7 @@ package testrunner
 
 import (
 	"os/exec"
+	"strconv"
 	"time"
 
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -11,6 +12,7 @@ type Args struct {
 	BaseLoadBalancerConfigFilePath string
 	LoadBalancerConfigFilePath     string
 	ConfigFilePath                 string
+	RoutingApiAuthEnabled          bool
 }
 
 func (args Args) ArgSlice() []string {
@@ -19,6 +21,7 @@ func (args Args) ArgSlice() []string {
 		"-tcpLoadBalancerBaseConfig=" + args.BaseLoadBalancerConfigFilePath,
 		"-config=" + args.ConfigFilePath,
 		"-logLevel=debug",
+		"-routingApiAuthEnabled=" + strconv.FormatBool(args.RoutingApiAuthEnabled),
 	}
 }
 

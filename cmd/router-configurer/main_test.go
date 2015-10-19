@@ -98,6 +98,7 @@ var _ = Describe("Main", func() {
 				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 				LoadBalancerConfigFilePath:     haproxyConfigFile,
 				ConfigFilePath:                 configFile,
+				RoutingApiAuthEnabled:          true,
 			}
 
 			tcpRouteMapping := db.TcpRouteMapping{
@@ -162,20 +163,15 @@ var _ = Describe("Main", func() {
 	})
 
 	Context("Oauth server is down", func() {
+		var (
+			routerConfigurerArgs testrunner.Args
+			configFile           string
+		)
 		BeforeEach(func() {
 			server = routingApiServer(logger)
 			oauthServerPort := "1111"
-			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort))
-			routerConfigurerArgs := testrunner.Args{
-				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
-				LoadBalancerConfigFilePath:     haproxyConfigFile,
-				ConfigFilePath:                 configFile,
-			}
-			allOutput := logger.Buffer()
-			runner := testrunner.New(routerConfigurerPath, routerConfigurerArgs)
-			var err error
-			session, err = gexec.Start(runner.Command, allOutput, allOutput)
-			Expect(err).ToNot(HaveOccurred())
+			configFile = generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort))
+
 		})
 
 		AfterEach(func() {
@@ -186,9 +182,44 @@ var _ = Describe("Main", func() {
 			Eventually(server.Wait(), 5*time.Second).Should(Receive())
 		})
 
-		It("keeps trying to connect and doesn't blow up", func() {
-			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("error-fetching-token"))
-			Consistently(session.Exited).ShouldNot(BeClosed())
+		JustBeforeEach(func() {
+			allOutput := logger.Buffer()
+			runner := testrunner.New(routerConfigurerPath, routerConfigurerArgs)
+			var err error
+			session, err = gexec.Start(runner.Command, allOutput, allOutput)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		Context("routing api auth is enabled", func() {
+			BeforeEach(func() {
+				routerConfigurerArgs = testrunner.Args{
+					BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
+					LoadBalancerConfigFilePath:     haproxyConfigFile,
+					ConfigFilePath:                 configFile,
+					RoutingApiAuthEnabled:          true,
+				}
+			})
+
+			It("keeps trying to connect and doesn't blow up", func() {
+				Eventually(session.Out, 5*time.Second).Should(gbytes.Say("error-fetching-token"))
+				Consistently(session.Exited).ShouldNot(BeClosed())
+			})
+		})
+
+		Context("routing api auth is disabled", func() {
+			BeforeEach(func() {
+				routerConfigurerArgs = testrunner.Args{
+					BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
+					LoadBalancerConfigFilePath:     haproxyConfigFile,
+					ConfigFilePath:                 configFile,
+					RoutingApiAuthEnabled:          false,
+				}
+			})
+
+			It("does not call oauth server to get auth token and starts SSE connection with routing api", func() {
+				Eventually(session.Out, 5*time.Second).Should(gbytes.Say("creating-noop-token-fetcher"))
+				Eventually(session.Out, 5*time.Second).Should(gbytes.Say("subscribed-to-tcp-routing-events"))
+			})
 		})
 	})
 
@@ -201,6 +232,7 @@ var _ = Describe("Main", func() {
 				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 				LoadBalancerConfigFilePath:     haproxyConfigFile,
 				ConfigFilePath:                 configFile,
+				RoutingApiAuthEnabled:          true,
 			}
 			allOutput := logger.Buffer()
 			runner := testrunner.New(routerConfigurerPath, routerConfigurerArgs)

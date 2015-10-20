@@ -60,12 +60,6 @@ var syncInterval = flag.Duration(
 	"The interval between syncs of the routing table from routing api.",
 )
 
-var routingApiAuthEnabled = flag.Bool(
-	"routingApiAuthEnabled",
-	true,
-	"Boolean indicating if auth is enabled for routing api",
-)
-
 const (
 	dropsondeDestination = "localhost:3457"
 	dropsondeOrigin      = "router-configurer"
@@ -129,12 +123,12 @@ func main() {
 }
 
 func createTokenFetcher(logger lager.Logger, cfg *config.Config) token_fetcher.TokenFetcher {
-	if *routingApiAuthEnabled {
-		logger.Debug("creating-uaa-token-fetcher")
-		return token_fetcher.NewTokenFetcher(&cfg.OAuth)
+	if cfg.RoutingApi.AuthDisabled {
+		logger.Debug("creating-noop-token-fetcher")
+		return token_fetcher.NewNoOpTokenFetcher()
 	}
-	logger.Debug("creating-noop-token-fetcher")
-	return token_fetcher.NewNoOpTokenFetcher()
+	logger.Debug("creating-uaa-token-fetcher")
+	return token_fetcher.NewTokenFetcher(&cfg.OAuth)
 }
 
 func initializeDropsonde(logger lager.Logger) {

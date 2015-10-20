@@ -19,8 +19,9 @@ var _ = Describe("Config", func() {
 					Port:          8080,
 				},
 				RoutingApi: config.RoutingApiConfig{
-					Uri:  "http://routing-api.service.cf.internal",
-					Port: 3000,
+					Uri:          "http://routing-api.service.cf.internal",
+					Port:         3000,
+					AuthDisabled: false,
 				},
 			}
 			cfg, err := config.New("fixtures/valid_config.yml")

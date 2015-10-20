@@ -3,6 +3,9 @@
 *.a
 *.so
 
+# binaries
+cmd/router-configurer/router-configurer
+
 # Folders
 _obj
 _test

@@ -53,16 +53,17 @@ var _ = Describe("Main", func() {
 		return ifrit.Invoke(server)
 	}
 
-	generateConfigFile := func(oauthServerPort, routingApiServerPort string) string {
+	generateConfigFile := func(oauthServerPort, routingApiServerPort string, routingApiAuthDisabled bool) string {
 		randomConfigFileName := testutil.RandomFileName("router_configurer", ".yml")
 		configFile := path.Join(os.TempDir(), randomConfigFileName)
 
-		cfg := fmt.Sprintf("%s\n  port: %s\n%s\n  port: %s\n", `oauth:
+		cfg := fmt.Sprintf("%s\n  port: %s\n%s\n  auth_disabled: %t\n  %s\n  port: %s\n", `oauth:
   token_endpoint: "http://127.0.0.1"
   client_name: "someclient"
   client_secret: "somesecret"`, oauthServerPort,
-			`routing_api:
-  uri: http://127.0.0.1`, routingApiServerPort)
+			`routing_api:`,
+			routingApiAuthDisabled,
+			`uri: http://127.0.0.1`, routingApiServerPort)
 		err := utils.WriteToFile([]byte(cfg), configFile)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(utils.FileExists(configFile)).To(BeTrue())
@@ -93,12 +94,11 @@ var _ = Describe("Main", func() {
 			oauthServer = oAuthServer(logger)
 			server = routingApiServer(logger)
 			oauthServerPort := getServerPort(oauthServer.URL())
-			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort))
+			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), false)
 			routerConfigurerArgs := testrunner.Args{
 				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 				LoadBalancerConfigFilePath:     haproxyConfigFile,
 				ConfigFilePath:                 configFile,
-				RoutingApiAuthEnabled:          true,
 			}
 
 			tcpRouteMapping := db.TcpRouteMapping{
@@ -166,11 +166,11 @@ var _ = Describe("Main", func() {
 		var (
 			routerConfigurerArgs testrunner.Args
 			configFile           string
+			oauthServerPort      string
 		)
 		BeforeEach(func() {
 			server = routingApiServer(logger)
-			oauthServerPort := "1111"
-			configFile = generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort))
+			oauthServerPort = "1111"
 
 		})
 
@@ -192,11 +192,11 @@ var _ = Describe("Main", func() {
 
 		Context("routing api auth is enabled", func() {
 			BeforeEach(func() {
+				configFile = generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), false)
 				routerConfigurerArgs = testrunner.Args{
 					BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 					LoadBalancerConfigFilePath:     haproxyConfigFile,
 					ConfigFilePath:                 configFile,
-					RoutingApiAuthEnabled:          true,
 				}
 			})
 
@@ -208,11 +208,11 @@ var _ = Describe("Main", func() {
 
 		Context("routing api auth is disabled", func() {
 			BeforeEach(func() {
+				configFile = generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), true)
 				routerConfigurerArgs = testrunner.Args{
 					BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 					LoadBalancerConfigFilePath:     haproxyConfigFile,
 					ConfigFilePath:                 configFile,
-					RoutingApiAuthEnabled:          false,
 				}
 			})
 
@@ -227,12 +227,11 @@ var _ = Describe("Main", func() {
 		BeforeEach(func() {
 			oauthServer = oAuthServer(logger)
 			oauthServerPort := getServerPort(oauthServer.URL())
-			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort))
+			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), false)
 			routerConfigurerArgs := testrunner.Args{
 				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 				LoadBalancerConfigFilePath:     haproxyConfigFile,
 				ConfigFilePath:                 configFile,
-				RoutingApiAuthEnabled:          true,
 			}
 			allOutput := logger.Buffer()
 			runner := testrunner.New(routerConfigurerPath, routerConfigurerArgs)

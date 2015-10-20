@@ -8,8 +8,9 @@ import (
 )
 
 type RoutingApiConfig struct {
-	Uri  string `yaml:"uri"`
-	Port int    `yaml:"port"`
+	Uri          string `yaml:"uri"`
+	Port         int    `yaml:"port"`
+	AuthDisabled bool   `yaml:"auth_disabled"`
 }
 
 type Config struct {

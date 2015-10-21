@@ -26,6 +26,8 @@ import (
 
 var _ = Describe("Main", func() {
 
+	const DefaultRouterGroupGuid = "bad25cff-9332-48a6-8603-b619858e7992"
+
 	getServerPort := func(serverURL string) string {
 		endpoints := strings.Split(serverURL, ":")
 		Expect(endpoints).To(HaveLen(3))
@@ -103,7 +105,7 @@ var _ = Describe("Main", func() {
 
 			tcpRouteMapping := db.TcpRouteMapping{
 				TcpRoute: db.TcpRoute{
-					RouterGroupGuid: "rtr-grp-guid",
+					RouterGroupGuid: DefaultRouterGroupGuid,
 					ExternalPort:    5222,
 				},
 				HostPort: 61000,
@@ -143,7 +145,7 @@ var _ = Describe("Main", func() {
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("subscribed-to-tcp-routing-events"))
 			tcpRouteMapping := db.TcpRouteMapping{
 				TcpRoute: db.TcpRoute{
-					RouterGroupGuid: "rtr-grp-guid",
+					RouterGroupGuid: DefaultRouterGroupGuid,
 					ExternalPort:    5222,
 				},
 				HostPort: 61000,
@@ -258,7 +260,7 @@ var _ = Describe("Main", func() {
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("subscribed-to-tcp-routing-events"))
 			tcpRouteMapping := db.TcpRouteMapping{
 				TcpRoute: db.TcpRoute{
-					RouterGroupGuid: "rtr-grp-guid",
+					RouterGroupGuid: DefaultRouterGroupGuid,
 					ExternalPort:    5222,
 				},
 				HostPort: 61000,

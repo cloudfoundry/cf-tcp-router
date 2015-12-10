@@ -64,7 +64,7 @@ func (u *updater) Sync() {
 	u.cachedEvents = []routing_api.TcpEvent{}
 	u.lock.Unlock()
 
-	token, err := u.tokenFetcher.FetchToken()
+	token, err := u.tokenFetcher.FetchToken(true)
 	if err != nil {
 		logger.Error("error-fetching-token", err)
 		return

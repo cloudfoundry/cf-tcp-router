@@ -18,6 +18,7 @@ func (args Args) ArgSlice() []string {
 		"-tcpLoadBalancerConfig=" + args.LoadBalancerConfigFilePath,
 		"-tcpLoadBalancerBaseConfig=" + args.BaseLoadBalancerConfigFilePath,
 		"-config=" + args.ConfigFilePath,
+		"-tokenFetchRetryInterval", "1s",
 		"-logLevel=debug",
 	}
 }

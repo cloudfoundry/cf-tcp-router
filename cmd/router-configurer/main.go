@@ -24,6 +24,11 @@ import (
 	"github.com/tedsuo/ifrit/sigmon"
 )
 
+const (
+	DefaultTokenFetchRetryInterval = 5 * time.Second
+	DefaultTokenFetchNumRetries    = uint(3)
+)
+
 var tcpLoadBalancer = flag.String(
 	"tcpLoadBalancer",
 	configurer.HaProxyConfigurer,
@@ -60,6 +65,24 @@ var syncInterval = flag.Duration(
 	"The interval between syncs of the routing table from routing api.",
 )
 
+var tokenFetchMaxRetries = flag.Uint(
+	"tokenFetchMaxRetries",
+	DefaultTokenFetchNumRetries,
+	"Maximum number of retries the Token Fetcher will use every time FetchToken is called",
+)
+
+var tokenFetchRetryInterval = flag.Duration(
+	"tokenFetchRetryInterval",
+	DefaultTokenFetchRetryInterval,
+	"interval to wait before TokenFetcher retries to fetch a token",
+)
+
+var tokenFetchExpirationBufferTime = flag.Uint64(
+	"tokenFetchExpirationBufferTime",
+	30,
+	"Buffer time in seconds before the actual token expiration time, when TokenFetcher consider a token expired",
+)
+
 const (
 	dropsondeDestination = "localhost:3457"
 	dropsondeOrigin      = "router-configurer"
@@ -72,6 +95,7 @@ func main() {
 
 	logger, reconfigurableSink := cf_lager.New("router-configurer")
 	logger.Info("starting")
+	clock := clock.NewClock()
 
 	initializeDropsonde(logger)
 
@@ -84,7 +108,11 @@ func main() {
 		logger.Error("failed-to-unmarshal-config-file", err)
 		os.Exit(1)
 	}
-	tokenFetcher := createTokenFetcher(logger, cfg)
+	tokenFetcher, err := createTokenFetcher(logger, cfg, clock)
+	if err != nil {
+		logger.Error("failed-to-get-token-fetcher", err)
+		os.Exit(1)
+	}
 
 	routingApiAddress := fmt.Sprintf("%s:%d", cfg.RoutingApi.Uri, cfg.RoutingApi.Port)
 	logger.Debug("creating-routing-api-client", lager.Data{"api-location": routingApiAddress})
@@ -92,7 +120,6 @@ func main() {
 
 	updater := routing_table.NewUpdater(logger, &routingTable, configurer, routingApiClient, tokenFetcher)
 	syncChannel := make(chan struct{})
-	clock := clock.NewClock()
 	syncRunner := syncer.New(clock, *syncInterval, syncChannel, logger)
 	watcher := watcher.New(routingApiClient, updater, tokenFetcher, *subscriptionRetryInterval, syncChannel, logger)
 
@@ -122,13 +149,20 @@ func main() {
 	logger.Info("exited")
 }
 
-func createTokenFetcher(logger lager.Logger, cfg *config.Config) token_fetcher.TokenFetcher {
+func createTokenFetcher(logger lager.Logger, cfg *config.Config, klok clock.Clock) (token_fetcher.TokenFetcher, error) {
 	if cfg.RoutingApi.AuthDisabled {
 		logger.Debug("creating-noop-token-fetcher")
-		return token_fetcher.NewNoOpTokenFetcher()
+		tknFetcher := token_fetcher.NewNoOpTokenFetcher()
+		return tknFetcher, nil
 	}
 	logger.Debug("creating-uaa-token-fetcher")
-	return token_fetcher.NewTokenFetcher(&cfg.OAuth)
+
+	tokenFetcherConfig := token_fetcher.TokenFetcherConfig{
+		MaxNumberOfRetries:   uint32(*tokenFetchMaxRetries),
+		RetryInterval:        *tokenFetchRetryInterval,
+		ExpirationBufferTime: int64(*tokenFetchExpirationBufferTime),
+	}
+	return token_fetcher.NewTokenFetcher(logger, &cfg.OAuth, tokenFetcherConfig, klok)
 }
 
 func initializeDropsonde(logger lager.Logger) {

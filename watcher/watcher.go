@@ -57,7 +57,7 @@ func (watcher *Watcher) Run(signals <-chan os.Signal, ready chan<- struct{}) err
 			if atomic.LoadInt32(&stopEventSource) == 1 {
 				return
 			}
-			token, err := watcher.tokenFetcher.FetchToken()
+			token, err := watcher.tokenFetcher.FetchToken(true)
 			if err != nil {
 				watcher.logger.Error("error-fetching-token", err)
 				time.Sleep(time.Duration(watcher.subscriptionRetryInterval) * time.Second)

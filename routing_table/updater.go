@@ -64,25 +64,38 @@ func (u *updater) Sync() {
 	u.cachedEvents = []routing_api.TcpEvent{}
 	u.lock.Unlock()
 
-	token, err := u.tokenFetcher.FetchToken(true)
-	if err != nil {
-		logger.Error("error-fetching-token", err)
-		return
-	}
-	u.routingApiClient.SetToken(token.AccessToken)
-
-	tcpRouteMappings, err := u.routingApiClient.TcpRouteMappings()
-	if err != nil {
-		logger.Error("error-fetching-routes", err)
-		return
+	useCachedToken := true
+	var err error
+	var tcpRouteMappings []db.TcpRouteMapping
+	for count := 0; count < 2; count++ {
+		token, tokenErr := u.tokenFetcher.FetchToken(useCachedToken)
+		if tokenErr != nil {
+			logger.Error("error-fetching-token", tokenErr)
+			return
+		}
+		u.routingApiClient.SetToken(token.AccessToken)
+		tcpRouteMappings, err = u.routingApiClient.TcpRouteMappings()
+		if err != nil {
+			logger.Error("error-fetching-routes", err)
+			if err.Error() == "unauthorized" {
+				useCachedToken = false
+				logger.Info("retrying-sync")
+			} else {
+				return
+			}
+		} else {
+			break
+		}
 	}
 	logger.Debug("fetched-tcp-routes", lager.Data{"num-routes": len(tcpRouteMappings)})
-	// Create a new map and populate using tcp route mappings we got from routing api
-	u.routingTable.Entries = make(map[models.RoutingKey]models.RoutingTableEntry)
-	for _, routeMapping := range tcpRouteMappings {
-		routingKey, backendServerInfo := u.toRoutingTableEntry(logger, routeMapping)
-		logger.Debug("creating-routing-table-entry", lager.Data{"key": routingKey, "value": backendServerInfo})
-		u.routingTable.UpsertBackendServerInfo(routingKey, backendServerInfo)
+	if err == nil {
+		// Create a new map and populate using tcp route mappings we got from routing api
+		u.routingTable.Entries = make(map[models.RoutingKey]models.RoutingTableEntry)
+		for _, routeMapping := range tcpRouteMappings {
+			routingKey, backendServerInfo := u.toRoutingTableEntry(logger, routeMapping)
+			logger.Debug("creating-routing-table-entry", lager.Data{"key": routingKey, "value": backendServerInfo})
+			u.routingTable.UpsertBackendServerInfo(routingKey, backendServerInfo)
+		}
 	}
 }
 

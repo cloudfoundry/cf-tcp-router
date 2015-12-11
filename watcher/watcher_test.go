@@ -31,7 +31,7 @@ var _ = Describe("Watcher", func() {
 		process          ifrit.Process
 		eventChannel     chan routing_api.TcpEvent
 		errorChannel     chan error
-		syncChannel         chan struct{}
+		syncChannel      chan struct{}
 		updater          *fake_routing_table.FakeUpdater
 	)
 
@@ -175,14 +175,37 @@ var _ = Describe("Watcher", func() {
 			testWatcher = watcher.New(routingApiClient, updater, tokenFetcher, 1, syncChannel, logger)
 		})
 
-		JustBeforeEach(func() {
-			routingApiErrChannel <- errors.New("kaboom")
+		Context("with error other than unauthorized", func() {
+			It("uses the cached token and retries to subscribe", func() {
+				Eventually(tokenFetcher.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(1))
+				Expect(tokenFetcher.FetchTokenArgsForCall(0)).To(BeTrue())
+				routingApiErrChannel <- errors.New("kaboom")
+				close(routingApiErrChannel)
+				Eventually(routingApiClient.SubscribeToTcpEventsCallCount, 5*time.Second, 1*time.Second).Should(Equal(2))
+				Eventually(logger).Should(gbytes.Say("test.watcher.failed-subscribing-to-tcp-routing-events"))
+				Eventually(tokenFetcher.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(2))
+				Expect(tokenFetcher.FetchTokenArgsForCall(1)).To(BeTrue())
+			})
 		})
 
-		It("retries to subscribe", func() {
-			close(routingApiErrChannel)
-			Eventually(routingApiClient.SubscribeToTcpEventsCallCount, 5*time.Second, 1*time.Second).Should(Equal(2))
-			Eventually(logger).Should(gbytes.Say("test.watcher.failed-subscribing-to-tcp-routing-events"))
+		Context("with unauthorized error", func() {
+			It("fetches a new token and retries to subscribe", func() {
+				Eventually(tokenFetcher.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(1))
+				Expect(tokenFetcher.FetchTokenArgsForCall(0)).To(BeTrue())
+				routingApiErrChannel <- errors.New("unauthorized")
+				Eventually(routingApiClient.SubscribeToTcpEventsCallCount, 5*time.Second, 1*time.Second).Should(Equal(2))
+				Eventually(logger).Should(gbytes.Say("test.watcher.failed-subscribing-to-tcp-routing-events"))
+				Eventually(tokenFetcher.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(2))
+				Expect(tokenFetcher.FetchTokenArgsForCall(1)).To(BeFalse())
+
+				By("resumes to use cache token for subsequent errors")
+				routingApiErrChannel <- errors.New("kaboom")
+				close(routingApiErrChannel)
+				Eventually(routingApiClient.SubscribeToTcpEventsCallCount, 5*time.Second, 1*time.Second).Should(Equal(3))
+				Eventually(logger).Should(gbytes.Say("test.watcher.failed-subscribing-to-tcp-routing-events"))
+				Eventually(tokenFetcher.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(3))
+				Expect(tokenFetcher.FetchTokenArgsForCall(2)).To(BeTrue())
+			})
 		})
 	})
 

@@ -178,8 +178,6 @@ var _ = Describe("Main", func() {
 
 		AfterEach(func() {
 			logger.Info("shutting-down")
-			session.Signal(os.Interrupt)
-			Eventually(session.Exited, 5*time.Second).Should(BeClosed())
 			server.Signal(os.Interrupt)
 			Eventually(server.Wait(), 5*time.Second).Should(Receive())
 		})
@@ -202,9 +200,9 @@ var _ = Describe("Main", func() {
 				}
 			})
 
-			It("keeps trying to connect and doesn't blow up", func() {
-				Eventually(session.Out, 5*time.Second).Should(gbytes.Say("error-fetching-token"))
-				Consistently(session.Exited).ShouldNot(BeClosed())
+			It("exits with error", func() {
+				Eventually(session.Out, 5*time.Second).Should(gbytes.Say("error-fetching-oauth-token"))
+				Eventually(session.Exited).Should(BeClosed())
 			})
 		})
 
@@ -216,6 +214,11 @@ var _ = Describe("Main", func() {
 					LoadBalancerConfigFilePath:     haproxyConfigFile,
 					ConfigFilePath:                 configFile,
 				}
+			})
+
+			AfterEach(func() {
+				session.Signal(os.Interrupt)
+				Eventually(session.Exited, 5*time.Second).Should(BeClosed())
 			})
 
 			It("does not call oauth server to get auth token and starts SSE connection with routing api", func() {

@@ -49,7 +49,7 @@ func (watcher *Watcher) Run(signals <-chan os.Signal, ready chan<- struct{}) err
 
 	var eventSource atomic.Value
 	var stopEventSource int32
-
+	canUseCachedToken := true
 	go func() {
 		var es routing_api.TcpEventSource
 
@@ -57,7 +57,7 @@ func (watcher *Watcher) Run(signals <-chan os.Signal, ready chan<- struct{}) err
 			if atomic.LoadInt32(&stopEventSource) == 1 {
 				return
 			}
-			token, err := watcher.tokenFetcher.FetchToken(true)
+			token, err := watcher.tokenFetcher.FetchToken(canUseCachedToken)
 			if err != nil {
 				watcher.logger.Error("error-fetching-token", err)
 				time.Sleep(time.Duration(watcher.subscriptionRetryInterval) * time.Second)
@@ -68,9 +68,17 @@ func (watcher *Watcher) Run(signals <-chan os.Signal, ready chan<- struct{}) err
 			watcher.logger.Info("subscribing-to-tcp-routing-events")
 			es, err = watcher.routingApiClient.SubscribeToTcpEvents()
 			if err != nil {
+				if err.Error() == "unauthorized" {
+					watcher.logger.Error("invalid-oauth-token", err)
+					canUseCachedToken = false
+				} else {
+					canUseCachedToken = true
+				}
 				watcher.logger.Error("failed-subscribing-to-tcp-routing-events", err)
 				time.Sleep(time.Duration(watcher.subscriptionRetryInterval) * time.Second)
 				continue
+			} else {
+				canUseCachedToken = true
 			}
 			watcher.logger.Info("subscribed-to-tcp-routing-events")
 

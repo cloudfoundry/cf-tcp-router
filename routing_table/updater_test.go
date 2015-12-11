@@ -438,33 +438,68 @@ var _ = Describe("Updater", func() {
 		})
 
 		Context("when routing api returns error", func() {
-			BeforeEach(func() {
-				fakeRoutingApiClient.TcpRouteMappingsReturns(nil, errors.New("bamboozled"))
-				existingRoutingKey1 = models.RoutingKey{externalPort1}
-				existingRoutingTableEntry1 = models.NewRoutingTableEntry(
-					models.BackendServerInfos{
-						models.BackendServerInfo{"some-ip-1", 1234},
-						models.BackendServerInfo{"some-ip-2", 1234},
-					},
-				)
-				Expect(routingTable.Set(existingRoutingKey1, existingRoutingTableEntry1)).To(BeTrue())
+			Context("other than unauthorized", func() {
+				BeforeEach(func() {
+					fakeRoutingApiClient.TcpRouteMappingsReturns(nil, errors.New("bamboozled"))
+					existingRoutingKey1 = models.RoutingKey{externalPort1}
+					existingRoutingTableEntry1 = models.NewRoutingTableEntry(
+						models.BackendServerInfos{
+							models.BackendServerInfo{"some-ip-1", 1234},
+							models.BackendServerInfo{"some-ip-2", 1234},
+						},
+					)
+					Expect(routingTable.Set(existingRoutingKey1, existingRoutingTableEntry1)).To(BeTrue())
+				})
+
+				It("uses the cached token and doesn't update its routing table", func() {
+					go invokeSync(doneChannel)
+					Eventually(doneChannel).Should(BeClosed())
+
+					Expect(fakeTokenFetcher.FetchTokenCallCount()).To(Equal(1))
+					Expect(fakeRoutingApiClient.TcpRouteMappingsCallCount()).To(Equal(1))
+
+					Expect(routingTable.Size()).To(Equal(1))
+					expectedRoutingTableEntry1 := models.NewRoutingTableEntry(
+						models.BackendServerInfos{
+							models.BackendServerInfo{"some-ip-1", 1234},
+							models.BackendServerInfo{"some-ip-2", 1234},
+						},
+					)
+					verifyRoutingTableEntry(models.RoutingKey{externalPort1}, expectedRoutingTableEntry1)
+				})
 			})
 
-			It("doesn't update its routing table", func() {
-				go invokeSync(doneChannel)
-				Eventually(doneChannel).Should(BeClosed())
+			Context("unauthorized", func() {
+				BeforeEach(func() {
+					fakeRoutingApiClient.TcpRouteMappingsReturns(nil, errors.New("unauthorized"))
+					existingRoutingKey1 = models.RoutingKey{externalPort1}
+					existingRoutingTableEntry1 = models.NewRoutingTableEntry(
+						models.BackendServerInfos{
+							models.BackendServerInfo{"some-ip-1", 1234},
+							models.BackendServerInfo{"some-ip-2", 1234},
+						},
+					)
+					Expect(routingTable.Set(existingRoutingKey1, existingRoutingTableEntry1)).To(BeTrue())
+				})
 
-				Expect(fakeTokenFetcher.FetchTokenCallCount()).To(Equal(1))
-				Expect(fakeRoutingApiClient.TcpRouteMappingsCallCount()).To(Equal(1))
+				It("refresh the token, retries and doesn't update its routing table", func() {
+					go invokeSync(doneChannel)
+					Eventually(doneChannel).Should(BeClosed())
 
-				Expect(routingTable.Size()).To(Equal(1))
-				expectedRoutingTableEntry1 := models.NewRoutingTableEntry(
-					models.BackendServerInfos{
-						models.BackendServerInfo{"some-ip-1", 1234},
-						models.BackendServerInfo{"some-ip-2", 1234},
-					},
-				)
-				verifyRoutingTableEntry(models.RoutingKey{externalPort1}, expectedRoutingTableEntry1)
+					Expect(fakeTokenFetcher.FetchTokenCallCount()).To(Equal(2))
+					Expect(fakeTokenFetcher.FetchTokenArgsForCall(0)).To(BeTrue())
+					Expect(fakeTokenFetcher.FetchTokenArgsForCall(1)).To(BeFalse())
+					Expect(fakeRoutingApiClient.TcpRouteMappingsCallCount()).To(Equal(2))
+
+					Expect(routingTable.Size()).To(Equal(1))
+					expectedRoutingTableEntry1 := models.NewRoutingTableEntry(
+						models.BackendServerInfos{
+							models.BackendServerInfo{"some-ip-1", 1234},
+							models.BackendServerInfo{"some-ip-2", 1234},
+						},
+					)
+					verifyRoutingTableEntry(models.RoutingKey{externalPort1}, expectedRoutingTableEntry1)
+				})
 			})
 		})
 

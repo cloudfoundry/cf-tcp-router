@@ -113,6 +113,11 @@ func main() {
 		logger.Error("failed-to-get-token-fetcher", err)
 		os.Exit(1)
 	}
+	_, err = tokenFetcher.FetchToken(false)
+	if err != nil {
+		logger.Error("error-fetching-oauth-token", err)
+		os.Exit(1)
+	}
 
 	routingApiAddress := fmt.Sprintf("%s:%d", cfg.RoutingApi.Uri, cfg.RoutingApi.Port)
 	logger.Debug("creating-routing-api-client", lager.Data{"api-location": routingApiAddress})

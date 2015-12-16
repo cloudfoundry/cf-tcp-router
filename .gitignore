@@ -2,6 +2,7 @@
 *.o
 *.a
 *.so
+*.swp
 
 # binaries
 cmd/router-configurer/router-configurer

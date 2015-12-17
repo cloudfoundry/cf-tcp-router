@@ -10,6 +10,8 @@ import (
 
 func Convert(proxyStats []haproxy_client.HaproxyStat) *MetricsReport {
 
+	// TODO no way to keep incrementing data if the previous values are kept here.
+	// See How the test fails in line 66. This has to be kept outsite, probably 
 	var (
 		totalCurrentQueuedRequests   uint64
 		totalBackendConnectionErrors uint64

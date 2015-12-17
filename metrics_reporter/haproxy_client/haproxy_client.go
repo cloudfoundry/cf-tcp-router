@@ -1,13 +1,25 @@
 package haproxy_client
 
-import "fmt"
+import (
+	"encoding/csv"
+	"errors"
+	"fmt"
+	"log"
+	"net/http"
+	"strconv"
+
+	"github.com/cloudfoundry-incubator/cf_http"
+)
 
 //go:generate counterfeiter -o fakes/fake_haproxy_client.go . HaproxyClient
 type HaproxyClient interface {
 	GetStats() HaproxyStats
 }
 
-type HaproxyStatsClient struct{}
+type HaproxyStatsClient struct {
+	haproxyStatsUrl string
+	httpClient      *http.Client
+}
 
 type HaproxyStats []HaproxyStat
 
@@ -21,14 +33,59 @@ type HaproxyStat struct {
 	AverageSessionTimeMs uint64 `csv:"ttime"`
 }
 
-func NewClient() *HaproxyStatsClient {
-	return &HaproxyStatsClient{}
+const STATS_PATH = "/haproxy/stats;csv"
+
+func NewClient(haproxyStatsUrl string) *HaproxyStatsClient {
+	return &HaproxyStatsClient{
+		haproxyStatsUrl: haproxyStatsUrl,
+		httpClient:      cf_http.NewClient(),
+	}
 }
 
 func (r *HaproxyStatsClient) GetStats() HaproxyStats {
 	fmt.Printf("In stats function")
-	// make api call
-	// parse te csv
-	// create haproxy stats[]
-	return HaproxyStats{}
+
+	resp, err := r.httpClient.Get(r.haproxyStatsUrl + STATS_PATH)
+	if err != nil {
+		return HaproxyStats{}
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		err = errors.New("http-error-fetching-key")
+		return HaproxyStats{}
+	}
+
+	csvReader := csv.NewReader(resp.Body)
+	lines, err := csvReader.ReadAll()
+	if err != nil {
+		log.Fatalf("error reading all lines: %v", err)
+	}
+
+	stats := HaproxyStats{}
+
+	for i, line := range lines {
+		if i == 0 {
+			// skip header line
+			continue
+		}
+		stats = append(stats, fromCsv(line))
+	}
+	return stats
+}
+
+func fromCsv(row []string) HaproxyStat {
+	return HaproxyStat{
+		ProxyName:            row[0],
+		CurrentQueued:        convertToInt(row[2]),
+		CurrentSessions:      convertToInt(row[4]),
+		ErrorConnecting:      convertToInt(row[13]),
+		AverageQueueTimeMs:   convertToInt(row[58]),
+		AverageConnectTimeMs: convertToInt(row[59]),
+		AverageSessionTimeMs: convertToInt(row[61]),
+	}
+}
+
+func convertToInt(s string) uint64 {
+	i, _ := strconv.ParseUint(s, 10, 64)
+	return i
 }

@@ -1,6 +1,9 @@
 package models
 
-import "reflect"
+import (
+	"fmt"
+	"reflect"
+)
 
 type RoutingKey struct {
 	Port uint16
@@ -83,4 +86,8 @@ func (table RoutingTable) Get(key RoutingKey) RoutingTableEntry {
 
 func (table RoutingTable) Size() int {
 	return len(table.Entries)
+}
+
+func (k RoutingKey) String() string {
+	return fmt.Sprintf("%d", k.Port)
 }

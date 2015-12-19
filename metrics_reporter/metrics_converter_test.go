@@ -12,8 +12,6 @@ var _ = Describe("Metrics Converter", func() {
 	var (
 		stats   haproxy_client.HaproxyStats
 		metrics *metrics_reporter.MetricsReport
-		stats2   haproxy_client.HaproxyStats
-		metrics2 *metrics_reporter.MetricsReport
 	)
 
 	Context("Convert", func() {
@@ -38,32 +36,10 @@ var _ = Describe("Metrics Converter", func() {
 					},
 				}
 				metrics = metrics_reporter.Convert(stats)
-
-				stats2 = haproxy_client.HaproxyStats{
-					{ProxyName: "fake_pxname1_9000",
-						CurrentQueued:        10,
-						ErrorConnecting:      20,
-						AverageQueueTimeMs:   30,
-						AverageConnectTimeMs: 25,
-						CurrentSessions:      15,
-						AverageSessionTimeMs: 9,
-					},
-					{ProxyName: "fake_pxname2_9001",
-						CurrentQueued:        20,
-						ErrorConnecting:      20,
-						AverageQueueTimeMs:   0,
-						AverageConnectTimeMs: 40,
-						CurrentSessions:      15,
-						AverageSessionTimeMs: 9,
-					},
-				}
-
-				metrics2 = metrics_reporter.Convert(stats2)
 			})
 
 			It("aggregates CurrentQueued", func() {
 				Expect(metrics.TotalCurrentQueuedRequests).To(Equal(uint64(30)))
-				// Expect(metrics.TotalCurrentQueuedRequests).To(Equal(uint64(60)))
 			})
 
 			It("aggregates BackendErrors", func() {
@@ -92,10 +68,9 @@ var _ = Describe("Metrics Converter", func() {
 				Expect(metrics.ProxyMetrics).Should(HaveKeyWithValue(expectedProxyKey1, expectedProxyStats1))
 				Expect(metrics.ProxyMetrics).Should(HaveKeyWithValue(expectedProxyKey2, expectedProxyStats2))
 			})
-
 		})
-		Context("multiple services in single connection", func() {
 
+		Context("multiple services in single connection", func() {
 			BeforeEach(func() {
 				stats = haproxy_client.HaproxyStats{
 					{
@@ -132,7 +107,6 @@ var _ = Describe("Metrics Converter", func() {
 		})
 
 		Context("invalid proxy name", func() {
-
 			BeforeEach(func() {
 				stats = haproxy_client.HaproxyStats{
 					{
@@ -172,5 +146,15 @@ var _ = Describe("Metrics Converter", func() {
 			})
 		})
 
+		Context("empty haproxy stats", func() {
+			BeforeEach(func() {
+				stats = haproxy_client.HaproxyStats{}
+				metrics = metrics_reporter.Convert(stats)
+			})
+
+			It("returns a nil metric report", func() {
+				Expect(metrics).Should(BeNil())
+			})
+		})
 	})
 })

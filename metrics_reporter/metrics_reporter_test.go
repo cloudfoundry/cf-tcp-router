@@ -2,7 +2,6 @@ package metrics_reporter_test
 
 import (
 	"os"
-	"syscall"
 	"time"
 
 	"github.com/cloudfoundry-incubator/cf-tcp-router/metrics_reporter"
@@ -11,6 +10,8 @@ import (
 	haproxy_fakes "github.com/cloudfoundry-incubator/cf-tcp-router/metrics_reporter/haproxy_client/fakes"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/pivotal-golang/clock/fakeclock"
+	"github.com/tedsuo/ifrit"
 )
 
 var _ = Describe("Metrics Reporter", func() {
@@ -18,53 +19,87 @@ var _ = Describe("Metrics Reporter", func() {
 		fakeClient      *haproxy_fakes.FakeHaproxyClient
 		fakeEmitter     *emitter_fakes.FakeMetricsEmitter
 		metricsReporter *metrics_reporter.MetricsReporter
+		clock           *fakeclock.FakeClock
+		process         ifrit.Process
+		syncInterval    time.Duration
 	)
 
 	BeforeEach(func() {
 		fakeClient = &haproxy_fakes.FakeHaproxyClient{}
 		fakeEmitter = &emitter_fakes.FakeMetricsEmitter{}
-		metricsReporter = metrics_reporter.NewMetricsReporter(fakeClient, fakeEmitter, 10*time.Millisecond)
+		clock = fakeclock.NewFakeClock(time.Now())
+		syncInterval = 1 * time.Second
+		metricsReporter = metrics_reporter.NewMetricsReporter(clock, fakeClient, fakeEmitter, syncInterval)
 	})
 
-	Context("Run", func() {
-
-		var (
-			readyChan chan struct{}
-			signals   chan os.Signal
-		)
-
-		BeforeEach(func() {
-			readyChan = make(chan struct{})
-			signals = make(chan os.Signal)
-			go func() {
-				metricsReporter.Run(signals, readyChan)
-			}()
-			select {
-			case <-readyChan:
-			}
-
-			fakeClient.GetStatsStub = func() haproxy_client.HaproxyStats {
-				return haproxy_client.HaproxyStats{
-					{
-						ProxyName:            "fake_pxname1_9000",
-						CurrentQueued:        10,
-						ErrorConnecting:      20,
-						AverageQueueTimeMs:   30,
-						AverageConnectTimeMs: 25,
-						CurrentSessions:      15,
-						AverageSessionTimeMs: 9,
-					},
+	Context("on specified interval", func() {
+		Context("when haproxy client returns stats data", func() {
+			BeforeEach(func() {
+				fakeClient.GetStatsStub = func() haproxy_client.HaproxyStats {
+					return haproxy_client.HaproxyStats{
+						{
+							ProxyName:            "fake_pxname1_9000",
+							CurrentQueued:        10,
+							ErrorConnecting:      20,
+							AverageQueueTimeMs:   30,
+							AverageConnectTimeMs: 25,
+							CurrentSessions:      15,
+							AverageSessionTimeMs: 9,
+						},
+					}
 				}
-			}
-		})
+			})
 
-		AfterEach(func() {
-			signals <- syscall.SIGTERM
-		})
+			AfterEach(func() {
+				process.Signal(os.Interrupt)
+				Eventually(process.Wait()).Should(Receive(BeNil()))
+			})
 
-		It("emits metrics", func() {
-			Eventually(fakeClient.GetStatsCallCount, "30ms", "10ms").Should(BeNumerically(">=", 2))
-			Eventually(fakeEmitter.EmitCallCount, "30ms", "10ms").Should(BeNumerically(">=", 2))
+			It("emits metrics", func() {
+
+				process = ifrit.Invoke(metricsReporter)
+
+				Eventually(fakeClient.GetStatsCallCount).Should(Equal(0))
+				Eventually(fakeEmitter.EmitCallCount).Should(Equal(0))
+
+				clock.Increment(syncInterval + 100*time.Millisecond)
+
+				Eventually(fakeClient.GetStatsCallCount).Should(Equal(1))
+				Eventually(fakeEmitter.EmitCallCount).Should(Equal(1))
+
+				clock.Increment(syncInterval + 100*time.Millisecond)
+
+				Eventually(fakeClient.GetStatsCallCount).Should(Equal(2))
+				Eventually(fakeEmitter.EmitCallCount).Should(Equal(2))
+			})
+		})
+		Context("when haproxy client returns no stats data", func() {
+			BeforeEach(func() {
+				fakeClient.GetStatsReturns(haproxy_client.HaproxyStats{})
+			})
+
+			AfterEach(func() {
+				process.Signal(os.Interrupt)
+				Eventually(process.Wait()).Should(Receive(BeNil()))
+			})
+
+			It("emits metrics", func() {
+
+				process = ifrit.Invoke(metricsReporter)
+
+				Eventually(fakeClient.GetStatsCallCount).Should(Equal(0))
+				Eventually(fakeEmitter.EmitCallCount).Should(Equal(0))
+
+				clock.Increment(syncInterval + 100*time.Millisecond)
+
+				Eventually(fakeClient.GetStatsCallCount).Should(Equal(1))
+				Eventually(fakeEmitter.EmitCallCount).Should(Equal(0))
+
+				clock.Increment(syncInterval + 100*time.Millisecond)
+
+				Eventually(fakeClient.GetStatsCallCount).Should(Equal(2))
+				Eventually(fakeEmitter.EmitCallCount).Should(Equal(0))
+			})
 		})
 	})
 

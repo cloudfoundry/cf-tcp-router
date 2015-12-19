@@ -6,6 +6,7 @@ import (
 
 	"github.com/cloudfoundry-incubator/cf-tcp-router/metrics_reporter/haproxy_client"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
+	"github.com/pivotal-golang/clock"
 )
 
 type MetricsReport struct {
@@ -22,13 +23,15 @@ type ProxyStats struct {
 }
 
 type MetricsReporter struct {
+	clock          clock.Clock
 	emitInterval   time.Duration
 	haproxyClient  haproxy_client.HaproxyClient
 	metricsEmitter MetricsEmitter
 }
 
-func NewMetricsReporter(haproxyClient haproxy_client.HaproxyClient, metricsEmitter MetricsEmitter, interval time.Duration) *MetricsReporter {
+func NewMetricsReporter(clock clock.Clock, haproxyClient haproxy_client.HaproxyClient, metricsEmitter MetricsEmitter, interval time.Duration) *MetricsReporter {
 	return &MetricsReporter{
+		clock:          clock,
 		haproxyClient:  haproxyClient,
 		metricsEmitter: metricsEmitter,
 		emitInterval:   interval,
@@ -36,11 +39,11 @@ func NewMetricsReporter(haproxyClient haproxy_client.HaproxyClient, metricsEmitt
 }
 
 func (r *MetricsReporter) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
-	ticker := time.NewTicker(r.emitInterval)
+	ticker := r.clock.NewTicker(r.emitInterval)
 	close(ready)
 	for {
 		select {
-		case <-ticker.C:
+		case <-ticker.C():
 			r.emitStats()
 		case <-signals:
 			ticker.Stop()
@@ -54,9 +57,11 @@ func (r *MetricsReporter) emitStats() {
 	// get stats
 	stats := r.haproxyClient.GetStats()
 
-	// convert to report
-	report := Convert(stats)
+	if len(stats) > 0 {
+		// convert to report
+		report := Convert(stats)
 
-	// emit to firehose
-	r.metricsEmitter.Emit(report)
+		// emit to firehose
+		r.metricsEmitter.Emit(report)
+	}
 }

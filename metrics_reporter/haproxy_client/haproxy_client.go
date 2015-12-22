@@ -1,14 +1,14 @@
 package haproxy_client
 
 import (
+	"bytes"
 	"encoding/csv"
-	"errors"
-	"fmt"
-	"log"
-	"net/http"
+	"io"
+	"net"
 	"strconv"
+	"time"
 
-	"github.com/cloudfoundry-incubator/cf_http"
+	"github.com/pivotal-golang/lager"
 )
 
 //go:generate counterfeiter -o fakes/fake_haproxy_client.go . HaproxyClient
@@ -17,8 +17,9 @@ type HaproxyClient interface {
 }
 
 type HaproxyStatsClient struct {
-	haproxyStatsUrl string
-	httpClient      *http.Client
+	haproxyUnixSocket string
+	timeout           time.Duration
+	logger            lager.Logger
 }
 
 type HaproxyStats []HaproxyStat
@@ -33,47 +34,82 @@ type HaproxyStat struct {
 	AverageSessionTimeMs uint64 `csv:"ttime"`
 }
 
-const STATS_PATH = "/haproxy/stats;csv"
-
-func NewClient(haproxyStatsUrl string) *HaproxyStatsClient {
+func NewClient(logger lager.Logger, haproxyUnixSocket string, timeout time.Duration) *HaproxyStatsClient {
 	return &HaproxyStatsClient{
-		haproxyStatsUrl: haproxyStatsUrl,
-		httpClient:      cf_http.NewClient(),
+		haproxyUnixSocket: haproxyUnixSocket,
+		timeout:           timeout,
+		logger:            logger,
 	}
 }
 
 func (r *HaproxyStatsClient) GetStats() HaproxyStats {
-	fmt.Printf("In stats function")
+	logger := r.logger.Session("get-stats")
+	logger.Debug("start")
+	defer logger.Debug("completed")
 
-	resp, err := r.httpClient.Get(r.haproxyStatsUrl + STATS_PATH)
-	if err != nil {
-		return HaproxyStats{}
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		err = errors.New("http-error-fetching-key")
-		return HaproxyStats{}
-	}
-
-	csvReader := csv.NewReader(resp.Body)
-	lines, err := csvReader.ReadAll()
-	if err != nil {
-		log.Fatalf("error reading all lines: %v", err)
-	}
+	buff := make([]byte, 1024)
+	b := make([]byte, 0)
+	buffer := bytes.NewBuffer(b)
 
 	stats := HaproxyStats{}
+
+	conn, err := net.DialTimeout("unix", r.haproxyUnixSocket, r.timeout)
+	if err != nil {
+		logger.Error("error-connecting-to-haproxy-stats", err)
+		return stats
+	}
+	defer conn.Close()
+	logger.Debug("connection-successful")
+
+	_, err = conn.Write([]byte("show stat\n"))
+	if err != nil {
+		logger.Error("error-sending-haproxy-stats-command", err)
+		return stats
+	}
+	logger.Debug("sent-stats-command")
+
+	for {
+		cnt, err := conn.Read(buff[:])
+		if err != nil {
+			if err == io.EOF {
+				break
+			} else {
+				logger.Error("error-reading-haproxy-stats", err)
+				return stats
+			}
+		}
+		buffer.Write(buff[:cnt])
+	}
+	logger.Debug("num-bytes-read", lager.Data{"count": buffer.Len()})
+	if buffer.Len() > 0 {
+		stats = readCsv(logger, buffer.Bytes())
+	}
+	return stats
+}
+
+func readCsv(logger lager.Logger, buffer []byte) HaproxyStats {
+	stats := HaproxyStats{}
+
+	bReader := bytes.NewReader(buffer)
+	csvReader := csv.NewReader(bReader)
+
+	lines, err := csvReader.ReadAll()
+	if err != nil {
+		logger.Error("error-reading-csv-stats", err)
+		return stats
+	}
 
 	for i, line := range lines {
 		if i == 0 {
 			// skip header line
 			continue
 		}
-		stats = append(stats, fromCsv(line))
+		stats = append(stats, csvToHaproxyStat(line))
 	}
 	return stats
 }
 
-func fromCsv(row []string) HaproxyStat {
+func csvToHaproxyStat(row []string) HaproxyStat {
 	return HaproxyStat{
 		ProxyName:            row[0],
 		CurrentQueued:        convertToInt(row[2]),

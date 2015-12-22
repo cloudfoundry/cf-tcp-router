@@ -1,45 +1,84 @@
 package haproxy_client_test
 
 import (
-	"net/http"
-    "io/ioutil"
+	"io/ioutil"
+	"net"
+	"os"
+	"path"
+	"time"
+
 	"github.com/cloudfoundry-incubator/cf-tcp-router/metrics_reporter/haproxy_client"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/testutil"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/utils"
+	"github.com/pivotal-golang/lager"
+	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/ghttp"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("HaproxyClient", func() {
-
 	var (
-		haproxyClient haproxy_client.HaproxyClient
-		server        *ghttp.Server
+		haproxyClient     haproxy_client.HaproxyClient
+		logger            lager.Logger
+		haproxyUnixSocket string
+		timeout           time.Duration
 	)
 
+	setupUnixSocketServer := func(data []byte, unixSocket string, ready chan struct{}) {
+		defer GinkgoRecover()
+		l, err := net.Listen("unix", unixSocket)
+		Expect(err).NotTo(HaveOccurred())
+		close(ready)
+
+		defer func() {
+			err := l.Close()
+			Expect(err).NotTo(HaveOccurred())
+		}()
+
+		fd, err := l.Accept()
+		Expect(err).NotTo(HaveOccurred())
+		defer func() {
+			err := fd.Close()
+			Expect(err).NotTo(HaveOccurred())
+		}()
+
+		buf := make([]byte, 512)
+		_, err = fd.Read(buf)
+		Expect(string(buf)).To(ContainSubstring("show stat"))
+
+		_, err = fd.Write(data)
+		Expect(err).NotTo(HaveOccurred())
+	}
+
 	BeforeEach(func() {
-		server = ghttp.NewServer()
-		haproxyClient = haproxy_client.NewClient(server.URL())
-	})
-	AfterEach(func() {
-		server.Close()
+		timeout = 100 * time.Millisecond
+		logger = lagertest.NewTestLogger("test")
 	})
 
 	Describe("GetStats", func() {
-
 		BeforeEach(func() {
-
-			csvPayload, err := ioutil.ReadFile("testdata.csv")
-			Expect(err).NotTo(HaveOccurred())
-
-			server.AppendHandlers(
-				ghttp.CombineHandlers(
-					ghttp.VerifyRequest("GET", haproxy_client.STATS_PATH),
-					ghttp.RespondWith(http.StatusOK, csvPayload),
-				),
-			)
+			randomFileName := testutil.RandomFileName("haproxy_", ".sock")
+			haproxyUnixSocket = path.Join(os.TempDir(), randomFileName)
 		})
+
+		AfterEach(func() {
+			Eventually(func() bool {
+				return utils.FileExists(haproxyUnixSocket)
+			}, 5*time.Second).Should(BeFalse())
+		})
+
 		Context("when haproxy provides statistics", func() {
+			BeforeEach(func() {
+				readyChannel := make(chan struct{})
+				csvPayload, err := ioutil.ReadFile("fixtures/testdata.csv")
+				Expect(err).NotTo(HaveOccurred())
+
+				go setupUnixSocketServer(csvPayload, haproxyUnixSocket, readyChannel)
+				haproxyClient = haproxy_client.NewClient(logger, haproxyUnixSocket, timeout)
+				Eventually(readyChannel).Should(BeClosed())
+			})
 
 			It("returns haproxy statistics", func() {
 				stats := haproxyClient.GetStats()
@@ -68,8 +107,50 @@ var _ = Describe("HaproxyClient", func() {
 				Expect(stats[0]).Should(Equal(r0))
 				Expect(stats[8]).Should(Equal(r8))
 			})
+		})
 
+		Context("when haproxy does not provide statistics", func() {
+			BeforeEach(func() {
+				readyChannel := make(chan struct{})
+				go setupUnixSocketServer([]byte{}, haproxyUnixSocket, readyChannel)
+				haproxyClient = haproxy_client.NewClient(logger, haproxyUnixSocket, timeout)
+				Eventually(readyChannel).Should(BeClosed())
+			})
+
+			It("returns empty haproxy statistics", func() {
+				stats := haproxyClient.GetStats()
+				Expect(stats).Should(HaveLen(0))
+			})
+		})
+
+		Context("when haproxy is not listening on unix domain socket", func() {
+			BeforeEach(func() {
+				haproxyClient = haproxy_client.NewClient(logger, haproxyUnixSocket, timeout)
+			})
+
+			It("returns empty haproxy statistics", func() {
+				stats := haproxyClient.GetStats()
+				Expect(stats).Should(HaveLen(0))
+				Expect(logger).Should(gbytes.Say("test.get-stats.error-connecting-to-haproxy-stats"))
+			})
+		})
+
+		Context("when haproxy returns invalid csv", func() {
+			BeforeEach(func() {
+				readyChannel := make(chan struct{})
+				csvPayload, err := ioutil.ReadFile("fixtures/invalid.csv")
+				Expect(err).NotTo(HaveOccurred())
+
+				go setupUnixSocketServer(csvPayload, haproxyUnixSocket, readyChannel)
+				haproxyClient = haproxy_client.NewClient(logger, haproxyUnixSocket, timeout)
+				Eventually(readyChannel).Should(BeClosed())
+			})
+
+			It("returns empty haproxy statistics", func() {
+				stats := haproxyClient.GetStats()
+				Expect(stats).Should(HaveLen(0))
+				Expect(logger).Should(gbytes.Say("test.get-stats.error-reading-csv-stats"))
+			})
 		})
 	})
-
 })

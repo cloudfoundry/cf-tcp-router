@@ -10,6 +10,8 @@ import (
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/config"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/metrics_reporter"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/metrics_reporter/haproxy_client"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/routing_table"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/syncer"
@@ -45,6 +47,12 @@ var tcpLoadBalancerCfg = flag.String(
 	"tcpLoadBalancerConfig",
 	"",
 	"The tcp load balancer configuration file name.",
+)
+
+var tcpLoadBalancerStatsUnixSocket = flag.String(
+	"tcpLoadBalancerStatsUnixSocket",
+	"/var/vcap/jobs/haproxy/config/haproxy.sock",
+	"Unix domain socket for tcp load balancer",
 )
 
 var subscriptionRetryInterval = flag.Int(
@@ -83,9 +91,21 @@ var tokenFetchExpirationBufferTime = flag.Uint64(
 	"Buffer time in seconds before the actual token expiration time, when TokenFetcher consider a token expired",
 )
 
+var statsCollectionInterval = flag.Duration(
+	"statsCollectionInterval",
+	time.Minute,
+	"The interval between collection of stats from tcp load balancer.",
+)
+
+var dropsondePort = flag.Int(
+	"dropsondePort",
+	3457,
+	"Port the local metron agent is listening on",
+)
+
 const (
-	dropsondeDestination = "localhost:3457"
-	dropsondeOrigin      = "router-configurer"
+	dropsondeOrigin        = "router-configurer"
+	statsConnectionTimeout = 10 * time.Second
 )
 
 func main() {
@@ -128,9 +148,14 @@ func main() {
 	syncRunner := syncer.New(clock, *syncInterval, syncChannel, logger)
 	watcher := watcher.New(routingAPIClient, updater, tokenFetcher, *subscriptionRetryInterval, syncChannel, logger)
 
+	haproxyClient := haproxy_client.NewClient(logger, *tcpLoadBalancerStatsUnixSocket, statsConnectionTimeout)
+	metricsEmitter := metrics_reporter.NewMetricsEmitter()
+	metricsReporter := metrics_reporter.NewMetricsReporter(clock, haproxyClient, metricsEmitter, *statsCollectionInterval)
+
 	members := grouper.Members{
 		{"watcher", watcher},
 		{"syncer", syncRunner},
+		{"metricsReporter", metricsReporter},
 	}
 
 	if dbgAddr := cf_debug_server.DebugAddress(flag.CommandLine); dbgAddr != "" {
@@ -171,6 +196,7 @@ func createTokenFetcher(logger lager.Logger, cfg *config.Config, klok clock.Cloc
 }
 
 func initializeDropsonde(logger lager.Logger) {
+	dropsondeDestination := fmt.Sprintf("localhost:%d", *dropsondePort)
 	err := dropsonde.Initialize(dropsondeDestination, dropsondeOrigin)
 	if err != nil {
 		logger.Error("failed-to-initialize-dropsonde", err)

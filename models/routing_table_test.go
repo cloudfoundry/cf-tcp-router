@@ -17,10 +17,10 @@ var _ = Describe("RoutingTable", func() {
 	Describe("Set", func() {
 		Context("when a new entry is added", func() {
 			It("adds the entry", func() {
-				routingKey := models.RoutingKey{12}
+				routingKey := models.RoutingKey{Port: 12}
 				routingTableEntry := models.RoutingTableEntry{
 					Backends: map[models.BackendServerInfo]struct{}{
-						models.BackendServerInfo{"some-ip", 1234}: struct{}{},
+						models.BackendServerInfo{Address: "some-ip", Port: 1234}: struct{}{},
 					},
 				}
 				ok := routingTable.Set(routingKey, routingTableEntry)
@@ -36,11 +36,11 @@ var _ = Describe("RoutingTable", func() {
 				existingRoutingTableEntry models.RoutingTableEntry
 			)
 			BeforeEach(func() {
-				routingKey = models.RoutingKey{12}
+				routingKey = models.RoutingKey{Port: 12}
 				existingRoutingTableEntry = models.RoutingTableEntry{
 					Backends: map[models.BackendServerInfo]struct{}{
-						models.BackendServerInfo{"some-ip-1", 1234}: struct{}{},
-						models.BackendServerInfo{"some-ip-2", 1234}: struct{}{},
+						models.BackendServerInfo{Address: "some-ip-1", Port: 1234}: struct{}{},
+						models.BackendServerInfo{Address: "some-ip-2", Port: 1234}: struct{}{},
 					},
 				}
 				ok := routingTable.Set(routingKey, existingRoutingTableEntry)
@@ -59,7 +59,7 @@ var _ = Describe("RoutingTable", func() {
 					It("overwrites the value", func() {
 						routingTableEntry := models.RoutingTableEntry{
 							Backends: map[models.BackendServerInfo]struct{}{
-								models.BackendServerInfo{"some-ip-1", 1234}: struct{}{},
+								models.BackendServerInfo{Address: "some-ip-1", Port: 1234}: struct{}{},
 							},
 						}
 						verifyChangedValue(routingTableEntry)
@@ -70,8 +70,8 @@ var _ = Describe("RoutingTable", func() {
 					It("overwrites the value", func() {
 						routingTableEntry := models.RoutingTableEntry{
 							Backends: map[models.BackendServerInfo]struct{}{
-								models.BackendServerInfo{"some-ip-1", 1234}: struct{}{},
-								models.BackendServerInfo{"some-ip-2", 2345}: struct{}{},
+								models.BackendServerInfo{Address: "some-ip-1", Port: 1234}: struct{}{},
+								models.BackendServerInfo{Address: "some-ip-2", Port: 2345}: struct{}{},
 							},
 						}
 						verifyChangedValue(routingTableEntry)
@@ -82,8 +82,8 @@ var _ = Describe("RoutingTable", func() {
 					It("overwrites the value", func() {
 						routingTableEntry := models.RoutingTableEntry{
 							Backends: map[models.BackendServerInfo]struct{}{
-								models.BackendServerInfo{"some-ip-1", 3456}: struct{}{},
-								models.BackendServerInfo{"some-ip-2", 2345}: struct{}{},
+								models.BackendServerInfo{Address: "some-ip-1", Port: 3456}: struct{}{},
+								models.BackendServerInfo{Address: "some-ip-2", Port: 2345}: struct{}{},
 							},
 						}
 						verifyChangedValue(routingTableEntry)
@@ -95,8 +95,8 @@ var _ = Describe("RoutingTable", func() {
 				It("returns false", func() {
 					routingTableEntry := models.RoutingTableEntry{
 						Backends: map[models.BackendServerInfo]struct{}{
-							models.BackendServerInfo{"some-ip-1", 1234}: struct{}{},
-							models.BackendServerInfo{"some-ip-2", 1234}: struct{}{},
+							models.BackendServerInfo{Address: "some-ip-1", Port: 1234}: struct{}{},
+							models.BackendServerInfo{Address: "some-ip-2", Port: 1234}: struct{}{},
 						},
 					}
 					ok := routingTable.Set(routingKey, routingTableEntry)
@@ -113,8 +113,8 @@ var _ = Describe("RoutingTable", func() {
 			backendServerInfo models.BackendServerInfo
 		)
 		BeforeEach(func() {
-			routingKey = models.RoutingKey{12}
-			backendServerInfo = models.BackendServerInfo{"some-ip", 1234}
+			routingKey = models.RoutingKey{Port: 12}
+			backendServerInfo = models.BackendServerInfo{Address: "some-ip", Port: 1234}
 		})
 		Context("when the routing key does not exist", func() {
 			It("inserts the routing key with its backends", func() {
@@ -142,7 +142,7 @@ var _ = Describe("RoutingTable", func() {
 
 			Context("and no change in the backends are provided", func() {
 				It("it does not update the routing entry", func() {
-					sameBackendServerInfo := models.BackendServerInfo{"some-ip", 1234}
+					sameBackendServerInfo := models.BackendServerInfo{Address: "some-ip", Port: 1234}
 					ok := routingTable.UpsertBackendServerInfo(routingKey, sameBackendServerInfo)
 					Expect(ok).To(BeFalse())
 				})
@@ -152,11 +152,11 @@ var _ = Describe("RoutingTable", func() {
 				It("it updates the routing entry's backends", func() {
 					routingTableEntry := models.RoutingTableEntry{
 						Backends: map[models.BackendServerInfo]struct{}{
-							models.BackendServerInfo{"some-ip", 1234}:       struct{}{},
-							models.BackendServerInfo{"some-other-ip", 1234}: struct{}{},
+							models.BackendServerInfo{Address: "some-ip", Port: 1234}:       struct{}{},
+							models.BackendServerInfo{Address: "some-other-ip", Port: 1234}: struct{}{},
 						},
 					}
-					differentBackendServerInfo := models.BackendServerInfo{"some-other-ip", 1234}
+					differentBackendServerInfo := models.BackendServerInfo{Address: "some-other-ip", Port: 1234}
 					ok := routingTable.UpsertBackendServerInfo(routingKey, differentBackendServerInfo)
 					Expect(ok).To(BeTrue())
 					Expect(routingTable.Get(routingKey)).Should(Equal(routingTableEntry))
@@ -172,8 +172,8 @@ var _ = Describe("RoutingTable", func() {
 			existingRoutingTableEntry models.RoutingTableEntry
 		)
 		BeforeEach(func() {
-			routingKey = models.RoutingKey{12}
-			backendServerInfo = models.BackendServerInfo{"some-ip", 1234}
+			routingKey = models.RoutingKey{Port: 12}
+			backendServerInfo = models.BackendServerInfo{Address: "some-ip", Port: 1234}
 		})
 
 		Context("when the routing key does not exist", func() {
@@ -187,8 +187,8 @@ var _ = Describe("RoutingTable", func() {
 			BeforeEach(func() {
 				existingRoutingTableEntry = models.RoutingTableEntry{
 					Backends: map[models.BackendServerInfo]struct{}{
-						backendServerInfo:                               struct{}{},
-						models.BackendServerInfo{"some-other-ip", 1235}: struct{}{},
+						backendServerInfo:                                              struct{}{},
+						models.BackendServerInfo{Address: "some-other-ip", Port: 1235}: struct{}{},
 					},
 				}
 				ok := routingTable.Set(routingKey, existingRoutingTableEntry)
@@ -197,7 +197,7 @@ var _ = Describe("RoutingTable", func() {
 
 			Context("and the backend does not exist ", func() {
 				It("it does not causes any changes or errors", func() {
-					someBackendServerInfo := models.BackendServerInfo{"some-missing-ip", 1236}
+					someBackendServerInfo := models.BackendServerInfo{Address: "some-missing-ip", Port: 1236}
 					ok := routingTable.DeleteBackendServerInfo(routingKey, someBackendServerInfo)
 					Expect(ok).To(BeFalse())
 					Expect(routingTable.Get(routingKey)).Should(Equal(existingRoutingTableEntry))
@@ -210,7 +210,7 @@ var _ = Describe("RoutingTable", func() {
 					Expect(ok).To(BeTrue())
 					expectedRoutingTableEntry := models.RoutingTableEntry{
 						Backends: map[models.BackendServerInfo]struct{}{
-							models.BackendServerInfo{"some-other-ip", 1235}: struct{}{},
+							models.BackendServerInfo{Address: "some-other-ip", Port: 1235}: struct{}{},
 						},
 					}
 					Expect(routingTable.Get(routingKey)).Should(Equal(expectedRoutingTableEntry))
@@ -221,7 +221,7 @@ var _ = Describe("RoutingTable", func() {
 						ok := routingTable.DeleteBackendServerInfo(routingKey, backendServerInfo)
 						Expect(ok).To(BeTrue())
 
-						ok = routingTable.DeleteBackendServerInfo(routingKey, models.BackendServerInfo{"some-other-ip", 1235})
+						ok = routingTable.DeleteBackendServerInfo(routingKey, models.BackendServerInfo{Address: "some-other-ip", Port: 1235})
 						Expect(ok).To(BeTrue())
 
 						Expect(routingTable.Size()).Should(Equal(0))

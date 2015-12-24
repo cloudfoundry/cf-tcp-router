@@ -23,7 +23,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 		)
 
 		var (
-			haproxyConfigurer *haproxy.HaProxyConfigurer
+			haproxyConfigurer *haproxy.Configurer
 		)
 
 		verifyHaProxyConfigContent := func(haproxyFileName, expectedContent string, present bool) {
@@ -100,7 +100,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 				invalidRoutingKey := models.RoutingKey{Port: 0}
 				invalidRoutingTableEntry := models.RoutingTableEntry{
 					Backends: map[models.BackendServerInfo]struct{}{
-						models.BackendServerInfo{"some-ip-1", 1234}: struct{}{},
+						models.BackendServerInfo{Address: "some-ip-1", Port: 1234}: struct{}{},
 					},
 				}
 				routingTable := models.NewRoutingTable()
@@ -110,7 +110,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 				routingKey := models.RoutingKey{Port: 80}
 				routingTableEntry := models.RoutingTableEntry{
 					Backends: map[models.BackendServerInfo]struct{}{
-						models.BackendServerInfo{"some-ip-2", 1234}: struct{}{},
+						models.BackendServerInfo{Address: "some-ip-2", Port: 1234}: struct{}{},
 					},
 				}
 				ok = routingTable.Set(routingKey, routingTableEntry)
@@ -168,8 +168,8 @@ var _ = Describe("HaproxyConfigurer", func() {
 						routingTable := models.NewRoutingTable()
 						routingTableEntry := models.NewRoutingTableEntry(
 							models.BackendServerInfos{
-								models.BackendServerInfo{"some-ip-1", 1234},
-								models.BackendServerInfo{"some-ip-2", 1235},
+								models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
+								models.BackendServerInfo{Address: "some-ip-2", Port: 1235},
 							},
 						)
 						routinTableKey := models.RoutingKey{Port: 2222}
@@ -196,8 +196,8 @@ var _ = Describe("HaproxyConfigurer", func() {
 						routingTable := models.NewRoutingTable()
 						routingTableEntry := models.NewRoutingTableEntry(
 							models.BackendServerInfos{
-								models.BackendServerInfo{"some-ip-1", 1234},
-								models.BackendServerInfo{"some-ip-2", 1235},
+								models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
+								models.BackendServerInfo{Address: "some-ip-2", Port: 1235},
 							},
 						)
 						routinTableKey := models.RoutingKey{Port: 2222}
@@ -205,8 +205,8 @@ var _ = Describe("HaproxyConfigurer", func() {
 						Expect(ok).To(BeTrue())
 						routingTableEntry = models.NewRoutingTableEntry(
 							models.BackendServerInfos{
-								models.BackendServerInfo{"some-ip-3", 1234},
-								models.BackendServerInfo{"some-ip-4", 1235},
+								models.BackendServerInfo{Address: "some-ip-3", Port: 1234},
+								models.BackendServerInfo{Address: "some-ip-4", Port: 1235},
 							},
 						)
 						routinTableKey = models.RoutingKey{Port: 3333}
@@ -244,8 +244,8 @@ listen listen_cfg_3333
 					routingTable := models.NewRoutingTable()
 					routingTableEntry := models.NewRoutingTableEntry(
 						models.BackendServerInfos{
-							models.BackendServerInfo{"some-ip-1", 1234},
-							models.BackendServerInfo{"some-ip-2", 1235},
+							models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
+							models.BackendServerInfo{Address: "some-ip-2", Port: 1235},
 						},
 					)
 					routinTableKey := models.RoutingKey{Port: 2222}
@@ -257,8 +257,8 @@ listen listen_cfg_3333
 					routingTable = models.NewRoutingTable()
 					routingTableEntry = models.NewRoutingTableEntry(
 						models.BackendServerInfos{
-							models.BackendServerInfo{"some-ip-3", 2345},
-							models.BackendServerInfo{"some-ip-4", 3456},
+							models.BackendServerInfo{Address: "some-ip-3", Port: 2345},
+							models.BackendServerInfo{Address: "some-ip-4", Port: 3456},
 						},
 					)
 					routinTableKey = models.RoutingKey{Port: 3333}

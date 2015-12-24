@@ -12,7 +12,7 @@ import (
 )
 
 type Watcher struct {
-	routingApiClient          routing_api.Client
+	routingAPIClient          routing_api.Client
 	updater                   routing_table.Updater
 	tokenFetcher              token_fetcher.TokenFetcher
 	subscriptionRetryInterval int
@@ -21,7 +21,7 @@ type Watcher struct {
 }
 
 func New(
-	routingApiClient routing_api.Client,
+	routingAPIClient routing_api.Client,
 	updater routing_table.Updater,
 	tokenFetcher token_fetcher.TokenFetcher,
 	subscriptionRetryInterval int,
@@ -29,7 +29,7 @@ func New(
 	logger lager.Logger,
 ) *Watcher {
 	return &Watcher{
-		routingApiClient:          routingApiClient,
+		routingAPIClient:          routingAPIClient,
 		updater:                   updater,
 		tokenFetcher:              tokenFetcher,
 		subscriptionRetryInterval: subscriptionRetryInterval,
@@ -63,10 +63,10 @@ func (watcher *Watcher) Run(signals <-chan os.Signal, ready chan<- struct{}) err
 				time.Sleep(time.Duration(watcher.subscriptionRetryInterval) * time.Second)
 				continue
 			}
-			watcher.routingApiClient.SetToken(token.AccessToken)
+			watcher.routingAPIClient.SetToken(token.AccessToken)
 
 			watcher.logger.Info("subscribing-to-tcp-routing-events")
-			es, err = watcher.routingApiClient.SubscribeToTcpEvents()
+			es, err = watcher.routingAPIClient.SubscribeToTcpEvents()
 			if err != nil {
 				if err.Error() == "unauthorized" {
 					watcher.logger.Error("invalid-oauth-token", err)

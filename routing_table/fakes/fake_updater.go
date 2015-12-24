@@ -17,13 +17,13 @@ type FakeUpdater struct {
 	handleEventReturns struct {
 		result1 error
 	}
-	SyncStub        func()
-	syncMutex       sync.RWMutex
-	syncArgsForCall []struct{}
+	SyncStub           func()
+	syncMutex          sync.RWMutex
+	syncArgsForCall    []struct{}
 	SyncingStub        func() bool
 	syncingMutex       sync.RWMutex
 	syncingArgsForCall []struct{}
-	syncingReturns struct {
+	syncingReturns     struct {
 		result1 bool
 	}
 }

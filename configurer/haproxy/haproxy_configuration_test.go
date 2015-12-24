@@ -47,7 +47,7 @@ var _ = Describe("HaproxyConfiguration", func() {
 					routingKey := models.RoutingKey{Port: 8880}
 					routingTableEntry := models.RoutingTableEntry{
 						Backends: map[models.BackendServerInfo]struct{}{
-							models.BackendServerInfo{"some-ip", 1234}: struct{}{},
+							models.BackendServerInfo{Address: "some-ip", Port: 1234}: struct{}{},
 						},
 					}
 					str, err := haproxy.RoutingTableEntryToHaProxyConfig(routingKey, routingTableEntry)
@@ -61,8 +61,8 @@ var _ = Describe("HaproxyConfiguration", func() {
 					routingKey := models.RoutingKey{Port: 8880}
 					routingTableEntry := models.RoutingTableEntry{
 						Backends: map[models.BackendServerInfo]struct{}{
-							models.BackendServerInfo{"some-ip-1", 1234}: struct{}{},
-							models.BackendServerInfo{"some-ip-2", 1235}: struct{}{},
+							models.BackendServerInfo{Address: "some-ip-1", Port: 1234}: struct{}{},
+							models.BackendServerInfo{Address: "some-ip-2", Port: 1235}: struct{}{},
 						},
 					}
 					str, err := haproxy.RoutingTableEntryToHaProxyConfig(routingKey, routingTableEntry)
@@ -80,7 +80,7 @@ var _ = Describe("HaproxyConfiguration", func() {
 					routingKey := models.RoutingKey{Port: 0}
 					routingTableEntry := models.RoutingTableEntry{
 						Backends: map[models.BackendServerInfo]struct{}{
-							models.BackendServerInfo{"some-ip", 1234}: struct{}{},
+							models.BackendServerInfo{Address: "some-ip", Port: 1234}: struct{}{},
 						},
 					}
 					_, err := haproxy.RoutingTableEntryToHaProxyConfig(routingKey, routingTableEntry)
@@ -94,7 +94,7 @@ var _ = Describe("HaproxyConfiguration", func() {
 					routingKey := models.RoutingKey{Port: 8080}
 					routingTableEntry := models.RoutingTableEntry{
 						Backends: map[models.BackendServerInfo]struct{}{
-							models.BackendServerInfo{"", 1234}: struct{}{},
+							models.BackendServerInfo{Address: "", Port: 1234}: struct{}{},
 						},
 					}
 					_, err := haproxy.RoutingTableEntryToHaProxyConfig(routingKey, routingTableEntry)

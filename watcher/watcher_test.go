@@ -65,7 +65,6 @@ var _ = Describe("Watcher", func() {
 			case err := <-errorChannel:
 				return routing_api.TcpEvent{}, err
 			}
-			return routing_api.TcpEvent{}, nil
 		}
 	})
 

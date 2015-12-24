@@ -25,8 +25,8 @@ import (
 )
 
 const (
-	DefaultTokenFetchRetryInterval = 5 * time.Second
-	DefaultTokenFetchNumRetries    = uint(3)
+	defaultTokenFetchRetryInterval = 5 * time.Second
+	defaultTokenFetchNumRetries    = uint(3)
 )
 
 var tcpLoadBalancer = flag.String(
@@ -67,13 +67,13 @@ var syncInterval = flag.Duration(
 
 var tokenFetchMaxRetries = flag.Uint(
 	"tokenFetchMaxRetries",
-	DefaultTokenFetchNumRetries,
+	defaultTokenFetchNumRetries,
 	"Maximum number of retries the Token Fetcher will use every time FetchToken is called",
 )
 
 var tokenFetchRetryInterval = flag.Duration(
 	"tokenFetchRetryInterval",
-	DefaultTokenFetchRetryInterval,
+	defaultTokenFetchRetryInterval,
 	"interval to wait before TokenFetcher retries to fetch a token",
 )
 
@@ -119,14 +119,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	routingApiAddress := fmt.Sprintf("%s:%d", cfg.RoutingApi.Uri, cfg.RoutingApi.Port)
-	logger.Debug("creating-routing-api-client", lager.Data{"api-location": routingApiAddress})
-	routingApiClient := routing_api.NewClient(routingApiAddress)
+	routingAPIAddress := fmt.Sprintf("%s:%d", cfg.RoutingAPI.URI, cfg.RoutingAPI.Port)
+	logger.Debug("creating-routing-api-client", lager.Data{"api-location": routingAPIAddress})
+	routingAPIClient := routing_api.NewClient(routingAPIAddress)
 
-	updater := routing_table.NewUpdater(logger, &routingTable, configurer, routingApiClient, tokenFetcher)
+	updater := routing_table.NewUpdater(logger, &routingTable, configurer, routingAPIClient, tokenFetcher)
 	syncChannel := make(chan struct{})
 	syncRunner := syncer.New(clock, *syncInterval, syncChannel, logger)
-	watcher := watcher.New(routingApiClient, updater, tokenFetcher, *subscriptionRetryInterval, syncChannel, logger)
+	watcher := watcher.New(routingAPIClient, updater, tokenFetcher, *subscriptionRetryInterval, syncChannel, logger)
 
 	members := grouper.Members{
 		{"watcher", watcher},
@@ -155,7 +155,7 @@ func main() {
 }
 
 func createTokenFetcher(logger lager.Logger, cfg *config.Config, klok clock.Clock) (token_fetcher.TokenFetcher, error) {
-	if cfg.RoutingApi.AuthDisabled {
+	if cfg.RoutingAPI.AuthDisabled {
 		logger.Debug("creating-noop-token-fetcher")
 		tknFetcher := token_fetcher.NewNoOpTokenFetcher()
 		return tknFetcher, nil
@@ -173,6 +173,6 @@ func createTokenFetcher(logger lager.Logger, cfg *config.Config, klok clock.Cloc
 func initializeDropsonde(logger lager.Logger) {
 	err := dropsonde.Initialize(dropsondeDestination, dropsondeOrigin)
 	if err != nil {
-		logger.Error("failed to initialize dropsonde: %v", err)
+		logger.Error("failed-to-initialize-dropsonde", err)
 	}
 }

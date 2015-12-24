@@ -10,10 +10,10 @@ import (
 
 func BackendServerInfoToHaProxyConfig(bs models.BackendServerInfo) (string, error) {
 	if bs.Address == "" {
-		return "", cf_tcp_router.ErrInvalidField{"backend_server.address"}
+		return "", cf_tcp_router.ErrInvalidField{Field: "backend_server.address"}
 	}
 	if bs.Port == 0 {
-		return "", cf_tcp_router.ErrInvalidField{"backend_server.port"}
+		return "", cf_tcp_router.ErrInvalidField{Field: "backend_server.port"}
 	}
 	name := fmt.Sprintf("server_%s_%d", bs.Address, bs.Port)
 	return fmt.Sprintf("server %s %s:%d\n", name, bs.Address, bs.Port), nil
@@ -21,16 +21,16 @@ func BackendServerInfoToHaProxyConfig(bs models.BackendServerInfo) (string, erro
 
 func RoutingTableEntryToHaProxyConfig(routingKey models.RoutingKey, routingTableEntry models.RoutingTableEntry) (string, error) {
 	if routingKey.Port == 0 {
-		return "", cf_tcp_router.ErrInvalidField{"listen_configuration.port"}
+		return "", cf_tcp_router.ErrInvalidField{Field: "listen_configuration.port"}
 	}
 	if len(routingTableEntry.Backends) == 0 {
-		return "", cf_tcp_router.ErrInvalidField{"listen_configuration.backends"}
+		return "", cf_tcp_router.ErrInvalidField{Field: "listen_configuration.backends"}
 	}
 	name := fmt.Sprintf("listen_cfg_%d", routingKey.Port)
 	var buff bytes.Buffer
 
 	buff.WriteString(fmt.Sprintf("listen %s\n  mode tcp\n  bind :%d\n", name, routingKey.Port))
-	for bs, _ := range routingTableEntry.Backends {
+	for bs := range routingTableEntry.Backends {
 		str, err := BackendServerInfoToHaProxyConfig(bs)
 		if err != nil {
 			return "", err

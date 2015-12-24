@@ -7,6 +7,7 @@ import (
 	"github.com/tedsuo/ifrit/ginkgomon"
 )
 
+// Args used by runner
 type Args struct {
 	BaseLoadBalancerConfigFilePath string
 	LoadBalancerConfigFilePath     string

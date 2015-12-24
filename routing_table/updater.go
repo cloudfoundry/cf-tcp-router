@@ -24,21 +24,21 @@ type updater struct {
 	routingTable     *models.RoutingTable
 	configurer       configurer.RouterConfigurer
 	syncing          bool
-	routingApiClient routing_api.Client
+	routingAPIClient routing_api.Client
 	tokenFetcher     token_fetcher.TokenFetcher
 	cachedEvents     []routing_api.TcpEvent
 	lock             *sync.Mutex
 }
 
 func NewUpdater(logger lager.Logger, routingTable *models.RoutingTable, configurer configurer.RouterConfigurer,
-	routingApiClient routing_api.Client, tokenFetcher token_fetcher.TokenFetcher) Updater {
+	routingAPIClient routing_api.Client, tokenFetcher token_fetcher.TokenFetcher) Updater {
 	return &updater{
 		logger:           logger,
 		routingTable:     routingTable,
 		configurer:       configurer,
 		lock:             new(sync.Mutex),
 		syncing:          false,
-		routingApiClient: routingApiClient,
+		routingAPIClient: routingAPIClient,
 		tokenFetcher:     tokenFetcher,
 		cachedEvents:     nil,
 	}
@@ -73,8 +73,8 @@ func (u *updater) Sync() {
 			logger.Error("error-fetching-token", tokenErr)
 			return
 		}
-		u.routingApiClient.SetToken(token.AccessToken)
-		tcpRouteMappings, err = u.routingApiClient.TcpRouteMappings()
+		u.routingAPIClient.SetToken(token.AccessToken)
+		tcpRouteMappings, err = u.routingAPIClient.TcpRouteMappings()
 		if err != nil {
 			logger.Error("error-fetching-routes", err)
 			if err.Error() == "unauthorized" {
@@ -138,7 +138,6 @@ func (u *updater) handleEvent(event routing_api.TcpEvent) error {
 		logger.Info("unknown-event-action")
 		return errors.New("unknown-event-action:" + action)
 	}
-	return nil
 }
 
 func (u *updater) toRoutingTableEntry(logger lager.Logger, routeMapping db.TcpRouteMapping) (models.RoutingKey, models.BackendServerInfo) {

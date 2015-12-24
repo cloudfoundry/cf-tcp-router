@@ -2,7 +2,6 @@ package haproxy
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -15,21 +14,21 @@ import (
 	"github.com/pivotal-golang/lager"
 )
 
-type HaProxyConfigurer struct {
+type Configurer struct {
 	logger             lager.Logger
 	baseConfigFilePath string
 	configFilePath     string
 	configFileLock     *sync.Mutex
 }
 
-func NewHaProxyConfigurer(logger lager.Logger, baseConfigFilePath string, configFilePath string) (*HaProxyConfigurer, error) {
+func NewHaProxyConfigurer(logger lager.Logger, baseConfigFilePath string, configFilePath string) (*Configurer, error) {
 	if !utils.FileExists(baseConfigFilePath) {
-		return nil, errors.New(fmt.Sprintf("%s: [%s]", cf_tcp_router.ErrRouterConfigFileNotFound, baseConfigFilePath))
+		return nil, fmt.Errorf("%s: [%s]", cf_tcp_router.ErrRouterConfigFileNotFound, baseConfigFilePath)
 	}
 	if !utils.FileExists(configFilePath) {
-		return nil, errors.New(fmt.Sprintf("%s: [%s]", cf_tcp_router.ErrRouterConfigFileNotFound, configFilePath))
+		return nil, fmt.Errorf("%s: [%s]", cf_tcp_router.ErrRouterConfigFileNotFound, configFilePath)
 	}
-	return &HaProxyConfigurer{
+	return &Configurer{
 		logger:             logger,
 		baseConfigFilePath: baseConfigFilePath,
 		configFilePath:     configFilePath,
@@ -37,7 +36,7 @@ func NewHaProxyConfigurer(logger lager.Logger, baseConfigFilePath string, config
 	}, nil
 }
 
-func (h *HaProxyConfigurer) Configure(routingTable models.RoutingTable) error {
+func (h *Configurer) Configure(routingTable models.RoutingTable) error {
 	h.configFileLock.Lock()
 	defer h.configFileLock.Unlock()
 
@@ -73,7 +72,7 @@ func (h *HaProxyConfigurer) Configure(routingTable models.RoutingTable) error {
 	return h.writeToConfig(buff.Bytes())
 }
 
-func (h *HaProxyConfigurer) getListenConfiguration(
+func (h *Configurer) getListenConfiguration(
 	key models.RoutingKey,
 	entry models.RoutingTableEntry,
 	cfgContent []byte) ([]byte, error) {
@@ -99,7 +98,7 @@ func (h *HaProxyConfigurer) getListenConfiguration(
 	return buff.Bytes(), nil
 }
 
-func (h *HaProxyConfigurer) createConfigBackup() error {
+func (h *Configurer) createConfigBackup() error {
 	h.logger.Debug("reading-config-file", lager.Data{"config-file": h.configFilePath})
 	cfgContent, err := ioutil.ReadFile(h.configFilePath)
 	if err != nil {
@@ -115,7 +114,7 @@ func (h *HaProxyConfigurer) createConfigBackup() error {
 	return nil
 }
 
-func (h *HaProxyConfigurer) writeToConfig(cfgContent []byte) error {
+func (h *Configurer) writeToConfig(cfgContent []byte) error {
 	tmpConfigFileName := fmt.Sprintf("%s.tmp", h.configFilePath)
 	err := utils.WriteToFile(cfgContent, tmpConfigFileName)
 	if err != nil {

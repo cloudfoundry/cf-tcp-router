@@ -51,8 +51,6 @@ func (s *Syncer) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 			return nil
 		}
 	}
-
-	return nil
 }
 
 func (s *Syncer) sync() {

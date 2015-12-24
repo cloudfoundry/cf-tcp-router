@@ -18,8 +18,8 @@ var _ = Describe("Config", func() {
 					ClientSecret:  "somesecret",
 					Port:          8080,
 				},
-				RoutingApi: config.RoutingApiConfig{
-					Uri:          "http://routing-api.service.cf.internal",
+				RoutingAPI: config.RoutingAPIConfig{
+					URI:          "http://routing-api.service.cf.internal",
 					Port:         3000,
 					AuthDisabled: false,
 				},
@@ -48,8 +48,8 @@ var _ = Describe("Config", func() {
 	Context("when oauth section is  missing", func() {
 		It("loads only routing api section", func() {
 			expectedCfg := config.Config{
-				RoutingApi: config.RoutingApiConfig{
-					Uri:  "http://routing-api.service.cf.internal",
+				RoutingAPI: config.RoutingAPIConfig{
+					URI:  "http://routing-api.service.cf.internal",
 					Port: 3000,
 				},
 			}
@@ -68,8 +68,8 @@ var _ = Describe("Config", func() {
 					ClientSecret:  "",
 					Port:          8080,
 				},
-				RoutingApi: config.RoutingApiConfig{
-					Uri:  "http://routing-api.service.cf.internal",
+				RoutingAPI: config.RoutingAPIConfig{
+					URI:  "http://routing-api.service.cf.internal",
 					Port: 3000,
 				},
 			}

@@ -61,20 +61,20 @@ var _ = Describe("Updater", func() {
 
 	Describe("HandleEvent", func() {
 		BeforeEach(func() {
-			existingRoutingKey1 = models.RoutingKey{externalPort1}
+			existingRoutingKey1 = models.RoutingKey{Port: externalPort1}
 			existingRoutingTableEntry1 = models.NewRoutingTableEntry(
 				models.BackendServerInfos{
-					models.BackendServerInfo{"some-ip-1", 1234},
-					models.BackendServerInfo{"some-ip-2", 1234},
+					models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
+					models.BackendServerInfo{Address: "some-ip-2", Port: 1234},
 				},
 			)
 			Expect(routingTable.Set(existingRoutingKey1, existingRoutingTableEntry1)).To(BeTrue())
 
-			existingRoutingKey2 = models.RoutingKey{externalPort2}
+			existingRoutingKey2 = models.RoutingKey{Port: externalPort2}
 			existingRoutingTableEntry2 = models.NewRoutingTableEntry(
 				models.BackendServerInfos{
-					models.BackendServerInfo{"some-ip-3", 2345},
-					models.BackendServerInfo{"some-ip-4", 2345},
+					models.BackendServerInfo{Address: "some-ip-3", Port: 2345},
+					models.BackendServerInfo{Address: "some-ip-4", Port: 2345},
 				},
 			)
 			Expect(routingTable.Set(existingRoutingKey2, existingRoutingTableEntry2)).To(BeTrue())
@@ -103,10 +103,10 @@ var _ = Describe("Updater", func() {
 					Expect(err).NotTo(HaveOccurred())
 					expectedRoutingTableEntry := models.NewRoutingTableEntry(
 						models.BackendServerInfos{
-							models.BackendServerInfo{"some-ip-4", 2346},
+							models.BackendServerInfo{Address: "some-ip-4", Port: 2346},
 						},
 					)
-					verifyRoutingTableEntry(models.RoutingKey{externalPort4}, expectedRoutingTableEntry)
+					verifyRoutingTableEntry(models.RoutingKey{Port: externalPort4}, expectedRoutingTableEntry)
 					Expect(fakeConfigurer.ConfigureCallCount()).To(Equal(1))
 				})
 			})
@@ -155,9 +155,9 @@ var _ = Describe("Updater", func() {
 						Expect(err).NotTo(HaveOccurred())
 						expectedRoutingTableEntry := models.NewRoutingTableEntry(
 							models.BackendServerInfos{
-								models.BackendServerInfo{"some-ip-1", 1234},
-								models.BackendServerInfo{"some-ip-2", 1234},
-								models.BackendServerInfo{"some-ip-5", 1234},
+								models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
+								models.BackendServerInfo{Address: "some-ip-2", Port: 1234},
+								models.BackendServerInfo{Address: "some-ip-5", Port: 1234},
 							},
 						)
 						verifyRoutingTableEntry(existingRoutingKey1, expectedRoutingTableEntry)
@@ -209,11 +209,11 @@ var _ = Describe("Updater", func() {
 						existingRoutingTableEntry5 models.RoutingTableEntry
 					)
 					BeforeEach(func() {
-						existingRoutingKey5 = models.RoutingKey{externalPort5}
+						existingRoutingKey5 = models.RoutingKey{Port: externalPort5}
 						existingRoutingTableEntry5 = models.NewRoutingTableEntry(
 							models.BackendServerInfos{
-								models.BackendServerInfo{"some-ip-1", 1234},
-								models.BackendServerInfo{"some-ip-2", 1234},
+								models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
+								models.BackendServerInfo{Address: "some-ip-2", Port: 1234},
 							},
 						)
 						Expect(routingTable.Set(existingRoutingKey5, existingRoutingTableEntry5)).To(BeTrue())
@@ -235,7 +235,7 @@ var _ = Describe("Updater", func() {
 						Expect(err).NotTo(HaveOccurred())
 						expectedRoutingTableEntry := models.NewRoutingTableEntry(
 							models.BackendServerInfos{
-								models.BackendServerInfo{"some-ip-2", 1234},
+								models.BackendServerInfo{Address: "some-ip-2", Port: 1234},
 							},
 						)
 						verifyRoutingTableEntry(existingRoutingKey5, expectedRoutingTableEntry)
@@ -260,11 +260,11 @@ var _ = Describe("Updater", func() {
 						existingRoutingTableEntry6 models.RoutingTableEntry
 					)
 					BeforeEach(func() {
-						existingRoutingKey6 = models.RoutingKey{externalPort5}
+						existingRoutingKey6 = models.RoutingKey{Port: externalPort5}
 						existingRoutingTableEntry6 = models.NewRoutingTableEntry(
 							models.BackendServerInfos{
-								models.BackendServerInfo{"some-ip-1", 1234},
-								models.BackendServerInfo{"some-ip-2", 1234},
+								models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
+								models.BackendServerInfo{Address: "some-ip-2", Port: 1234},
 							},
 						)
 						Expect(routingTable.Set(existingRoutingKey6, existingRoutingTableEntry6)).To(BeTrue())
@@ -287,8 +287,8 @@ var _ = Describe("Updater", func() {
 						Expect(err).NotTo(HaveOccurred())
 						expectedRoutingTableEntry := models.NewRoutingTableEntry(
 							models.BackendServerInfos{
-								models.BackendServerInfo{"some-ip-1", 1234},
-								models.BackendServerInfo{"some-ip-2", 1234},
+								models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
+								models.BackendServerInfo{Address: "some-ip-2", Port: 1234},
 							},
 						)
 						verifyRoutingTableEntry(existingRoutingKey6, expectedRoutingTableEntry)
@@ -364,18 +364,18 @@ var _ = Describe("Updater", func() {
 				Expect(routingTable.Size()).To(Equal(2))
 				expectedRoutingTableEntry1 := models.NewRoutingTableEntry(
 					models.BackendServerInfos{
-						models.BackendServerInfo{"some-ip-1", 61000},
-						models.BackendServerInfo{"some-ip-2", 61001},
+						models.BackendServerInfo{Address: "some-ip-1", Port: 61000},
+						models.BackendServerInfo{Address: "some-ip-2", Port: 61001},
 					},
 				)
-				verifyRoutingTableEntry(models.RoutingKey{externalPort1}, expectedRoutingTableEntry1)
+				verifyRoutingTableEntry(models.RoutingKey{Port: externalPort1}, expectedRoutingTableEntry1)
 				expectedRoutingTableEntry2 := models.NewRoutingTableEntry(
 					models.BackendServerInfos{
-						models.BackendServerInfo{"some-ip-3", 60000},
-						models.BackendServerInfo{"some-ip-4", 60000},
+						models.BackendServerInfo{Address: "some-ip-3", Port: 60000},
+						models.BackendServerInfo{Address: "some-ip-4", Port: 60000},
 					},
 				)
-				verifyRoutingTableEntry(models.RoutingKey{externalPort2}, expectedRoutingTableEntry2)
+				verifyRoutingTableEntry(models.RoutingKey{Port: externalPort2}, expectedRoutingTableEntry2)
 			})
 
 			Context("when events are received", func() {
@@ -422,17 +422,17 @@ var _ = Describe("Updater", func() {
 					Expect(routingTable.Size()).To(Equal(2))
 					expectedRoutingTableEntry1 := models.NewRoutingTableEntry(
 						models.BackendServerInfos{
-							models.BackendServerInfo{"some-ip-1", 61000},
+							models.BackendServerInfo{Address: "some-ip-1", Port: 61000},
 						},
 					)
-					verifyRoutingTableEntry(models.RoutingKey{externalPort1}, expectedRoutingTableEntry1)
+					verifyRoutingTableEntry(models.RoutingKey{Port: externalPort1}, expectedRoutingTableEntry1)
 					expectedRoutingTableEntry2 := models.NewRoutingTableEntry(
 						models.BackendServerInfos{
-							models.BackendServerInfo{"some-ip-3", 60000},
-							models.BackendServerInfo{"some-ip-4", 60000},
+							models.BackendServerInfo{Address: "some-ip-3", Port: 60000},
+							models.BackendServerInfo{Address: "some-ip-4", Port: 60000},
 						},
 					)
-					verifyRoutingTableEntry(models.RoutingKey{externalPort2}, expectedRoutingTableEntry2)
+					verifyRoutingTableEntry(models.RoutingKey{Port: externalPort2}, expectedRoutingTableEntry2)
 				})
 			})
 		})
@@ -441,11 +441,11 @@ var _ = Describe("Updater", func() {
 			Context("other than unauthorized", func() {
 				BeforeEach(func() {
 					fakeRoutingApiClient.TcpRouteMappingsReturns(nil, errors.New("bamboozled"))
-					existingRoutingKey1 = models.RoutingKey{externalPort1}
+					existingRoutingKey1 = models.RoutingKey{Port: externalPort1}
 					existingRoutingTableEntry1 = models.NewRoutingTableEntry(
 						models.BackendServerInfos{
-							models.BackendServerInfo{"some-ip-1", 1234},
-							models.BackendServerInfo{"some-ip-2", 1234},
+							models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
+							models.BackendServerInfo{Address: "some-ip-2", Port: 1234},
 						},
 					)
 					Expect(routingTable.Set(existingRoutingKey1, existingRoutingTableEntry1)).To(BeTrue())
@@ -461,22 +461,22 @@ var _ = Describe("Updater", func() {
 					Expect(routingTable.Size()).To(Equal(1))
 					expectedRoutingTableEntry1 := models.NewRoutingTableEntry(
 						models.BackendServerInfos{
-							models.BackendServerInfo{"some-ip-1", 1234},
-							models.BackendServerInfo{"some-ip-2", 1234},
+							models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
+							models.BackendServerInfo{Address: "some-ip-2", Port: 1234},
 						},
 					)
-					verifyRoutingTableEntry(models.RoutingKey{externalPort1}, expectedRoutingTableEntry1)
+					verifyRoutingTableEntry(models.RoutingKey{Port: externalPort1}, expectedRoutingTableEntry1)
 				})
 			})
 
 			Context("unauthorized", func() {
 				BeforeEach(func() {
 					fakeRoutingApiClient.TcpRouteMappingsReturns(nil, errors.New("unauthorized"))
-					existingRoutingKey1 = models.RoutingKey{externalPort1}
+					existingRoutingKey1 = models.RoutingKey{Port: externalPort1}
 					existingRoutingTableEntry1 = models.NewRoutingTableEntry(
 						models.BackendServerInfos{
-							models.BackendServerInfo{"some-ip-1", 1234},
-							models.BackendServerInfo{"some-ip-2", 1234},
+							models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
+							models.BackendServerInfo{Address: "some-ip-2", Port: 1234},
 						},
 					)
 					Expect(routingTable.Set(existingRoutingKey1, existingRoutingTableEntry1)).To(BeTrue())
@@ -494,11 +494,11 @@ var _ = Describe("Updater", func() {
 					Expect(routingTable.Size()).To(Equal(1))
 					expectedRoutingTableEntry1 := models.NewRoutingTableEntry(
 						models.BackendServerInfos{
-							models.BackendServerInfo{"some-ip-1", 1234},
-							models.BackendServerInfo{"some-ip-2", 1234},
+							models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
+							models.BackendServerInfo{Address: "some-ip-2", Port: 1234},
 						},
 					)
-					verifyRoutingTableEntry(models.RoutingKey{externalPort1}, expectedRoutingTableEntry1)
+					verifyRoutingTableEntry(models.RoutingKey{Port: externalPort1}, expectedRoutingTableEntry1)
 				})
 			})
 		})
@@ -506,11 +506,11 @@ var _ = Describe("Updater", func() {
 		Context("when token fetcher returns error", func() {
 			BeforeEach(func() {
 				fakeTokenFetcher.FetchTokenReturns(nil, errors.New("no token for you"))
-				existingRoutingKey1 = models.RoutingKey{externalPort1}
+				existingRoutingKey1 = models.RoutingKey{Port: externalPort1}
 				existingRoutingTableEntry1 = models.NewRoutingTableEntry(
 					models.BackendServerInfos{
-						models.BackendServerInfo{"some-ip-1", 1234},
-						models.BackendServerInfo{"some-ip-2", 1234},
+						models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
+						models.BackendServerInfo{Address: "some-ip-2", Port: 1234},
 					},
 				)
 				Expect(routingTable.Set(existingRoutingKey1, existingRoutingTableEntry1)).To(BeTrue())
@@ -526,11 +526,11 @@ var _ = Describe("Updater", func() {
 				Expect(routingTable.Size()).To(Equal(1))
 				expectedRoutingTableEntry1 := models.NewRoutingTableEntry(
 					models.BackendServerInfos{
-						models.BackendServerInfo{"some-ip-1", 1234},
-						models.BackendServerInfo{"some-ip-2", 1234},
+						models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
+						models.BackendServerInfo{Address: "some-ip-2", Port: 1234},
 					},
 				)
-				verifyRoutingTableEntry(models.RoutingKey{externalPort1}, expectedRoutingTableEntry1)
+				verifyRoutingTableEntry(models.RoutingKey{Port: externalPort1}, expectedRoutingTableEntry1)
 			})
 		})
 

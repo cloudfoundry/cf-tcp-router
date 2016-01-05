@@ -1,6 +1,7 @@
 package metrics_reporter
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 
@@ -63,10 +64,17 @@ func populateProxyStats(proxyStat haproxy_client.HaproxyStat, proxyStatsMap map[
 
 // proxyname i.e.  listen_cfg_9001, listen_cfg_9002
 func proxyKey(proxy string) (models.RoutingKey, error) {
+	routingKey := models.RoutingKey{}
+
 	proxyNameParts := strings.Split(proxy, "_")
+	if len(proxyNameParts) != 3 {
+		return routingKey, errors.New("not a valid proxy name")
+	}
+
 	port, err := strconv.ParseUint(proxyNameParts[2], 10, 16)
 	if err != nil {
-		return models.RoutingKey{}, err
+		return routingKey, err
 	}
-	return models.RoutingKey{Port: uint16(port)}, nil
+	routingKey.Port = uint16(port)
+	return routingKey, nil
 }

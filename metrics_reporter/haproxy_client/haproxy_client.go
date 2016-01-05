@@ -80,7 +80,7 @@ func (r *HaproxyStatsClient) GetStats() HaproxyStats {
 		}
 		buffer.Write(buff[:cnt])
 	}
-	logger.Debug("num-bytes-read", lager.Data{"count": buffer.Len()})
+	logger.Info("num-bytes-read", lager.Data{"count": buffer.Len()})
 	if buffer.Len() > 0 {
 		stats = readCsv(logger, buffer.Bytes())
 	}

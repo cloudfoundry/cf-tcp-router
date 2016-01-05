@@ -106,11 +106,51 @@ var _ = Describe("Metrics Converter", func() {
 			})
 		})
 
-		Context("invalid proxy name", func() {
+		Context("non numeric port in proxy name", func() {
 			BeforeEach(func() {
 				stats = haproxy_client.HaproxyStats{
 					{
 						ProxyName:            "fake_pxname1_BAD",
+						CurrentQueued:        10,
+						ErrorConnecting:      20,
+						AverageQueueTimeMs:   30,
+						AverageConnectTimeMs: 25,
+						CurrentSessions:      15,
+						AverageSessionTimeMs: 9,
+					},
+					{
+						ProxyName:            "fake_pxname2_9001",
+						CurrentQueued:        20,
+						ErrorConnecting:      20,
+						AverageQueueTimeMs:   0,
+						AverageConnectTimeMs: 40,
+						CurrentSessions:      15,
+						AverageSessionTimeMs: 9,
+					},
+				}
+
+				metrics = metrics_reporter.Convert(stats)
+			})
+
+			It("does not report for invalid proxy name", func() {
+				expectedProxyKey1 := models.RoutingKey{Port: 9001}
+				expectedProxyKey2 := models.RoutingKey{Port: 0}
+				expectedProxyStats1 := metrics_reporter.ProxyStats{
+					ConnectionTime:  40,
+					CurrentSessions: 15,
+				}
+
+				Expect(len(metrics.ProxyMetrics)).Should(Equal(1))
+				Expect(metrics.ProxyMetrics).Should(HaveKeyWithValue(expectedProxyKey1, expectedProxyStats1))
+				Expect(metrics.ProxyMetrics).ShouldNot(HaveKey(expectedProxyKey2))
+			})
+		})
+
+		Context("not a proxy name", func() {
+			BeforeEach(func() {
+				stats = haproxy_client.HaproxyStats{
+					{
+						ProxyName:            "http-in",
 						CurrentQueued:        10,
 						ErrorConnecting:      20,
 						AverageQueueTimeMs:   30,

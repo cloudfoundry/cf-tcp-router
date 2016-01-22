@@ -215,7 +215,7 @@ var _ = Describe("Watcher", func() {
 
 		It("returns an error", func() {
 			Eventually(logger).Should(gbytes.Say("test.watcher.error-fetching-token"))
-			Eventually(tokenFetcher.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(2))
+			Eventually(tokenFetcher.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(BeNumerically(">", 2))
 		})
 	})
 

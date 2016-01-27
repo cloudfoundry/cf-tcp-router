@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/cloudfoundry-incubator/tcp-emitter/syncer"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/syncer"
 	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
@@ -39,49 +39,70 @@ var _ = Describe("Syncer", func() {
 	})
 
 	Context("on a specified interval", func() {
+		var (
+			watchChannel chan struct{}
+			readyChannel chan struct{}
+			closeChannel chan struct{}
+		)
+
+		BeforeEach(func() {
+			watchChannel = make(chan struct{}, 1)
+			readyChannel = make(chan struct{})
+			closeChannel = make(chan struct{})
+			syncChannel := syncChannel
+			go func() {
+				close(readyChannel)
+			OUTERLOOP:
+				for {
+					select {
+					case <-syncChannel:
+						logger.Debug("received-sync")
+						watchChannel <- struct{}{}
+					case <-closeChannel:
+						break OUTERLOOP
+					}
+				}
+			}()
+		})
 
 		It("should sync", func() {
+			duration := syncInterval + 100*time.Millisecond
+			Eventually(readyChannel).Should(BeClosed())
 			process = ifrit.Invoke(syncerRunner)
-			var t1 time.Time
-			var t2 time.Time
+			// Consume the startup sync event
+			Eventually(watchChannel).Should(Receive())
 
-			clock.Increment(syncInterval + 100*time.Millisecond)
+			logger.Debug("first-tick")
+			clock.Increment(duration)
+			Eventually(watchChannel, duration).Should(Receive())
 
-			select {
-			case <-syncChannel:
-				t1 = clock.Now()
-			case <-time.After(2 * syncInterval):
-				Fail("did not receive a sync event")
-			}
-
-			clock.Increment(syncInterval + 100*time.Millisecond)
-
-			select {
-			case <-syncChannel:
-				t2 = clock.Now()
-			case <-time.After(2 * syncInterval):
-				Fail("did not receive a sync event")
-			}
-
-			Expect(t2.Sub(t1)).To(BeNumerically("~", syncInterval, 100*time.Millisecond))
+			logger.Debug("second-tick")
+			clock.Increment(duration)
+			Eventually(watchChannel, duration).Should(Receive())
+			close(closeChannel)
 		})
 	})
 
 	Context("on startup", func() {
 		var (
 			watchChannel chan struct{}
+			readyChannel chan struct{}
 		)
 		BeforeEach(func() {
 			watchChannel = make(chan struct{})
+			readyChannel = make(chan struct{})
 			go func() {
+				close(readyChannel)
 				select {
 				case <-syncChannel:
+					logger.Debug("received-sync")
 					watchChannel <- struct{}{}
 				}
 
 			}()
 		})
 		It("should sync", func() {
+			Eventually(readyChannel).Should(BeClosed())
 			process = ifrit.Invoke(syncerRunner)
 			Eventually(watchChannel).Should(Receive())
 		})

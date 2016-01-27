@@ -40,9 +40,6 @@ func New(
 
 func (watcher *Watcher) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 	watcher.logger.Debug("starting")
-
-	close(ready)
-	watcher.logger.Debug("started")
 	defer watcher.logger.Debug("finished")
 
 	eventChan := make(chan routing_api.TcpEvent)
@@ -95,6 +92,9 @@ func (watcher *Watcher) Run(signals <-chan os.Signal, ready chan<- struct{}) err
 			}
 		}
 	}()
+
+	close(ready)
+	watcher.logger.Debug("started")
 
 	for {
 		select {

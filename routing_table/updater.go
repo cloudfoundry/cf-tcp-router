@@ -8,7 +8,7 @@ import (
 	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
 	"github.com/cloudfoundry-incubator/routing-api"
 	"github.com/cloudfoundry-incubator/routing-api/db"
-	token_fetcher "github.com/cloudfoundry-incubator/uaa-token-fetcher"
+	uaaclient "github.com/cloudfoundry-incubator/uaa-go-client"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -25,13 +25,13 @@ type updater struct {
 	configurer       configurer.RouterConfigurer
 	syncing          bool
 	routingAPIClient routing_api.Client
-	tokenFetcher     token_fetcher.TokenFetcher
+	uaaClient        uaaclient.Client
 	cachedEvents     []routing_api.TcpEvent
 	lock             *sync.Mutex
 }
 
 func NewUpdater(logger lager.Logger, routingTable *models.RoutingTable, configurer configurer.RouterConfigurer,
-	routingAPIClient routing_api.Client, tokenFetcher token_fetcher.TokenFetcher) Updater {
+	routingAPIClient routing_api.Client, uaaClient uaaclient.Client) Updater {
 	return &updater{
 		logger:           logger,
 		routingTable:     routingTable,
@@ -39,7 +39,7 @@ func NewUpdater(logger lager.Logger, routingTable *models.RoutingTable, configur
 		lock:             new(sync.Mutex),
 		syncing:          false,
 		routingAPIClient: routingAPIClient,
-		tokenFetcher:     tokenFetcher,
+		uaaClient:        uaaClient,
 		cachedEvents:     nil,
 	}
 }
@@ -68,7 +68,7 @@ func (u *updater) Sync() {
 	var err error
 	var tcpRouteMappings []db.TcpRouteMapping
 	for count := 0; count < 2; count++ {
-		token, tokenErr := u.tokenFetcher.FetchToken(useCachedToken)
+		token, tokenErr := u.uaaClient.FetchToken(useCachedToken)
 		if tokenErr != nil {
 			logger.Error("error-fetching-token", tokenErr)
 			return

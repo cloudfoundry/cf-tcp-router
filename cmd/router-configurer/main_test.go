@@ -35,7 +35,7 @@ var _ = Describe("Main", func() {
 	}
 
 	oAuthServer := func(logger lager.Logger) *ghttp.Server {
-		server := ghttp.NewServer()
+		server := ghttp.NewTLSServer()
 		server.AllowUnhandledRequests = true
 		server.RouteToHandler("POST", "/oauth/token",
 			func(w http.ResponseWriter, req *http.Request) {
@@ -60,7 +60,8 @@ var _ = Describe("Main", func() {
 		configFile := path.Join(os.TempDir(), randomConfigFileName)
 
 		cfg := fmt.Sprintf("%s\n  port: %s\n%s\n  auth_disabled: %t\n  %s\n  port: %s\n", `oauth:
-  token_endpoint: "http://127.0.0.1"
+  token_endpoint: "127.0.0.1"
+  skip_oauth_tls_verification: true
   client_name: "someclient"
   client_secret: "somesecret"`, oauthServerPort,
 			`routing_api:`,

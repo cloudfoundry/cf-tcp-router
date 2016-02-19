@@ -9,8 +9,8 @@ import (
 	"github.com/cloudfoundry-incubator/routing-api"
 	"github.com/cloudfoundry-incubator/routing-api/db"
 	"github.com/cloudfoundry-incubator/routing-api/fake_routing_api"
-	token_fetcher "github.com/cloudfoundry-incubator/uaa-token-fetcher"
-	testTokenFetcher "github.com/cloudfoundry-incubator/uaa-token-fetcher/fakes"
+	testUaaClient "github.com/cloudfoundry-incubator/uaa-go-client/fakes"
+	"github.com/cloudfoundry-incubator/uaa-go-client/schema"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -35,7 +35,7 @@ var _ = Describe("Updater", func() {
 		updater                    routing_table.Updater
 		fakeConfigurer             *fakes.FakeRouterConfigurer
 		fakeRoutingApiClient       *fake_routing_api.FakeClient
-		fakeTokenFetcher           *testTokenFetcher.FakeTokenFetcher
+		fakeUaaClient              *testUaaClient.FakeClient
 		tcpEvent                   routing_api.TcpEvent
 	)
 
@@ -48,15 +48,15 @@ var _ = Describe("Updater", func() {
 	BeforeEach(func() {
 		fakeConfigurer = new(fakes.FakeRouterConfigurer)
 		fakeRoutingApiClient = new(fake_routing_api.FakeClient)
-		fakeTokenFetcher = &testTokenFetcher.FakeTokenFetcher{}
-		token := &token_fetcher.Token{
+		fakeUaaClient = &testUaaClient.FakeClient{}
+		token := &schema.Token{
 			AccessToken: "access_token",
-			ExpireTime:  5,
+			ExpiresIn:   5,
 		}
-		fakeTokenFetcher.FetchTokenReturns(token, nil)
+		fakeUaaClient.FetchTokenReturns(token, nil)
 		tmpRoutingTable := models.NewRoutingTable()
 		routingTable = &tmpRoutingTable
-		updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeTokenFetcher)
+		updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeUaaClient)
 	})
 
 	Describe("HandleEvent", func() {
@@ -79,7 +79,7 @@ var _ = Describe("Updater", func() {
 			)
 			Expect(routingTable.Set(existingRoutingKey2, existingRoutingTableEntry2)).To(BeTrue())
 
-			updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeTokenFetcher)
+			updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeUaaClient)
 		})
 
 		Context("when Upsert event is received", func() {
@@ -359,7 +359,7 @@ var _ = Describe("Updater", func() {
 				go invokeSync(doneChannel)
 				Eventually(doneChannel).Should(BeClosed())
 
-				Expect(fakeTokenFetcher.FetchTokenCallCount()).To(Equal(1))
+				Expect(fakeUaaClient.FetchTokenCallCount()).To(Equal(1))
 				Expect(fakeRoutingApiClient.TcpRouteMappingsCallCount()).To(Equal(1))
 				Expect(routingTable.Size()).To(Equal(2))
 				expectedRoutingTableEntry1 := models.NewRoutingTableEntry(
@@ -416,7 +416,7 @@ var _ = Describe("Updater", func() {
 					Eventually(doneChannel).Should(BeClosed())
 					Eventually(logger).Should(gbytes.Say("test.handle-sync.applied-cached-events"))
 
-					Expect(fakeTokenFetcher.FetchTokenCallCount()).To(Equal(1))
+					Expect(fakeUaaClient.FetchTokenCallCount()).To(Equal(1))
 					Expect(fakeRoutingApiClient.TcpRouteMappingsCallCount()).To(Equal(1))
 
 					Expect(routingTable.Size()).To(Equal(2))
@@ -455,7 +455,7 @@ var _ = Describe("Updater", func() {
 					go invokeSync(doneChannel)
 					Eventually(doneChannel).Should(BeClosed())
 
-					Expect(fakeTokenFetcher.FetchTokenCallCount()).To(Equal(1))
+					Expect(fakeUaaClient.FetchTokenCallCount()).To(Equal(1))
 					Expect(fakeRoutingApiClient.TcpRouteMappingsCallCount()).To(Equal(1))
 
 					Expect(routingTable.Size()).To(Equal(1))
@@ -486,9 +486,9 @@ var _ = Describe("Updater", func() {
 					go invokeSync(doneChannel)
 					Eventually(doneChannel).Should(BeClosed())
 
-					Expect(fakeTokenFetcher.FetchTokenCallCount()).To(Equal(2))
-					Expect(fakeTokenFetcher.FetchTokenArgsForCall(0)).To(BeTrue())
-					Expect(fakeTokenFetcher.FetchTokenArgsForCall(1)).To(BeFalse())
+					Expect(fakeUaaClient.FetchTokenCallCount()).To(Equal(2))
+					Expect(fakeUaaClient.FetchTokenArgsForCall(0)).To(BeTrue())
+					Expect(fakeUaaClient.FetchTokenArgsForCall(1)).To(BeFalse())
 					Expect(fakeRoutingApiClient.TcpRouteMappingsCallCount()).To(Equal(2))
 
 					Expect(routingTable.Size()).To(Equal(1))
@@ -505,7 +505,7 @@ var _ = Describe("Updater", func() {
 
 		Context("when token fetcher returns error", func() {
 			BeforeEach(func() {
-				fakeTokenFetcher.FetchTokenReturns(nil, errors.New("no token for you"))
+				fakeUaaClient.FetchTokenReturns(nil, errors.New("no token for you"))
 				existingRoutingKey1 = models.RoutingKey{Port: externalPort1}
 				existingRoutingTableEntry1 = models.NewRoutingTableEntry(
 					models.BackendServerInfos{
@@ -520,7 +520,7 @@ var _ = Describe("Updater", func() {
 				go invokeSync(doneChannel)
 				Eventually(doneChannel).Should(BeClosed())
 
-				Expect(fakeTokenFetcher.FetchTokenCallCount()).To(Equal(1))
+				Expect(fakeUaaClient.FetchTokenCallCount()).To(Equal(1))
 				Expect(fakeRoutingApiClient.TcpRouteMappingsCallCount()).To(Equal(0))
 
 				Expect(routingTable.Size()).To(Equal(1))

@@ -2,7 +2,6 @@ package config_test
 
 import (
 	"github.com/cloudfoundry-incubator/cf-tcp-router/config"
-	token_fetcher "github.com/cloudfoundry-incubator/uaa-token-fetcher"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )
@@ -12,11 +11,12 @@ var _ = Describe("Config", func() {
 	Context("when a valid config", func() {
 		It("loads the config", func() {
 			expectedCfg := config.Config{
-				OAuth: token_fetcher.OAuthConfig{
-					TokenEndpoint: "http://uaa.service.cf.internal",
+				OAuth: config.OAuthConfig{
+					TokenEndpoint: "uaa.service.cf.internal",
 					ClientName:    "someclient",
 					ClientSecret:  "somesecret",
-					Port:          8080,
+					Port:          8443,
+					SkipOAuthTLSVerification: true,
 				},
 				RoutingAPI: config.RoutingAPIConfig{
 					URI:          "http://routing-api.service.cf.internal",
@@ -62,11 +62,12 @@ var _ = Describe("Config", func() {
 	Context("when oauth section has some missing fields", func() {
 		It("loads config and defaults missing fields", func() {
 			expectedCfg := config.Config{
-				OAuth: token_fetcher.OAuthConfig{
-					TokenEndpoint: "http://uaa.service.cf.internal",
+				OAuth: config.OAuthConfig{
+					TokenEndpoint: "uaa.service.cf.internal",
 					ClientName:    "",
 					ClientSecret:  "",
-					Port:          8080,
+					Port:          8443,
+					SkipOAuthTLSVerification: true,
 				},
 				RoutingAPI: config.RoutingAPIConfig{
 					URI:  "http://routing-api.service.cf.internal",

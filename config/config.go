@@ -4,7 +4,6 @@ import (
 	"io/ioutil"
 
 	"github.com/cloudfoundry-incubator/candiedyaml"
-	token_fetcher "github.com/cloudfoundry-incubator/uaa-token-fetcher"
 )
 
 type RoutingAPIConfig struct {
@@ -13,9 +12,17 @@ type RoutingAPIConfig struct {
 	AuthDisabled bool   `yaml:"auth_disabled"`
 }
 
+type OAuthConfig struct {
+	TokenEndpoint            string `yaml:"token_endpoint"`
+	Port                     int    `yaml:"port"`
+	SkipOAuthTLSVerification bool   `yaml:"skip_oauth_tls_verification"`
+	ClientName               string `yaml:"client_name"`
+	ClientSecret             string `yaml:"client_secret"`
+}
+
 type Config struct {
-	OAuth      token_fetcher.OAuthConfig `yaml:"oauth"`
-	RoutingAPI RoutingAPIConfig          `yaml:"routing_api"`
+	OAuth      OAuthConfig      `yaml:"oauth"`
+	RoutingAPI RoutingAPIConfig `yaml:"routing_api"`
 }
 
 func New(path string) (*Config, error) {

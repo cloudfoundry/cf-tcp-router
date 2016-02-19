@@ -1,5 +1,5 @@
 
-token_endpoint_invalid_porperty: "http://uaa.service.cf.internal"
+token_endpoint_invalid_porperty: "uaa.service.cf.internal"
   client_name: "someclient"
   client_secret: "somesecret"
   port: 8080

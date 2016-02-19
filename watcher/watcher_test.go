@@ -10,8 +10,8 @@ import (
 	"github.com/cloudfoundry-incubator/routing-api"
 	"github.com/cloudfoundry-incubator/routing-api/db"
 	"github.com/cloudfoundry-incubator/routing-api/fake_routing_api"
-	"github.com/cloudfoundry-incubator/uaa-token-fetcher"
-	testTokenFetcher "github.com/cloudfoundry-incubator/uaa-token-fetcher/fakes"
+	testUaaClient "github.com/cloudfoundry-incubator/uaa-go-client/fakes"
+	"github.com/cloudfoundry-incubator/uaa-go-client/schema"
 	"github.com/tedsuo/ifrit"
 
 	. "github.com/onsi/ginkgo"
@@ -26,7 +26,7 @@ var _ = Describe("Watcher", func() {
 	var (
 		eventSource      *fake_routing_api.FakeTcpEventSource
 		routingApiClient *fake_routing_api.FakeClient
-		tokenFetcher     *testTokenFetcher.FakeTokenFetcher
+		uaaClient        *testUaaClient.FakeClient
 		testWatcher      *watcher.Watcher
 		process          ifrit.Process
 		eventChannel     chan routing_api.TcpEvent
@@ -39,16 +39,16 @@ var _ = Describe("Watcher", func() {
 		eventSource = new(fake_routing_api.FakeTcpEventSource)
 		routingApiClient = new(fake_routing_api.FakeClient)
 		updater = new(fake_routing_table.FakeUpdater)
-		tokenFetcher = &testTokenFetcher.FakeTokenFetcher{}
-		token := &token_fetcher.Token{
+		uaaClient = &testUaaClient.FakeClient{}
+		token := &schema.Token{
 			AccessToken: "access_token",
-			ExpireTime:  5,
+			ExpiresIn:   5,
 		}
-		tokenFetcher.FetchTokenReturns(token, nil)
+		uaaClient.FetchTokenReturns(token, nil)
 
 		routingApiClient.SubscribeToTcpEventsReturns(eventSource, nil)
 		syncChannel = make(chan struct{})
-		testWatcher = watcher.New(routingApiClient, updater, tokenFetcher, 1, syncChannel, logger)
+		testWatcher = watcher.New(routingApiClient, updater, uaaClient, 1, syncChannel, logger)
 
 		eventChannel = make(chan routing_api.TcpEvent)
 		errorChannel = make(chan error)
@@ -171,51 +171,51 @@ var _ = Describe("Watcher", func() {
 				return eventSource, nil
 			}
 
-			testWatcher = watcher.New(routingApiClient, updater, tokenFetcher, 1, syncChannel, logger)
+			testWatcher = watcher.New(routingApiClient, updater, uaaClient, 1, syncChannel, logger)
 		})
 
 		Context("with error other than unauthorized", func() {
 			It("uses the cached token and retries to subscribe", func() {
-				Eventually(tokenFetcher.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(1))
-				Expect(tokenFetcher.FetchTokenArgsForCall(0)).To(BeTrue())
+				Eventually(uaaClient.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(1))
+				Expect(uaaClient.FetchTokenArgsForCall(0)).To(BeTrue())
 				routingApiErrChannel <- errors.New("kaboom")
 				close(routingApiErrChannel)
 				Eventually(routingApiClient.SubscribeToTcpEventsCallCount, 5*time.Second, 1*time.Second).Should(Equal(2))
 				Eventually(logger).Should(gbytes.Say("test.watcher.failed-subscribing-to-tcp-routing-events"))
-				Eventually(tokenFetcher.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(2))
-				Expect(tokenFetcher.FetchTokenArgsForCall(1)).To(BeTrue())
+				Eventually(uaaClient.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(2))
+				Expect(uaaClient.FetchTokenArgsForCall(1)).To(BeTrue())
 			})
 		})
 
 		Context("with unauthorized error", func() {
 			It("fetches a new token and retries to subscribe", func() {
-				Eventually(tokenFetcher.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(1))
-				Expect(tokenFetcher.FetchTokenArgsForCall(0)).To(BeTrue())
+				Eventually(uaaClient.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(1))
+				Expect(uaaClient.FetchTokenArgsForCall(0)).To(BeTrue())
 				routingApiErrChannel <- errors.New("unauthorized")
 				Eventually(routingApiClient.SubscribeToTcpEventsCallCount, 5*time.Second, 1*time.Second).Should(Equal(2))
 				Eventually(logger).Should(gbytes.Say("test.watcher.failed-subscribing-to-tcp-routing-events"))
-				Eventually(tokenFetcher.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(2))
-				Expect(tokenFetcher.FetchTokenArgsForCall(1)).To(BeFalse())
+				Eventually(uaaClient.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(2))
+				Expect(uaaClient.FetchTokenArgsForCall(1)).To(BeFalse())
 
 				By("resumes to use cache token for subsequent errors")
 				routingApiErrChannel <- errors.New("kaboom")
 				close(routingApiErrChannel)
 				Eventually(routingApiClient.SubscribeToTcpEventsCallCount, 5*time.Second, 1*time.Second).Should(Equal(3))
 				Eventually(logger).Should(gbytes.Say("test.watcher.failed-subscribing-to-tcp-routing-events"))
-				Eventually(tokenFetcher.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(3))
-				Expect(tokenFetcher.FetchTokenArgsForCall(2)).To(BeTrue())
+				Eventually(uaaClient.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(3))
+				Expect(uaaClient.FetchTokenArgsForCall(2)).To(BeTrue())
 			})
 		})
 	})
 
 	Context("when the token fetcher returns an error", func() {
 		BeforeEach(func() {
-			tokenFetcher.FetchTokenReturns(nil, errors.New("token fetcher error"))
+			uaaClient.FetchTokenReturns(nil, errors.New("token fetcher error"))
 		})
 
 		It("returns an error", func() {
 			Eventually(logger).Should(gbytes.Say("test.watcher.error-fetching-token"))
-			Eventually(tokenFetcher.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(BeNumerically(">", 2))
+			Eventually(uaaClient.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(BeNumerically(">", 2))
 		})
 	})
 

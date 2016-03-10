@@ -180,11 +180,11 @@ func main() {
 
 func newUaaClient(logger lager.Logger, c *config.Config, klok clock.Clock) uaaclient.Client {
 	if c.RoutingAPI.AuthDisabled {
-		logger.Debug("creating-noop-token-fetcher")
+		logger.Debug("creating-noop-uaa-client")
 		client := uaaclient.NewNoOpUaaClient()
 		return client
 	}
-	logger.Debug("creating-uaa-token-fetcher")
+	logger.Debug("creating-uaa-client")
 
 	if c.OAuth.Port == -1 {
 		logger.Fatal("tls-not-enabled", errors.New("TcpRouter requires to communicate with UAA over TLS"), lager.Data{"token-endpoint": c.OAuth.TokenEndpoint, "port": c.OAuth.Port})

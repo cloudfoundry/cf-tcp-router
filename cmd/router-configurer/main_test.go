@@ -223,7 +223,7 @@ var _ = Describe("Main", func() {
 			})
 
 			It("does not call oauth server to get auth token and starts SSE connection with routing api", func() {
-				Eventually(session.Out, 5*time.Second).Should(gbytes.Say("creating-noop-token-fetcher"))
+				Eventually(session.Out, 5*time.Second).Should(gbytes.Say("creating-noop-uaa-client"))
 				Eventually(session.Out, 5*time.Second).Should(gbytes.Say("subscribed-to-tcp-routing-events"))
 			})
 		})

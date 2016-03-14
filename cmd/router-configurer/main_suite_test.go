@@ -157,7 +157,12 @@ metron_config:
 metrics_reporting_interval: "500ms"
 statsd_endpoint: "localhost:8125"
 statsd_client_flush_interval: "10ms"
-max_concurrent_etcd_requests: 10`),
+max_concurrent_etcd_requests: 10
+router_groups:
+- name: "default-tcp"
+  type: "tcp"
+  reservable_ports: "1024-65535"
+`),
 		configFilePath)
 	Expect(err).ShouldNot(HaveOccurred())
 	Expect(utils.FileExists(configFilePath)).To(BeTrue())

@@ -12,8 +12,9 @@ import (
 	"github.com/cloudfoundry-incubator/cf-tcp-router/cmd/router-configurer/testrunner"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/testutil"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/utils"
+	"github.com/cloudfoundry-incubator/routing-api"
 	routingtestrunner "github.com/cloudfoundry-incubator/routing-api/cmd/routing-api/testrunner"
-	"github.com/cloudfoundry-incubator/routing-api/db"
+	"github.com/cloudfoundry-incubator/routing-api/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
@@ -26,7 +27,9 @@ import (
 
 var _ = Describe("Main", func() {
 
-	const DefaultRouterGroupGuid = "bad25cff-9332-48a6-8603-b619858e7992"
+	var (
+		routerGroupGuid string
+	)
 
 	getServerPort := func(serverURL string) string {
 		endpoints := strings.Split(serverURL, ":")
@@ -47,12 +50,20 @@ var _ = Describe("Main", func() {
 		return server
 	}
 
-	routingApiServer := func(logger lager.Logger) ifrit.Process {
+	getRouterGroupGuid := func(port uint16) string {
+		client := routing_api.NewClient(fmt.Sprintf("http://127.0.0.1:%d", port))
+		routerGroups, err := client.RouterGroups()
+		Expect(err).NotTo(HaveOccurred())
+		Expect(routerGroups).ToNot(HaveLen(0))
+		return routerGroups[0].Guid
+	}
 
+	routingApiServer := func(logger lager.Logger) ifrit.Process {
 		server := routingtestrunner.New(routingAPIBinPath, routingAPIArgs)
 		logger.Info("starting-routing-api-server")
-
-		return ifrit.Invoke(server)
+		process := ifrit.Invoke(server)
+		routerGroupGuid = getRouterGroupGuid(routingAPIArgs.Port)
+		return process
 	}
 
 	generateConfigFile := func(oauthServerPort, routingApiServerPort string, routingApiAuthDisabled bool) string {
@@ -104,15 +115,15 @@ var _ = Describe("Main", func() {
 				ConfigFilePath:                 configFile,
 			}
 
-			tcpRouteMapping := db.TcpRouteMapping{
-				TcpRoute: db.TcpRoute{
-					RouterGroupGuid: DefaultRouterGroupGuid,
+			tcpRouteMapping := models.TcpRouteMapping{
+				TcpRoute: models.TcpRoute{
+					RouterGroupGuid: routerGroupGuid,
 					ExternalPort:    5222,
 				},
 				HostPort: 61000,
 				HostIP:   "some-ip-1",
 			}
-			err := routingApiClient.UpsertTcpRouteMappings([]db.TcpRouteMapping{tcpRouteMapping})
+			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 			Expect(err).ToNot(HaveOccurred())
 
 			tcpRouteMappings, err := routingApiClient.TcpRouteMappings()
@@ -144,15 +155,15 @@ var _ = Describe("Main", func() {
 
 		It("starts an SSE connection to the server", func() {
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("subscribed-to-tcp-routing-events"))
-			tcpRouteMapping := db.TcpRouteMapping{
-				TcpRoute: db.TcpRoute{
-					RouterGroupGuid: DefaultRouterGroupGuid,
+			tcpRouteMapping := models.TcpRouteMapping{
+				TcpRoute: models.TcpRoute{
+					RouterGroupGuid: routerGroupGuid,
 					ExternalPort:    5222,
 				},
 				HostPort: 61000,
 				HostIP:   "some-ip-2",
 			}
-			err := routingApiClient.UpsertTcpRouteMappings([]db.TcpRouteMapping{tcpRouteMapping})
+			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("handle-upsert-done"))
 			expectedConfigEntry := "\nlisten listen_cfg_5222\n  mode tcp\n  bind :5222\n"
@@ -262,15 +273,15 @@ var _ = Describe("Main", func() {
 			By("starting routing api server")
 			server = routingApiServer(logger)
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("subscribed-to-tcp-routing-events"))
-			tcpRouteMapping := db.TcpRouteMapping{
-				TcpRoute: db.TcpRoute{
-					RouterGroupGuid: DefaultRouterGroupGuid,
+			tcpRouteMapping := models.TcpRouteMapping{
+				TcpRoute: models.TcpRoute{
+					RouterGroupGuid: routerGroupGuid,
 					ExternalPort:    5222,
 				},
 				HostPort: 61000,
 				HostIP:   "some-ip-3",
 			}
-			err := routingApiClient.UpsertTcpRouteMappings([]db.TcpRouteMapping{tcpRouteMapping})
+			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("handle-upsert-done"))
 			expectedConfigEntry := "\nlisten listen_cfg_5222\n  mode tcp\n  bind :5222\n"

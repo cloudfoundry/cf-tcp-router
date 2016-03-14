@@ -7,8 +7,8 @@ import (
 	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/routing_table"
 	"github.com/cloudfoundry-incubator/routing-api"
-	"github.com/cloudfoundry-incubator/routing-api/db"
 	"github.com/cloudfoundry-incubator/routing-api/fake_routing_api"
+	apimodels "github.com/cloudfoundry-incubator/routing-api/models"
 	testUaaClient "github.com/cloudfoundry-incubator/uaa-go-client/fakes"
 	"github.com/cloudfoundry-incubator/uaa-go-client/schema"
 
@@ -86,8 +86,8 @@ var _ = Describe("Updater", func() {
 			Context("when entry does not exist", func() {
 				BeforeEach(func() {
 					tcpEvent = routing_api.TcpEvent{
-						TcpRouteMapping: db.TcpRouteMapping{
-							TcpRoute: db.TcpRoute{
+						TcpRouteMapping: apimodels.TcpRouteMapping{
+							TcpRoute: apimodels.TcpRoute{
 								RouterGroupGuid: routerGroupGuid,
 								ExternalPort:    externalPort4,
 							},
@@ -115,8 +115,8 @@ var _ = Describe("Updater", func() {
 				Context("an existing backend is provided", func() {
 					BeforeEach(func() {
 						tcpEvent = routing_api.TcpEvent{
-							TcpRouteMapping: db.TcpRouteMapping{
-								TcpRoute: db.TcpRoute{
+							TcpRouteMapping: apimodels.TcpRouteMapping{
+								TcpRoute: apimodels.TcpRoute{
 									RouterGroupGuid: routerGroupGuid,
 									ExternalPort:    externalPort1,
 								},
@@ -138,8 +138,8 @@ var _ = Describe("Updater", func() {
 				Context("and a new backend is provided", func() {
 					BeforeEach(func() {
 						tcpEvent = routing_api.TcpEvent{
-							TcpRouteMapping: db.TcpRouteMapping{
-								TcpRoute: db.TcpRoute{
+							TcpRouteMapping: apimodels.TcpRouteMapping{
+								TcpRoute: apimodels.TcpRoute{
 									RouterGroupGuid: routerGroupGuid,
 									ExternalPort:    externalPort1,
 								},
@@ -182,8 +182,8 @@ var _ = Describe("Updater", func() {
 			Context("when entry does not exist", func() {
 				BeforeEach(func() {
 					tcpEvent = routing_api.TcpEvent{
-						TcpRouteMapping: db.TcpRouteMapping{
-							TcpRoute: db.TcpRoute{
+						TcpRouteMapping: apimodels.TcpRouteMapping{
+							TcpRoute: apimodels.TcpRoute{
 								RouterGroupGuid: routerGroupGuid,
 								ExternalPort:    externalPort4,
 							},
@@ -218,8 +218,8 @@ var _ = Describe("Updater", func() {
 						)
 						Expect(routingTable.Set(existingRoutingKey5, existingRoutingTableEntry5)).To(BeTrue())
 						tcpEvent = routing_api.TcpEvent{
-							TcpRouteMapping: db.TcpRouteMapping{
-								TcpRoute: db.TcpRoute{
+							TcpRouteMapping: apimodels.TcpRouteMapping{
+								TcpRoute: apimodels.TcpRoute{
 									RouterGroupGuid: routerGroupGuid,
 									ExternalPort:    externalPort5,
 								},
@@ -270,8 +270,8 @@ var _ = Describe("Updater", func() {
 						Expect(routingTable.Set(existingRoutingKey6, existingRoutingTableEntry6)).To(BeTrue())
 
 						tcpEvent = routing_api.TcpEvent{
-							TcpRouteMapping: db.TcpRouteMapping{
-								TcpRoute: db.TcpRoute{
+							TcpRouteMapping: apimodels.TcpRouteMapping{
+								TcpRoute: apimodels.TcpRoute{
 									RouterGroupGuid: routerGroupGuid,
 									ExternalPort:    externalPort5,
 								},
@@ -303,7 +303,7 @@ var _ = Describe("Updater", func() {
 
 		var (
 			doneChannel chan struct{}
-			tcpMappings []db.TcpRouteMapping
+			tcpMappings []apimodels.TcpRouteMapping
 		)
 
 		invokeSync := func(doneChannel chan struct{}) {
@@ -314,33 +314,33 @@ var _ = Describe("Updater", func() {
 
 		BeforeEach(func() {
 			doneChannel = make(chan struct{})
-			tcpMappings = []db.TcpRouteMapping{
-				db.TcpRouteMapping{
-					TcpRoute: db.TcpRoute{
+			tcpMappings = []apimodels.TcpRouteMapping{
+				apimodels.TcpRouteMapping{
+					TcpRoute: apimodels.TcpRoute{
 						RouterGroupGuid: routerGroupGuid,
 						ExternalPort:    externalPort1,
 					},
 					HostPort: 61000,
 					HostIP:   "some-ip-1",
 				},
-				db.TcpRouteMapping{
-					TcpRoute: db.TcpRoute{
+				apimodels.TcpRouteMapping{
+					TcpRoute: apimodels.TcpRoute{
 						RouterGroupGuid: routerGroupGuid,
 						ExternalPort:    externalPort1,
 					},
 					HostPort: 61001,
 					HostIP:   "some-ip-2",
 				},
-				db.TcpRouteMapping{
-					TcpRoute: db.TcpRoute{
+				apimodels.TcpRouteMapping{
+					TcpRoute: apimodels.TcpRoute{
 						RouterGroupGuid: routerGroupGuid,
 						ExternalPort:    externalPort2,
 					},
 					HostPort: 60000,
 					HostIP:   "some-ip-3",
 				},
-				db.TcpRouteMapping{
-					TcpRoute: db.TcpRoute{
+				apimodels.TcpRouteMapping{
+					TcpRoute: apimodels.TcpRoute{
 						RouterGroupGuid: routerGroupGuid,
 						ExternalPort:    externalPort2,
 					},
@@ -386,7 +386,7 @@ var _ = Describe("Updater", func() {
 				BeforeEach(func() {
 					syncChannel = make(chan struct{})
 					tmpSyncChannel := syncChannel
-					fakeRoutingApiClient.TcpRouteMappingsStub = func() ([]db.TcpRouteMapping, error) {
+					fakeRoutingApiClient.TcpRouteMappingsStub = func() ([]apimodels.TcpRouteMapping, error) {
 						select {
 						case <-tmpSyncChannel:
 							return tcpMappings, nil
@@ -398,8 +398,8 @@ var _ = Describe("Updater", func() {
 					go invokeSync(doneChannel)
 					Eventually(updater.Syncing).Should(BeTrue())
 					tcpEvent = routing_api.TcpEvent{
-						TcpRouteMapping: db.TcpRouteMapping{
-							TcpRoute: db.TcpRoute{
+						TcpRouteMapping: apimodels.TcpRouteMapping{
+							TcpRoute: apimodels.TcpRoute{
 								RouterGroupGuid: routerGroupGuid,
 								ExternalPort:    externalPort1,
 							},

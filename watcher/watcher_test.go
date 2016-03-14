@@ -8,8 +8,8 @@ import (
 	fake_routing_table "github.com/cloudfoundry-incubator/cf-tcp-router/routing_table/fakes"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/watcher"
 	"github.com/cloudfoundry-incubator/routing-api"
-	"github.com/cloudfoundry-incubator/routing-api/db"
 	"github.com/cloudfoundry-incubator/routing-api/fake_routing_api"
+	"github.com/cloudfoundry-incubator/routing-api/models"
 	testUaaClient "github.com/cloudfoundry-incubator/uaa-go-client/fakes"
 	"github.com/cloudfoundry-incubator/uaa-go-client/schema"
 	"github.com/tedsuo/ifrit"
@@ -85,8 +85,8 @@ var _ = Describe("Watcher", func() {
 
 		JustBeforeEach(func() {
 			tcpEvent = routing_api.TcpEvent{
-				TcpRouteMapping: db.TcpRouteMapping{
-					TcpRoute: db.TcpRoute{
+				TcpRouteMapping: models.TcpRouteMapping{
+					TcpRoute: models.TcpRoute{
 						RouterGroupGuid: routerGroupGuid,
 						ExternalPort:    61000,
 					},
@@ -112,8 +112,8 @@ var _ = Describe("Watcher", func() {
 
 		JustBeforeEach(func() {
 			tcpEvent = routing_api.TcpEvent{
-				TcpRouteMapping: db.TcpRouteMapping{
-					TcpRoute: db.TcpRoute{
+				TcpRouteMapping: models.TcpRouteMapping{
+					TcpRoute: models.TcpRoute{
 						RouterGroupGuid: routerGroupGuid,
 						ExternalPort:    61000,
 					},

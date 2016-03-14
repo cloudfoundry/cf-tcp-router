@@ -7,7 +7,7 @@ import (
 	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
 	"github.com/cloudfoundry-incubator/routing-api"
-	"github.com/cloudfoundry-incubator/routing-api/db"
+	apimodels "github.com/cloudfoundry-incubator/routing-api/models"
 	uaaclient "github.com/cloudfoundry-incubator/uaa-go-client"
 	"github.com/pivotal-golang/lager"
 )
@@ -66,7 +66,7 @@ func (u *updater) Sync() {
 
 	useCachedToken := true
 	var err error
-	var tcpRouteMappings []db.TcpRouteMapping
+	var tcpRouteMappings []apimodels.TcpRouteMapping
 	for count := 0; count < 2; count++ {
 		token, tokenErr := u.uaaClient.FetchToken(useCachedToken)
 		if tokenErr != nil {
@@ -140,7 +140,7 @@ func (u *updater) handleEvent(event routing_api.TcpEvent) error {
 	}
 }
 
-func (u *updater) toRoutingTableEntry(logger lager.Logger, routeMapping db.TcpRouteMapping) (models.RoutingKey, models.BackendServerInfo) {
+func (u *updater) toRoutingTableEntry(logger lager.Logger, routeMapping apimodels.TcpRouteMapping) (models.RoutingKey, models.BackendServerInfo) {
 	logger.Debug("converting-tcp-route-mapping", lager.Data{"tcp-route": routeMapping})
 	routingKey := models.RoutingKey{Port: routeMapping.TcpRoute.ExternalPort}
 	backendServerInfo := models.BackendServerInfo{
@@ -150,7 +150,7 @@ func (u *updater) toRoutingTableEntry(logger lager.Logger, routeMapping db.TcpRo
 	return routingKey, backendServerInfo
 }
 
-func (u *updater) handleUpsert(logger lager.Logger, routeMapping db.TcpRouteMapping) error {
+func (u *updater) handleUpsert(logger lager.Logger, routeMapping apimodels.TcpRouteMapping) error {
 	defer logger.Debug("handle-upsert-done")
 	routingKey, backendServerInfo := u.toRoutingTableEntry(logger, routeMapping)
 	logger.Debug("creating-routing-table-entry", lager.Data{"key": routingKey})
@@ -162,7 +162,7 @@ func (u *updater) handleUpsert(logger lager.Logger, routeMapping db.TcpRouteMapp
 	return nil
 }
 
-func (u *updater) handleDelete(logger lager.Logger, routeMapping db.TcpRouteMapping) error {
+func (u *updater) handleDelete(logger lager.Logger, routeMapping apimodels.TcpRouteMapping) error {
 	defer logger.Debug("handle-delete-done")
 	routingKey, backendServerInfo := u.toRoutingTableEntry(logger, routeMapping)
 	logger.Debug("deleting-routing-table-entry", lager.Data{"key": routingKey})

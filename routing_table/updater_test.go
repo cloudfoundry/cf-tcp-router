@@ -487,8 +487,8 @@ var _ = Describe("Updater", func() {
 					Eventually(doneChannel).Should(BeClosed())
 
 					Expect(fakeUaaClient.FetchTokenCallCount()).To(Equal(2))
-					Expect(fakeUaaClient.FetchTokenArgsForCall(0)).To(BeTrue())
-					Expect(fakeUaaClient.FetchTokenArgsForCall(1)).To(BeFalse())
+					Expect(fakeUaaClient.FetchTokenArgsForCall(0)).To(BeFalse())
+					Expect(fakeUaaClient.FetchTokenArgsForCall(1)).To(BeTrue())
 					Expect(fakeRoutingApiClient.TcpRouteMappingsCallCount()).To(Equal(2))
 
 					Expect(routingTable.Size()).To(Equal(1))

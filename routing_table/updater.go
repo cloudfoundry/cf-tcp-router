@@ -68,7 +68,7 @@ func (u *updater) Sync() {
 	var err error
 	var tcpRouteMappings []apimodels.TcpRouteMapping
 	for count := 0; count < 2; count++ {
-		token, tokenErr := u.uaaClient.FetchToken(useCachedToken)
+		token, tokenErr := u.uaaClient.FetchToken(!useCachedToken)
 		if tokenErr != nil {
 			logger.Error("error-fetching-token", tokenErr)
 			return

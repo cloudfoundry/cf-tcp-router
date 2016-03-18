@@ -177,25 +177,25 @@ var _ = Describe("Watcher", func() {
 		Context("with error other than unauthorized", func() {
 			It("uses the cached token and retries to subscribe", func() {
 				Eventually(uaaClient.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(1))
-				Expect(uaaClient.FetchTokenArgsForCall(0)).To(BeTrue())
+				Expect(uaaClient.FetchTokenArgsForCall(0)).To(BeFalse())
 				routingApiErrChannel <- errors.New("kaboom")
 				close(routingApiErrChannel)
 				Eventually(routingApiClient.SubscribeToTcpEventsCallCount, 5*time.Second, 1*time.Second).Should(Equal(2))
 				Eventually(logger).Should(gbytes.Say("test.watcher.failed-subscribing-to-tcp-routing-events"))
 				Eventually(uaaClient.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(2))
-				Expect(uaaClient.FetchTokenArgsForCall(1)).To(BeTrue())
+				Expect(uaaClient.FetchTokenArgsForCall(1)).To(BeFalse())
 			})
 		})
 
 		Context("with unauthorized error", func() {
 			It("fetches a new token and retries to subscribe", func() {
 				Eventually(uaaClient.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(1))
-				Expect(uaaClient.FetchTokenArgsForCall(0)).To(BeTrue())
+				Expect(uaaClient.FetchTokenArgsForCall(0)).To(BeFalse())
 				routingApiErrChannel <- errors.New("unauthorized")
 				Eventually(routingApiClient.SubscribeToTcpEventsCallCount, 5*time.Second, 1*time.Second).Should(Equal(2))
 				Eventually(logger).Should(gbytes.Say("test.watcher.failed-subscribing-to-tcp-routing-events"))
 				Eventually(uaaClient.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(2))
-				Expect(uaaClient.FetchTokenArgsForCall(1)).To(BeFalse())
+				Expect(uaaClient.FetchTokenArgsForCall(1)).To(BeTrue())
 
 				By("resumes to use cache token for subsequent errors")
 				routingApiErrChannel <- errors.New("kaboom")
@@ -203,7 +203,7 @@ var _ = Describe("Watcher", func() {
 				Eventually(routingApiClient.SubscribeToTcpEventsCallCount, 5*time.Second, 1*time.Second).Should(Equal(3))
 				Eventually(logger).Should(gbytes.Say("test.watcher.failed-subscribing-to-tcp-routing-events"))
 				Eventually(uaaClient.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(3))
-				Expect(uaaClient.FetchTokenArgsForCall(2)).To(BeTrue())
+				Expect(uaaClient.FetchTokenArgsForCall(2)).To(BeFalse())
 			})
 		})
 	})

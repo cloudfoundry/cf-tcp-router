@@ -204,8 +204,6 @@ func newUaaClient(logger lager.Logger, c *config.Config, klok clock.Clock) uaacl
 		ExpirationBufferInSec: int64(*tokenFetchExpirationBufferTime),
 	}
 
-	logger.Info("fetching-token-from-uaa")
-
 	uaaClient, err := uaaclient.NewClient(logger, cfg, klok)
 	if err != nil {
 		logger.Fatal("initialize-token-fetcher-error", err)

@@ -190,9 +190,7 @@ func newUaaClient(logger lager.Logger, c *config.Config, klok clock.Clock) uaacl
 		logger.Fatal("tls-not-enabled", errors.New("TcpRouter requires to communicate with UAA over TLS"), lager.Data{"token-endpoint": c.OAuth.TokenEndpoint, "port": c.OAuth.Port})
 	}
 
-	scheme := "https"
-	tokenURL := fmt.Sprintf("%s://%s:%d", scheme, c.OAuth.TokenEndpoint, c.OAuth.Port)
-	logger.Info(fmt.Sprintf("using-%s-scheme-for-uaa", scheme))
+	tokenURL := fmt.Sprintf("https://%s:%d", c.OAuth.TokenEndpoint, c.OAuth.Port)
 
 	cfg := &uaaconfig.Config{
 		UaaEndpoint:           tokenURL,

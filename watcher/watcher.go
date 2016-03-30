@@ -62,7 +62,7 @@ func (watcher *Watcher) Run(signals <-chan os.Signal, ready chan<- struct{}) err
 			}
 			watcher.routingAPIClient.SetToken(token.AccessToken)
 
-			watcher.logger.Info("subscribing-to-tcp-routing-events")
+			watcher.logger.Info("Subscribing-to-routing-api-event-stream")
 			es, err = watcher.routingAPIClient.SubscribeToTcpEvents()
 			if err != nil {
 				if err.Error() == "unauthorized" {
@@ -71,13 +71,13 @@ func (watcher *Watcher) Run(signals <-chan os.Signal, ready chan<- struct{}) err
 				} else {
 					canUseCachedToken = true
 				}
-				watcher.logger.Error("failed-subscribing-to-tcp-routing-events", err)
+				watcher.logger.Error("failed-subscribing-to-routing-api-event-stream", err)
 				time.Sleep(time.Duration(watcher.subscriptionRetryInterval) * time.Second)
 				continue
 			} else {
 				canUseCachedToken = true
 			}
-			watcher.logger.Info("subscribed-to-tcp-routing-events")
+			watcher.logger.Info("Successfully-subscribed-to-routing-api-event-stream")
 
 			eventSource.Store(es)
 
@@ -85,7 +85,7 @@ func (watcher *Watcher) Run(signals <-chan os.Signal, ready chan<- struct{}) err
 			for {
 				event, err = es.Next()
 				if err != nil {
-					watcher.logger.Error("failed-getting-next-tcp-routing-event", err)
+					watcher.logger.Error("failed-to-get-next-routing-api-event", err)
 					break
 				}
 				eventChan <- event
@@ -110,7 +110,7 @@ func (watcher *Watcher) Run(signals <-chan os.Signal, ready chan<- struct{}) err
 			if es := eventSource.Load(); es != nil {
 				err := es.(routing_api.TcpEventSource).Close()
 				if err != nil {
-					watcher.logger.Error("failed-closing-event-source", err)
+					watcher.logger.Error("failed-closing-routing-api-event-source", err)
 				}
 			}
 			return nil

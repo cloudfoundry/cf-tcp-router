@@ -154,7 +154,8 @@ var _ = Describe("Main", func() {
 		})
 
 		It("starts an SSE connection to the server", func() {
-			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("subscribed-to-tcp-routing-events"))
+			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Subscribing-to-routing-api-event-stream"))
+			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Successfully-subscribed-to-routing-api-event-stream"))
 			tcpRouteMapping := models.TcpRouteMapping{
 				TcpRoute: models.TcpRoute{
 					RouterGroupGuid: routerGroupGuid,
@@ -235,7 +236,7 @@ var _ = Describe("Main", func() {
 
 			It("does not call oauth server to get auth token and starts SSE connection with routing api", func() {
 				Eventually(session.Out, 5*time.Second).Should(gbytes.Say("creating-noop-uaa-client"))
-				Eventually(session.Out, 5*time.Second).Should(gbytes.Say("subscribed-to-tcp-routing-events"))
+				Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Successfully-subscribed-to-routing-api-event-stream"))
 			})
 		})
 	})
@@ -267,12 +268,12 @@ var _ = Describe("Main", func() {
 		})
 
 		It("keeps trying to connect and doesn't blow up", func() {
-			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("subscribing-to-tcp-routing-events"))
+			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Subscribing-to-routing-api-event-stream"))
 			Consistently(session.Exited).ShouldNot(BeClosed())
-			Consistently(session.Out, 5*time.Second).ShouldNot(gbytes.Say("subscribed-to-tcp-routing-events"))
+			Consistently(session.Out, 5*time.Second).ShouldNot(gbytes.Say("Successfully-subscribed-to-routing-api-event-stream"))
 			By("starting routing api server")
 			server = routingApiServer(logger)
-			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("subscribed-to-tcp-routing-events"))
+			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Successfully-subscribed-to-routing-api-event-stream"))
 			tcpRouteMapping := models.TcpRouteMapping{
 				TcpRoute: models.TcpRoute{
 					RouterGroupGuid: routerGroupGuid,

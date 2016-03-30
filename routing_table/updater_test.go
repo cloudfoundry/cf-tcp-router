@@ -409,12 +409,12 @@ var _ = Describe("Updater", func() {
 						Action: "Delete",
 					}
 					updater.HandleEvent(tcpEvent)
-					Eventually(logger).Should(gbytes.Say("test.caching-event"))
+					Eventually(logger).Should(gbytes.Say("caching-event"))
 
 					close(syncChannel)
 					Eventually(updater.Syncing).Should(BeFalse())
 					Eventually(doneChannel).Should(BeClosed())
-					Eventually(logger).Should(gbytes.Say("test.handle-sync.applied-cached-events"))
+					Eventually(logger).Should(gbytes.Say("applied-cached-events"))
 
 					Expect(fakeUaaClient.FetchTokenCallCount()).To(Equal(1))
 					Expect(fakeRoutingApiClient.TcpRouteMappingsCallCount()).To(Equal(1))

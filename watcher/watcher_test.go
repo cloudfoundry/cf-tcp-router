@@ -150,7 +150,7 @@ var _ = Describe("Watcher", func() {
 
 		It("resubscribes to SSE from routing api", func() {
 			Eventually(routingApiClient.SubscribeToTcpEventsCallCount, 5*time.Second, 300*time.Millisecond).Should(Equal(2))
-			Eventually(logger).Should(gbytes.Say("test.watcher.failed-getting-next-tcp-routing-event"))
+			Eventually(logger).Should(gbytes.Say("failed-to-get-next-routing-api-event"))
 		})
 	})
 
@@ -181,7 +181,7 @@ var _ = Describe("Watcher", func() {
 				routingApiErrChannel <- errors.New("kaboom")
 				close(routingApiErrChannel)
 				Eventually(routingApiClient.SubscribeToTcpEventsCallCount, 5*time.Second, 1*time.Second).Should(Equal(2))
-				Eventually(logger).Should(gbytes.Say("test.watcher.failed-subscribing-to-tcp-routing-events"))
+				Eventually(logger).Should(gbytes.Say("failed-subscribing-to-routing-api-event-stream"))
 				Eventually(uaaClient.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(2))
 				Expect(uaaClient.FetchTokenArgsForCall(1)).To(BeFalse())
 			})
@@ -193,7 +193,7 @@ var _ = Describe("Watcher", func() {
 				Expect(uaaClient.FetchTokenArgsForCall(0)).To(BeFalse())
 				routingApiErrChannel <- errors.New("unauthorized")
 				Eventually(routingApiClient.SubscribeToTcpEventsCallCount, 5*time.Second, 1*time.Second).Should(Equal(2))
-				Eventually(logger).Should(gbytes.Say("test.watcher.failed-subscribing-to-tcp-routing-events"))
+				Eventually(logger).Should(gbytes.Say("failed-subscribing-to-routing-api-event-stream"))
 				Eventually(uaaClient.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(2))
 				Expect(uaaClient.FetchTokenArgsForCall(1)).To(BeTrue())
 
@@ -201,7 +201,7 @@ var _ = Describe("Watcher", func() {
 				routingApiErrChannel <- errors.New("kaboom")
 				close(routingApiErrChannel)
 				Eventually(routingApiClient.SubscribeToTcpEventsCallCount, 5*time.Second, 1*time.Second).Should(Equal(3))
-				Eventually(logger).Should(gbytes.Say("test.watcher.failed-subscribing-to-tcp-routing-events"))
+				Eventually(logger).Should(gbytes.Say("failed-subscribing-to-routing-api-event-stream"))
 				Eventually(uaaClient.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(Equal(3))
 				Expect(uaaClient.FetchTokenArgsForCall(2)).To(BeFalse())
 			})
@@ -214,7 +214,7 @@ var _ = Describe("Watcher", func() {
 		})
 
 		It("returns an error", func() {
-			Eventually(logger).Should(gbytes.Say("test.watcher.error-fetching-token"))
+			Eventually(logger).Should(gbytes.Say("error-fetching-token"))
 			Eventually(uaaClient.FetchTokenCallCount, 5*time.Second, 1*time.Second).Should(BeNumerically(">", 2))
 		})
 	})

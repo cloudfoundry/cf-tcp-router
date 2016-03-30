@@ -46,7 +46,7 @@ func NewUpdater(logger lager.Logger, routingTable *models.RoutingTable, configur
 
 func (u *updater) Sync() {
 	logger := u.logger.Session("bulk-sync")
-	logger.Info("starting")
+	logger.Debug("starting")
 
 	defer func() {
 		u.lock.Lock()
@@ -56,7 +56,7 @@ func (u *updater) Sync() {
 		u.syncing = false
 		u.cachedEvents = nil
 		u.lock.Unlock()
-		logger.Info("completed")
+		logger.Debug("completed")
 	}()
 
 	u.lock.Lock()

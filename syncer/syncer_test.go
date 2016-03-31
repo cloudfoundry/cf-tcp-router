@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/cloudfoundry-incubator/cf-tcp-router/syncer"
-	"github.com/pivotal-golang/clock/fakeclock"
+	pclock "github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 	"github.com/tedsuo/ifrit"
@@ -18,7 +18,7 @@ var _ = Describe("Syncer", func() {
 	var (
 		syncerRunner *syncer.Syncer
 		syncChannel  chan struct{}
-		clock        *fakeclock.FakeClock
+		clock        pclock.Clock
 		syncInterval time.Duration
 		logger       lager.Logger
 		process      ifrit.Process
@@ -26,7 +26,7 @@ var _ = Describe("Syncer", func() {
 
 	BeforeEach(func() {
 		syncChannel = make(chan struct{})
-		clock = fakeclock.NewFakeClock(time.Now())
+		clock = pclock.NewClock()
 		syncInterval = 1 * time.Second
 		logger = lagertest.NewTestLogger("test")
 		syncerRunner = syncer.New(clock, syncInterval, syncChannel, logger)
@@ -73,11 +73,9 @@ var _ = Describe("Syncer", func() {
 			Eventually(watchChannel).Should(Receive())
 
 			logger.Debug("first-tick")
-			clock.Increment(duration)
 			Eventually(watchChannel, duration).Should(Receive())
 
 			logger.Debug("second-tick")
-			clock.Increment(duration)
 			Eventually(watchChannel, duration).Should(Receive())
 			close(closeChannel)
 		})

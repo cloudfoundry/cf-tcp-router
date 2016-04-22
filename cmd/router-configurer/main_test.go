@@ -128,7 +128,7 @@ var _ = Describe("Main", func() {
 
 			tcpRouteMappings, err := routingApiClient.TcpRouteMappings()
 			Expect(err).NotTo(HaveOccurred())
-			Expect(tcpRouteMappings).To(ContainElement(tcpRouteMapping))
+			Expect(contains(tcpRouteMappings, tcpRouteMapping)).To(BeTrue())
 
 			allOutput := logger.Buffer()
 			runner := testrunner.New(routerConfigurerPath, routerConfigurerArgs)
@@ -291,5 +291,13 @@ var _ = Describe("Main", func() {
 			verifyHaProxyConfigContent(haproxyConfigFile, newServerConfigEntry)
 		})
 	})
-
 })
+
+func contains(ms []models.TcpRouteMapping, tcpRouteMapping models.TcpRouteMapping) bool {
+	for _, m := range ms {
+		if m.Matches(tcpRouteMapping) {
+			return true
+		}
+	}
+	return false
+}

@@ -52,6 +52,24 @@ func NewRoutingTable() RoutingTable {
 	}
 }
 
+// Used to determine whether the details have changed such that the routing configuration needs to be updated.
+// e.g max number of connection
+func (d BackendServerDetails) DifferentFrom(other BackendServerDetails) bool {
+	return d.SucceededBy(other) && false
+}
+
+func (d BackendServerDetails) SucceededBy(other BackendServerDetails) bool {
+	return d.ModificationTag.SucceededBy(&other.ModificationTag)
+}
+
+func NewBackendServerInfo(key BackendServerKey, detail BackendServerDetails) BackendServerInfo {
+	return BackendServerInfo{
+		Address:         key.Address,
+		Port:            key.Port,
+		ModificationTag: detail.ModificationTag,
+	}
+}
+
 func (table RoutingTable) serverKeyDetailsFromInfo(info BackendServerInfo) (BackendServerKey, BackendServerDetails) {
 	return BackendServerKey{Address: info.Address, Port: info.Port}, BackendServerDetails{ModificationTag: info.ModificationTag}
 }
@@ -65,6 +83,7 @@ func (table RoutingTable) Set(key RoutingKey, newEntry RoutingTableEntry) bool {
 	return true
 }
 
+// Returns true if routing configuration should be modified, false if it should not.
 func (table RoutingTable) UpsertBackendServerKey(key RoutingKey, info BackendServerInfo) bool {
 	existingEntry, routingKeyFound := table.Entries[key]
 	if !routingKeyFound {
@@ -73,24 +92,28 @@ func (table RoutingTable) UpsertBackendServerKey(key RoutingKey, info BackendSer
 		return true
 	}
 
-	backendServerKey, backendServerDetails := table.serverKeyDetailsFromInfo(info)
-	existingBackendServerDetails, backendFound := existingEntry.Backends[backendServerKey]
+	newBackendKey, newBackendDetails := table.serverKeyDetailsFromInfo(info)
+	currentBackendDetails, backendFound := existingEntry.Backends[newBackendKey]
 	if !backendFound ||
-		existingBackendServerDetails.ModificationTag.SucceededBy(&backendServerDetails.ModificationTag) {
-		existingEntry.Backends[backendServerKey] = backendServerDetails
+		currentBackendDetails.SucceededBy(newBackendDetails) {
+		existingEntry.Backends[newBackendKey] = newBackendDetails
+	}
+
+	if !backendFound || currentBackendDetails.DifferentFrom(newBackendDetails) {
 		return true
 	}
 
 	return false
 }
 
+// Returns true if routing configuration should be modified, false if it should not.
 func (table RoutingTable) DeleteBackendServerKey(key RoutingKey, info BackendServerInfo) bool {
 	backendServerKey, newDetails := table.serverKeyDetailsFromInfo(info)
 	existingEntry, routingKeyFound := table.Entries[key]
 
 	if routingKeyFound {
 		existingDetails, backendFound := existingEntry.Backends[backendServerKey]
-		if backendFound && existingDetails.ModificationTag.IsCurrentOrOlder(&newDetails.ModificationTag) {
+		if backendFound && existingDetails.SucceededBy(newDetails) {
 			delete(existingEntry.Backends, backendServerKey)
 			if len(existingEntry.Backends) == 0 {
 				delete(table.Entries, key)

@@ -30,7 +30,8 @@ func RoutingTableEntryToHaProxyConfig(routingKey models.RoutingKey, routingTable
 	var buff bytes.Buffer
 
 	buff.WriteString(fmt.Sprintf("listen %s\n  mode tcp\n  bind :%d\n", name, routingKey.Port))
-	for bs := range routingTableEntry.Backends {
+	for bskey, bsdetails := range routingTableEntry.Backends {
+		bs := models.NewBackendServerInfo(bskey, bsdetails)
 		str, err := BackendServerInfoToHaProxyConfig(bs)
 		if err != nil {
 			return "", err

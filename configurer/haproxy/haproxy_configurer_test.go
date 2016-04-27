@@ -99,8 +99,8 @@ var _ = Describe("HaproxyConfigurer", func() {
 			It("doesn't update config file with invalid routing table entry", func() {
 				invalidRoutingKey := models.RoutingKey{Port: 0}
 				invalidRoutingTableEntry := models.RoutingTableEntry{
-					Backends: map[models.BackendServerInfo]struct{}{
-						models.BackendServerInfo{Address: "some-ip-1", Port: 1234}: struct{}{},
+					Backends: map[models.BackendServerKey]models.BackendServerDetails{
+						models.BackendServerKey{Address: "some-ip-1", Port: 1234}: models.BackendServerDetails{},
 					},
 				}
 				routingTable := models.NewRoutingTable()
@@ -109,8 +109,8 @@ var _ = Describe("HaproxyConfigurer", func() {
 
 				routingKey := models.RoutingKey{Port: 80}
 				routingTableEntry := models.RoutingTableEntry{
-					Backends: map[models.BackendServerInfo]struct{}{
-						models.BackendServerInfo{Address: "some-ip-2", Port: 1234}: struct{}{},
+					Backends: map[models.BackendServerKey]models.BackendServerDetails{
+						models.BackendServerKey{Address: "some-ip-2", Port: 1234}: models.BackendServerDetails{},
 					},
 				}
 				ok = routingTable.Set(routingKey, routingTableEntry)
@@ -167,7 +167,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 					BeforeEach(func() {
 						routingTable := models.NewRoutingTable()
 						routingTableEntry := models.NewRoutingTableEntry(
-							models.BackendServerInfos{
+							[]models.BackendServerInfo{
 								models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
 								models.BackendServerInfo{Address: "some-ip-2", Port: 1235},
 							},
@@ -195,7 +195,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 					BeforeEach(func() {
 						routingTable := models.NewRoutingTable()
 						routingTableEntry := models.NewRoutingTableEntry(
-							models.BackendServerInfos{
+							[]models.BackendServerInfo{
 								models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
 								models.BackendServerInfo{Address: "some-ip-2", Port: 1235},
 							},
@@ -204,7 +204,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 						ok := routingTable.Set(routinTableKey, routingTableEntry)
 						Expect(ok).To(BeTrue())
 						routingTableEntry = models.NewRoutingTableEntry(
-							models.BackendServerInfos{
+							[]models.BackendServerInfo{
 								models.BackendServerInfo{Address: "some-ip-3", Port: 1234},
 								models.BackendServerInfo{Address: "some-ip-4", Port: 1235},
 							},
@@ -243,7 +243,7 @@ listen listen_cfg_3333
 				BeforeEach(func() {
 					routingTable := models.NewRoutingTable()
 					routingTableEntry := models.NewRoutingTableEntry(
-						models.BackendServerInfos{
+						[]models.BackendServerInfo{
 							models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
 							models.BackendServerInfo{Address: "some-ip-2", Port: 1235},
 						},
@@ -256,7 +256,7 @@ listen listen_cfg_3333
 
 					routingTable = models.NewRoutingTable()
 					routingTableEntry = models.NewRoutingTableEntry(
-						models.BackendServerInfos{
+						[]models.BackendServerInfo{
 							models.BackendServerInfo{Address: "some-ip-3", Port: 2345},
 							models.BackendServerInfo{Address: "some-ip-4", Port: 3456},
 						},

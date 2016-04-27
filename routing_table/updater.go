@@ -94,7 +94,7 @@ func (u *updater) Sync() {
 		for _, routeMapping := range tcpRouteMappings {
 			routingKey, backendServerInfo := u.toRoutingTableEntry(logger, routeMapping)
 			logger.Debug("creating-routing-table-entry", lager.Data{"key": routingKey, "value": backendServerInfo})
-			u.routingTable.UpsertBackendServerInfo(routingKey, backendServerInfo)
+			u.routingTable.UpsertBackendServerKey(routingKey, backendServerInfo)
 		}
 	}
 }
@@ -144,8 +144,9 @@ func (u *updater) toRoutingTableEntry(logger lager.Logger, routeMapping apimodel
 	logger.Debug("converting-tcp-route-mapping", lager.Data{"tcp-route": routeMapping})
 	routingKey := models.RoutingKey{Port: routeMapping.TcpRoute.ExternalPort}
 	backendServerInfo := models.BackendServerInfo{
-		Address: routeMapping.HostIP,
-		Port:    routeMapping.HostPort,
+		Address:         routeMapping.HostIP,
+		Port:            routeMapping.HostPort,
+		ModificationTag: routeMapping.ModificationTag,
 	}
 	return routingKey, backendServerInfo
 }
@@ -154,7 +155,7 @@ func (u *updater) handleUpsert(logger lager.Logger, routeMapping apimodels.TcpRo
 	defer logger.Debug("handle-upsert-done")
 	routingKey, backendServerInfo := u.toRoutingTableEntry(logger, routeMapping)
 	logger.Debug("creating-routing-table-entry", lager.Data{"key": routingKey})
-	if u.routingTable.UpsertBackendServerInfo(routingKey, backendServerInfo) && !u.syncing {
+	if u.routingTable.UpsertBackendServerKey(routingKey, backendServerInfo) && !u.syncing {
 		logger.Debug("calling-configurer")
 		return u.configurer.Configure(*u.routingTable)
 	}
@@ -166,7 +167,7 @@ func (u *updater) handleDelete(logger lager.Logger, routeMapping apimodels.TcpRo
 	defer logger.Debug("handle-delete-done")
 	routingKey, backendServerInfo := u.toRoutingTableEntry(logger, routeMapping)
 	logger.Debug("deleting-routing-table-entry", lager.Data{"key": routingKey})
-	if u.routingTable.DeleteBackendServerInfo(routingKey, backendServerInfo) && !u.syncing {
+	if u.routingTable.DeleteBackendServerKey(routingKey, backendServerInfo) && !u.syncing {
 		logger.Debug("calling-configurer")
 		return u.configurer.Configure(*u.routingTable)
 	}

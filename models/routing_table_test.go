@@ -17,7 +17,7 @@ var _ = Describe("RoutingTable", func() {
 
 	BeforeEach(func() {
 		routingTable = models.NewRoutingTable()
-		modificationTag = routing_api_models.ModificationTag{Guid: "abc", Index: 0}
+		modificationTag = routing_api_models.ModificationTag{Guid: "abc", Index: 1}
 	})
 
 	Describe("Set", func() {
@@ -137,7 +137,7 @@ var _ = Describe("RoutingTable", func() {
 		BeforeEach(func() {
 			routingKey = models.RoutingKey{Port: 12}
 			routingTable = models.NewRoutingTable()
-			modificationTag = routing_api_models.ModificationTag{Guid: "abc", Index: 0}
+			modificationTag = routing_api_models.ModificationTag{Guid: "abc", Index: 5}
 		})
 
 		Context("when the routing key does not exist", func() {
@@ -169,8 +169,19 @@ var _ = Describe("RoutingTable", func() {
 				Expect(updated).To(BeTrue())
 			})
 
-			Context("and no change in the backends are provided", func() {
-				It("does not update the routing entry", func() {
+			Context("when current entry is succeeded by new entry", func() {
+				BeforeEach(func() {
+					modificationTag.Increment()
+				})
+
+				It("updates the routing entry", func() {
+					sameBackendServerInfo := createBackendServerInfo("some-ip", 1234, modificationTag)
+					routingTable.UpsertBackendServerKey(routingKey, sameBackendServerInfo)
+					expectedRoutingTableEntry := models.NewRoutingTableEntry([]models.BackendServerInfo{sameBackendServerInfo})
+					Expect(routingTable.Get(routingKey)).Should(Equal(expectedRoutingTableEntry))
+				})
+
+				It("does not update routing configuration", func() {
 					sameBackendServerInfo := createBackendServerInfo("some-ip", 1234, modificationTag)
 					updated := routingTable.UpsertBackendServerKey(routingKey, sameBackendServerInfo)
 					Expect(updated).To(BeFalse())
@@ -188,17 +199,20 @@ var _ = Describe("RoutingTable", func() {
 				})
 			})
 
-			Context("when current entry is succeeded by new entry", func() {
+			Context("when current entry is fresher than incoming entry", func() {
+
+				var existingRoutingTableEntry models.RoutingTableEntry
+
 				BeforeEach(func() {
-					modificationTag.Increment()
+					existingRoutingTableEntry = models.NewRoutingTableEntry([]models.BackendServerInfo{createBackendServerInfo("some-ip", 1234, modificationTag)})
+					modificationTag.Index--
 				})
 
-				It("should update routing table with new entry", func() {
+				It("should not update routing table", func() {
 					newBackendServerInfo := createBackendServerInfo("some-ip", 1234, modificationTag)
 					updated := routingTable.UpsertBackendServerKey(routingKey, newBackendServerInfo)
-					expectedRoutingTableEntry := models.NewRoutingTableEntry([]models.BackendServerInfo{newBackendServerInfo})
-					Expect(updated).To(BeTrue())
-					Expect(routingTable.Get(routingKey)).Should(Equal(expectedRoutingTableEntry))
+					Expect(updated).To(BeFalse())
+					Expect(routingTable.Get(routingKey)).Should(Equal(existingRoutingTableEntry))
 				})
 			})
 		})
@@ -221,7 +235,6 @@ var _ = Describe("RoutingTable", func() {
 				updated := routingTable.DeleteBackendServerKey(routingKey, backendServerInfo1)
 				Expect(updated).To(BeFalse())
 			})
-
 		})
 
 		Context("when the routing key does exist", func() {
@@ -249,34 +262,15 @@ var _ = Describe("RoutingTable", func() {
 					Expect(routingTable.Get(routingKey)).Should(Equal(expectedRoutingTableEntry))
 				})
 
-				Context("when a modification tag has the same guid but index is greater then current index", func() {
+				Context("when a modification tag has the same guid but current index is greater", func() {
 					BeforeEach(func() {
-						modificationTag.Increment()
+						backendServerInfo1.ModificationTag.Index--
 					})
 
-					It("deletes the backend", func() {
-						updated := routingTable.DeleteBackendServerKey(routingKey, backendServerInfo1)
-						Expect(updated).To(BeTrue())
-						expectedRoutingTableEntry := models.NewRoutingTableEntry([]models.BackendServerInfo{backendServerInfo2})
-						Expect(routingTable.Get(routingKey)).Should(Equal(expectedRoutingTableEntry))
-					})
-				})
-
-				Context("when a modification tag is not current or newer", func() {
-					var expectedRoutingTableEntry models.RoutingTableEntry
-
-					BeforeEach(func() {
-						backendServerInfo1.ModificationTag.Increment()
-						expectedRoutingTableEntry = models.NewRoutingTableEntry([]models.BackendServerInfo{backendServerInfo1, backendServerInfo2})
-						updated := routingTable.UpsertBackendServerKey(routingKey, backendServerInfo1)
-						Expect(updated).To(BeTrue())
-					})
-
-					It("doesn't delete the backend", func() {
-						backendServerInfo1.ModificationTag = routing_api_models.ModificationTag{Guid: "abc"}
+					It("does not deletes the backend", func() {
 						updated := routingTable.DeleteBackendServerKey(routingKey, backendServerInfo1)
 						Expect(updated).To(BeFalse())
-						Expect(routingTable.Get(routingKey)).Should(Equal(expectedRoutingTableEntry))
+						Expect(routingTable.Get(routingKey)).Should(Equal(existingRoutingTableEntry))
 					})
 				})
 
@@ -284,13 +278,13 @@ var _ = Describe("RoutingTable", func() {
 					var expectedRoutingTableEntry models.RoutingTableEntry
 
 					BeforeEach(func() {
-						expectedRoutingTableEntry = models.NewRoutingTableEntry([]models.BackendServerInfo{backendServerInfo1, backendServerInfo2})
+						expectedRoutingTableEntry = models.NewRoutingTableEntry([]models.BackendServerInfo{backendServerInfo2})
 						backendServerInfo1.ModificationTag = routing_api_models.ModificationTag{Guid: "def"}
 					})
 
-					It("doesn't delete the backend", func() {
+					It("deletes the backend", func() {
 						updated := routingTable.DeleteBackendServerKey(routingKey, backendServerInfo1)
-						Expect(updated).To(BeFalse())
+						Expect(updated).To(BeTrue())
 						Expect(routingTable.Get(routingKey)).Should(Equal(expectedRoutingTableEntry))
 					})
 				})

@@ -55,11 +55,15 @@ func NewRoutingTable() RoutingTable {
 // Used to determine whether the details have changed such that the routing configuration needs to be updated.
 // e.g max number of connection
 func (d BackendServerDetails) DifferentFrom(other BackendServerDetails) bool {
-	return d.SucceededBy(other) && false
+	return d.UpdateSucceededBy(other) && false
 }
 
-func (d BackendServerDetails) SucceededBy(other BackendServerDetails) bool {
+func (d BackendServerDetails) UpdateSucceededBy(other BackendServerDetails) bool {
 	return d.ModificationTag.SucceededBy(&other.ModificationTag)
+}
+
+func (d BackendServerDetails) DeleteSucceededBy(other BackendServerDetails) bool {
+	return d.ModificationTag == other.ModificationTag || d.ModificationTag.SucceededBy(&other.ModificationTag)
 }
 
 func NewBackendServerInfo(key BackendServerKey, detail BackendServerDetails) BackendServerInfo {
@@ -95,7 +99,7 @@ func (table RoutingTable) UpsertBackendServerKey(key RoutingKey, info BackendSer
 	newBackendKey, newBackendDetails := table.serverKeyDetailsFromInfo(info)
 	currentBackendDetails, backendFound := existingEntry.Backends[newBackendKey]
 	if !backendFound ||
-		currentBackendDetails.SucceededBy(newBackendDetails) {
+		currentBackendDetails.UpdateSucceededBy(newBackendDetails) {
 		existingEntry.Backends[newBackendKey] = newBackendDetails
 	}
 
@@ -113,7 +117,7 @@ func (table RoutingTable) DeleteBackendServerKey(key RoutingKey, info BackendSer
 
 	if routingKeyFound {
 		existingDetails, backendFound := existingEntry.Backends[backendServerKey]
-		if backendFound && existingDetails.SucceededBy(newDetails) {
+		if backendFound && existingDetails.DeleteSucceededBy(newDetails) {
 			delete(existingEntry.Backends, backendServerKey)
 			if len(existingEntry.Backends) == 0 {
 				delete(table.Entries, key)

@@ -3,6 +3,8 @@ package models
 import (
 	"fmt"
 	"reflect"
+
+	routing_api_models "github.com/cloudfoundry-incubator/routing-api/models"
 )
 
 type RoutingKey struct {
@@ -10,34 +12,48 @@ type RoutingKey struct {
 }
 
 type BackendServerInfo struct {
+	Address         string
+	Port            uint16
+	ModificationTag routing_api_models.ModificationTag
+}
+
+type BackendServerKey struct {
 	Address string
 	Port    uint16
 }
 
-type BackendServerInfos []BackendServerInfo
-
-type RoutingTableEntry struct {
-	Backends map[BackendServerInfo]struct{}
+type BackendServerDetails struct {
+	ModificationTag routing_api_models.ModificationTag
 }
 
-func NewRoutingTableEntry(backends BackendServerInfos) RoutingTableEntry {
-	routingTableEntry := RoutingTableEntry{
-		Backends: make(map[BackendServerInfo]struct{}),
-	}
-	for _, backend := range backends {
-		routingTableEntry.Backends[backend] = struct{}{}
-	}
-	return routingTableEntry
+type RoutingTableEntry struct {
+	Backends map[BackendServerKey]BackendServerDetails
 }
 
 type RoutingTable struct {
 	Entries map[RoutingKey]RoutingTableEntry
 }
 
+func NewRoutingTableEntry(backends []BackendServerInfo) RoutingTableEntry {
+	routingTableEntry := RoutingTableEntry{
+		Backends: make(map[BackendServerKey]BackendServerDetails),
+	}
+	for _, backend := range backends {
+		backendServerKey := BackendServerKey{Address: backend.Address, Port: backend.Port}
+		backendServerDetails := BackendServerDetails{ModificationTag: backend.ModificationTag}
+		routingTableEntry.Backends[backendServerKey] = backendServerDetails
+	}
+	return routingTableEntry
+}
+
 func NewRoutingTable() RoutingTable {
 	return RoutingTable{
 		Entries: make(map[RoutingKey]RoutingTableEntry),
 	}
+}
+
+func (table RoutingTable) serverKeyDetailsFromInfo(info BackendServerInfo) (BackendServerKey, BackendServerDetails) {
+	return BackendServerKey{Address: info.Address, Port: info.Port}, BackendServerDetails{ModificationTag: info.ModificationTag}
 }
 
 func (table RoutingTable) Set(key RoutingKey, newEntry RoutingTableEntry) bool {
@@ -49,35 +65,40 @@ func (table RoutingTable) Set(key RoutingKey, newEntry RoutingTableEntry) bool {
 	return true
 }
 
-func (table RoutingTable) UpsertBackendServerInfo(key RoutingKey, backendServerInfo BackendServerInfo) bool {
-	existingEntry, ok := table.Entries[key]
-	updated := false
-	if ok == false {
-		existingEntry = NewRoutingTableEntry(BackendServerInfos{})
+func (table RoutingTable) UpsertBackendServerKey(key RoutingKey, info BackendServerInfo) bool {
+	existingEntry, routingKeyFound := table.Entries[key]
+	if !routingKeyFound {
+		existingEntry = NewRoutingTableEntry([]BackendServerInfo{info})
 		table.Entries[key] = existingEntry
+		return true
 	}
-	_, backendFound := existingEntry.Backends[backendServerInfo]
-	if backendFound == false {
-		existingEntry.Backends[backendServerInfo] = struct{}{}
-		updated = true
+
+	backendServerKey, backendServerDetails := table.serverKeyDetailsFromInfo(info)
+	existingBackendServerDetails, backendFound := existingEntry.Backends[backendServerKey]
+	if !backendFound ||
+		existingBackendServerDetails.ModificationTag.SucceededBy(&backendServerDetails.ModificationTag) {
+		existingEntry.Backends[backendServerKey] = backendServerDetails
+		return true
 	}
-	return updated
+
+	return false
 }
 
-func (table RoutingTable) DeleteBackendServerInfo(key RoutingKey, backendServerInfo BackendServerInfo) bool {
-	existingEntry, ok := table.Entries[key]
-	deleted := false
-	if ok == true {
-		_, backendFound := existingEntry.Backends[backendServerInfo]
-		if backendFound == true {
-			delete(existingEntry.Backends, backendServerInfo)
-			deleted = true
+func (table RoutingTable) DeleteBackendServerKey(key RoutingKey, info BackendServerInfo) bool {
+	backendServerKey, newDetails := table.serverKeyDetailsFromInfo(info)
+	existingEntry, routingKeyFound := table.Entries[key]
+
+	if routingKeyFound {
+		existingDetails, backendFound := existingEntry.Backends[backendServerKey]
+		if backendFound && existingDetails.ModificationTag.IsCurrentOrOlder(&newDetails.ModificationTag) {
+			delete(existingEntry.Backends, backendServerKey)
 			if len(existingEntry.Backends) == 0 {
 				delete(table.Entries, key)
 			}
+			return true
 		}
 	}
-	return deleted
+	return false
 }
 
 func (table RoutingTable) Get(key RoutingKey) RoutingTableEntry {

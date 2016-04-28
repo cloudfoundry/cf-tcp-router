@@ -3,6 +3,7 @@ package models_test
 import (
 	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
 	routing_api_models "github.com/cloudfoundry-incubator/routing-api/models"
+	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,10 +14,11 @@ var _ = Describe("RoutingTable", func() {
 		backendServerKey models.BackendServerKey
 		routingTable     models.RoutingTable
 		modificationTag  routing_api_models.ModificationTag
+		logger           = lagertest.NewTestLogger("routing-table-test")
 	)
 
 	BeforeEach(func() {
-		routingTable = models.NewRoutingTable()
+		routingTable = models.NewRoutingTable(logger)
 		modificationTag = routing_api_models.ModificationTag{Guid: "abc", Index: 1}
 	})
 
@@ -136,7 +138,7 @@ var _ = Describe("RoutingTable", func() {
 
 		BeforeEach(func() {
 			routingKey = models.RoutingKey{Port: 12}
-			routingTable = models.NewRoutingTable()
+			routingTable = models.NewRoutingTable(logger)
 			modificationTag = routing_api_models.ModificationTag{Guid: "abc", Index: 5}
 		})
 

@@ -54,7 +54,7 @@ var _ = Describe("Updater", func() {
 			ExpiresIn:   5,
 		}
 		fakeUaaClient.FetchTokenReturns(token, nil)
-		tmpRoutingTable := models.NewRoutingTable()
+		tmpRoutingTable := models.NewRoutingTable(logger)
 		routingTable = &tmpRoutingTable
 		updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeUaaClient)
 	})

@@ -103,7 +103,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 						models.BackendServerKey{Address: "some-ip-1", Port: 1234}: models.BackendServerDetails{},
 					},
 				}
-				routingTable := models.NewRoutingTable()
+				routingTable := models.NewRoutingTable(logger)
 				ok := routingTable.Set(invalidRoutingKey, invalidRoutingTableEntry)
 				Expect(ok).To(BeTrue())
 
@@ -165,7 +165,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 				Context("when only one mapping is provided as part of request", func() {
 
 					BeforeEach(func() {
-						routingTable := models.NewRoutingTable()
+						routingTable := models.NewRoutingTable(logger)
 						routingTableEntry := models.NewRoutingTableEntry(
 							[]models.BackendServerInfo{
 								models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
@@ -193,7 +193,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 				Context("when multiple mappings are provided as part of one request", func() {
 
 					BeforeEach(func() {
-						routingTable := models.NewRoutingTable()
+						routingTable := models.NewRoutingTable(logger)
 						routingTableEntry := models.NewRoutingTableEntry(
 							[]models.BackendServerInfo{
 								models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
@@ -241,7 +241,7 @@ listen listen_cfg_3333
 
 			Context("when Configure is called multiple times", func() {
 				BeforeEach(func() {
-					routingTable := models.NewRoutingTable()
+					routingTable := models.NewRoutingTable(logger)
 					routingTableEntry := models.NewRoutingTableEntry(
 						[]models.BackendServerInfo{
 							models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
@@ -254,7 +254,7 @@ listen listen_cfg_3333
 					err = haproxyConfigurer.Configure(routingTable)
 					Expect(err).ShouldNot(HaveOccurred())
 
-					routingTable = models.NewRoutingTable()
+					routingTable = models.NewRoutingTable(logger)
 					routingTableEntry = models.NewRoutingTableEntry(
 						[]models.BackendServerInfo{
 							models.BackendServerInfo{Address: "some-ip-3", Port: 2345},

@@ -121,7 +121,7 @@ func main() {
 
 	initializeDropsonde(logger)
 
-	routingTable := models.NewRoutingTable()
+	routingTable := models.NewRoutingTable(logger)
 	configurer := configurer.NewConfigurer(logger,
 		*tcpLoadBalancer, *tcpLoadBalancerBaseCfg, *tcpLoadBalancerCfg)
 

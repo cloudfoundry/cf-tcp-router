@@ -100,10 +100,10 @@ func (u *updater) Sync() {
 }
 
 func (u *updater) applyCachedEvents(logger lager.Logger) {
-	logger.Debug("applying-cached-events")
+	logger.Debug("applying-cached-events", lager.Data{"cache_size": len(u.cachedEvents)})
 	defer logger.Debug("applied-cached-events")
 	for _, e := range u.cachedEvents {
-		u.handleEvent(e)
+		u.handleEvent(logger, e)
 	}
 }
 
@@ -121,13 +121,13 @@ func (u *updater) HandleEvent(event routing_api.TcpEvent) error {
 		u.logger.Debug("caching-events")
 		u.cachedEvents = append(u.cachedEvents, event)
 	} else {
-		return u.handleEvent(event)
+		return u.handleEvent(u.logger, event)
 	}
 	return nil
 }
 
-func (u *updater) handleEvent(event routing_api.TcpEvent) error {
-	logger := u.logger.Session("handle-event", lager.Data{"event": event})
+func (u *updater) handleEvent(l lager.Logger, event routing_api.TcpEvent) error {
+	logger := l.Session("handle-event", lager.Data{"event": event})
 	action := event.Action
 	switch action {
 	case "Upsert":
@@ -155,6 +155,7 @@ func (u *updater) handleUpsert(logger lager.Logger, routeMapping apimodels.TcpRo
 	defer logger.Debug("handle-upsert-done")
 	routingKey, backendServerInfo := u.toRoutingTableEntry(logger, routeMapping)
 	logger.Debug("creating-routing-table-entry", lager.Data{"key": routingKey})
+
 	if u.routingTable.UpsertBackendServerKey(routingKey, backendServerInfo) && !u.syncing {
 		logger.Debug("calling-configurer")
 		return u.configurer.Configure(*u.routingTable)

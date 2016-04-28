@@ -102,7 +102,7 @@ func (watcher *Watcher) Run(signals <-chan os.Signal, ready chan<- struct{}) err
 			watcher.updater.HandleEvent(event)
 
 		case <-watcher.syncChannel:
-			watcher.updater.Sync()
+			go watcher.updater.Sync()
 
 		case <-signals:
 			watcher.logger.Info("stopping")

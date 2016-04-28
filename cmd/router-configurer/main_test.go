@@ -122,6 +122,7 @@ var _ = Describe("Main", func() {
 				},
 				HostPort: 61000,
 				HostIP:   "some-ip-1",
+				TTL:      120,
 			}
 			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 			Expect(err).ToNot(HaveOccurred())
@@ -163,6 +164,7 @@ var _ = Describe("Main", func() {
 				},
 				HostPort: 61000,
 				HostIP:   "some-ip-2",
+				TTL:      120,
 			}
 			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 			Expect(err).ToNot(HaveOccurred())
@@ -281,6 +283,7 @@ var _ = Describe("Main", func() {
 				},
 				HostPort: 61000,
 				HostIP:   "some-ip-3",
+				TTL:      120,
 			}
 			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 			Expect(err).ToNot(HaveOccurred())

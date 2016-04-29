@@ -147,6 +147,7 @@ func (u *updater) toRoutingTableEntry(logger lager.Logger, routeMapping apimodel
 		Address:         routeMapping.HostIP,
 		Port:            routeMapping.HostPort,
 		ModificationTag: routeMapping.ModificationTag,
+		TTL:             routeMapping.TTL,
 	}
 	return routingKey, backendServerInfo
 }

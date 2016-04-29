@@ -31,7 +31,8 @@ var _ = Describe("RoutingTable", func() {
 
 		BeforeEach(func() {
 			routingKey = models.RoutingKey{Port: 12}
-			backendServerDetails = models.BackendServerDetails{ModificationTag: modificationTag}
+			backendServerKey = models.BackendServerKey{Address: "some-ip-1", Port: 1234}
+			backendServerDetails = models.BackendServerDetails{ModificationTag: modificationTag, TTL: 120}
 			backends := map[models.BackendServerKey]models.BackendServerDetails{
 				backendServerKey: backendServerDetails,
 			}
@@ -61,7 +62,7 @@ var _ = Describe("RoutingTable", func() {
 				existingRoutingTableEntry = models.RoutingTableEntry{
 					Backends: map[models.BackendServerKey]models.BackendServerDetails{
 						backendServerKey:    backendServerDetails,
-						newBackendServerKey: models.BackendServerDetails{ModificationTag: modificationTag},
+						newBackendServerKey: models.BackendServerDetails{ModificationTag: modificationTag, TTL: 120},
 					},
 				}
 				ok := routingTable.Set(routingKey, existingRoutingTableEntry)
@@ -113,14 +114,38 @@ var _ = Describe("RoutingTable", func() {
 						verifyChangedValue(routingTableEntry)
 					})
 				})
+
+				Context("when modificationTag is different", func() {
+					It("overwrites the value", func() {
+						routingTableEntry := models.RoutingTableEntry{
+							Backends: map[models.BackendServerKey]models.BackendServerDetails{
+								models.BackendServerKey{Address: "some-ip-1", Port: 1234}: models.BackendServerDetails{ModificationTag: routing_api_models.ModificationTag{Guid: "different-guid"}},
+								models.BackendServerKey{Address: "some-ip-2", Port: 1234}: models.BackendServerDetails{ModificationTag: routing_api_models.ModificationTag{Guid: "different-guid"}},
+							},
+						}
+						verifyChangedValue(routingTableEntry)
+					})
+				})
+
+				Context("when TTL is different", func() {
+					It("overwrites the value", func() {
+						routingTableEntry := models.RoutingTableEntry{
+							Backends: map[models.BackendServerKey]models.BackendServerDetails{
+								models.BackendServerKey{Address: "some-ip-1", Port: 1234}: models.BackendServerDetails{ModificationTag: modificationTag, TTL: 110},
+								models.BackendServerKey{Address: "some-ip-2", Port: 1234}: models.BackendServerDetails{ModificationTag: modificationTag, TTL: 110},
+							},
+						}
+						verifyChangedValue(routingTableEntry)
+					})
+				})
 			})
 
 			Context("with same value", func() {
 				It("returns false", func() {
 					routingTableEntry := models.RoutingTableEntry{
 						Backends: map[models.BackendServerKey]models.BackendServerDetails{
-							backendServerKey:    models.BackendServerDetails{ModificationTag: modificationTag},
-							newBackendServerKey: models.BackendServerDetails{ModificationTag: modificationTag},
+							backendServerKey:    models.BackendServerDetails{ModificationTag: modificationTag, TTL: 120},
+							newBackendServerKey: models.BackendServerDetails{ModificationTag: modificationTag, TTL: 120},
 						},
 					}
 					ok := routingTable.Set(routingKey, routingTableEntry)

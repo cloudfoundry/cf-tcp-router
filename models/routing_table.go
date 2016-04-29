@@ -16,6 +16,7 @@ type BackendServerInfo struct {
 	Address         string
 	Port            uint16
 	ModificationTag routing_api_models.ModificationTag
+	TTL             uint16
 }
 
 type BackendServerKey struct {
@@ -25,6 +26,7 @@ type BackendServerKey struct {
 
 type BackendServerDetails struct {
 	ModificationTag routing_api_models.ModificationTag
+	TTL             uint16
 }
 
 type RoutingTableEntry struct {
@@ -42,7 +44,8 @@ func NewRoutingTableEntry(backends []BackendServerInfo) RoutingTableEntry {
 	}
 	for _, backend := range backends {
 		backendServerKey := BackendServerKey{Address: backend.Address, Port: backend.Port}
-		backendServerDetails := BackendServerDetails{ModificationTag: backend.ModificationTag}
+		backendServerDetails := BackendServerDetails{ModificationTag: backend.ModificationTag, TTL: backend.TTL}
+
 		routingTableEntry.Backends[backendServerKey] = backendServerDetails
 	}
 	return routingTableEntry
@@ -74,13 +77,15 @@ func NewBackendServerInfo(key BackendServerKey, detail BackendServerDetails) Bac
 		Address:         key.Address,
 		Port:            key.Port,
 		ModificationTag: detail.ModificationTag,
+		TTL:             detail.TTL,
 	}
 }
 
 func (table RoutingTable) serverKeyDetailsFromInfo(info BackendServerInfo) (BackendServerKey, BackendServerDetails) {
-	return BackendServerKey{Address: info.Address, Port: info.Port}, BackendServerDetails{ModificationTag: info.ModificationTag}
+	return BackendServerKey{Address: info.Address, Port: info.Port}, BackendServerDetails{ModificationTag: info.ModificationTag, TTL: info.TTL}
 }
 
+// Returns true if routing configuration should be modified, false if it should not.
 func (table RoutingTable) Set(key RoutingKey, newEntry RoutingTableEntry) bool {
 	existingEntry, ok := table.Entries[key]
 	if ok == true && reflect.DeepEqual(existingEntry, newEntry) {

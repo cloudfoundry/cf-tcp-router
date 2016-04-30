@@ -1,7 +1,10 @@
 package models_test
 
 import (
+	"time"
+
 	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/testutil"
 	routing_api_models "github.com/cloudfoundry-incubator/routing-api/models"
 	"github.com/pivotal-golang/lager/lagertest"
 
@@ -27,12 +30,14 @@ var _ = Describe("RoutingTable", func() {
 			routingKey           models.RoutingKey
 			routingTableEntry    models.RoutingTableEntry
 			backendServerDetails models.BackendServerDetails
+			now                  time.Time
 		)
 
 		BeforeEach(func() {
 			routingKey = models.RoutingKey{Port: 12}
 			backendServerKey = models.BackendServerKey{Address: "some-ip-1", Port: 1234}
-			backendServerDetails = models.BackendServerDetails{ModificationTag: modificationTag, TTL: 120}
+			now = time.Now()
+			backendServerDetails = models.BackendServerDetails{ModificationTag: modificationTag, TTL: 120, UpdatedTime: now}
 			backends := map[models.BackendServerKey]models.BackendServerDetails{
 				backendServerKey: backendServerDetails,
 			}
@@ -62,7 +67,7 @@ var _ = Describe("RoutingTable", func() {
 				existingRoutingTableEntry = models.RoutingTableEntry{
 					Backends: map[models.BackendServerKey]models.BackendServerDetails{
 						backendServerKey:    backendServerDetails,
-						newBackendServerKey: models.BackendServerDetails{ModificationTag: modificationTag, TTL: 120},
+						newBackendServerKey: models.BackendServerDetails{ModificationTag: modificationTag, TTL: 120, UpdatedTime: now},
 					},
 				}
 				ok := routingTable.Set(routingKey, existingRoutingTableEntry)
@@ -84,7 +89,7 @@ var _ = Describe("RoutingTable", func() {
 								models.BackendServerKey{
 									Address: "some-ip-1",
 									Port:    1234,
-								}: models.BackendServerDetails{ModificationTag: modificationTag},
+								}: models.BackendServerDetails{ModificationTag: modificationTag, UpdatedTime: now},
 							},
 						}
 						verifyChangedValue(routingTableEntry)
@@ -95,8 +100,8 @@ var _ = Describe("RoutingTable", func() {
 					It("overwrites the value", func() {
 						routingTableEntry := models.RoutingTableEntry{
 							Backends: map[models.BackendServerKey]models.BackendServerDetails{
-								models.BackendServerKey{Address: "some-ip-1", Port: 1234}: models.BackendServerDetails{ModificationTag: modificationTag},
-								models.BackendServerKey{Address: "some-ip-2", Port: 2345}: models.BackendServerDetails{ModificationTag: modificationTag},
+								models.BackendServerKey{Address: "some-ip-1", Port: 1234}: models.BackendServerDetails{ModificationTag: modificationTag, UpdatedTime: now},
+								models.BackendServerKey{Address: "some-ip-2", Port: 2345}: models.BackendServerDetails{ModificationTag: modificationTag, UpdatedTime: now},
 							},
 						}
 						verifyChangedValue(routingTableEntry)
@@ -107,8 +112,8 @@ var _ = Describe("RoutingTable", func() {
 					It("overwrites the value", func() {
 						routingTableEntry := models.RoutingTableEntry{
 							Backends: map[models.BackendServerKey]models.BackendServerDetails{
-								models.BackendServerKey{Address: "some-ip-1", Port: 3456}: models.BackendServerDetails{ModificationTag: modificationTag},
-								models.BackendServerKey{Address: "some-ip-2", Port: 2345}: models.BackendServerDetails{ModificationTag: modificationTag},
+								models.BackendServerKey{Address: "some-ip-1", Port: 3456}: models.BackendServerDetails{ModificationTag: modificationTag, UpdatedTime: now},
+								models.BackendServerKey{Address: "some-ip-2", Port: 2345}: models.BackendServerDetails{ModificationTag: modificationTag, UpdatedTime: now},
 							},
 						}
 						verifyChangedValue(routingTableEntry)
@@ -119,8 +124,8 @@ var _ = Describe("RoutingTable", func() {
 					It("overwrites the value", func() {
 						routingTableEntry := models.RoutingTableEntry{
 							Backends: map[models.BackendServerKey]models.BackendServerDetails{
-								models.BackendServerKey{Address: "some-ip-1", Port: 1234}: models.BackendServerDetails{ModificationTag: routing_api_models.ModificationTag{Guid: "different-guid"}},
-								models.BackendServerKey{Address: "some-ip-2", Port: 1234}: models.BackendServerDetails{ModificationTag: routing_api_models.ModificationTag{Guid: "different-guid"}},
+								models.BackendServerKey{Address: "some-ip-1", Port: 1234}: models.BackendServerDetails{ModificationTag: routing_api_models.ModificationTag{Guid: "different-guid"}, UpdatedTime: now},
+								models.BackendServerKey{Address: "some-ip-2", Port: 1234}: models.BackendServerDetails{ModificationTag: routing_api_models.ModificationTag{Guid: "different-guid"}, UpdatedTime: now},
 							},
 						}
 						verifyChangedValue(routingTableEntry)
@@ -131,8 +136,8 @@ var _ = Describe("RoutingTable", func() {
 					It("overwrites the value", func() {
 						routingTableEntry := models.RoutingTableEntry{
 							Backends: map[models.BackendServerKey]models.BackendServerDetails{
-								models.BackendServerKey{Address: "some-ip-1", Port: 1234}: models.BackendServerDetails{ModificationTag: modificationTag, TTL: 110},
-								models.BackendServerKey{Address: "some-ip-2", Port: 1234}: models.BackendServerDetails{ModificationTag: modificationTag, TTL: 110},
+								models.BackendServerKey{Address: "some-ip-1", Port: 1234}: models.BackendServerDetails{ModificationTag: modificationTag, TTL: 110, UpdatedTime: now},
+								models.BackendServerKey{Address: "some-ip-2", Port: 1234}: models.BackendServerDetails{ModificationTag: modificationTag, TTL: 110, UpdatedTime: now},
 							},
 						}
 						verifyChangedValue(routingTableEntry)
@@ -144,13 +149,13 @@ var _ = Describe("RoutingTable", func() {
 				It("returns false", func() {
 					routingTableEntry := models.RoutingTableEntry{
 						Backends: map[models.BackendServerKey]models.BackendServerDetails{
-							backendServerKey:    models.BackendServerDetails{ModificationTag: modificationTag, TTL: 120},
-							newBackendServerKey: models.BackendServerDetails{ModificationTag: modificationTag, TTL: 120},
+							backendServerKey:    models.BackendServerDetails{ModificationTag: modificationTag, TTL: 120, UpdatedTime: now},
+							newBackendServerKey: models.BackendServerDetails{ModificationTag: modificationTag, TTL: 120, UpdatedTime: now},
 						},
 					}
 					ok := routingTable.Set(routingKey, routingTableEntry)
 					Expect(ok).To(BeFalse())
-					Expect(routingTable.Get(routingKey)).Should(Equal(existingRoutingTableEntry))
+					testutil.RoutingTableEntryMatches(routingTable.Get(routingKey), existingRoutingTableEntry)
 				})
 			})
 		})
@@ -182,7 +187,7 @@ var _ = Describe("RoutingTable", func() {
 				updated := routingTable.UpsertBackendServerKey(routingKey, backendServerInfo)
 				Expect(updated).To(BeTrue())
 				Expect(routingTable.Size()).To(Equal(1))
-				Expect(routingTable.Get(routingKey)).Should(Equal(routingTableEntry))
+				testutil.RoutingTableEntryMatches(routingTable.Get(routingKey), routingTableEntry)
 			})
 		})
 
@@ -203,9 +208,9 @@ var _ = Describe("RoutingTable", func() {
 
 				It("updates the routing entry", func() {
 					sameBackendServerInfo := createBackendServerInfo("some-ip", 1234, modificationTag)
-					routingTable.UpsertBackendServerKey(routingKey, sameBackendServerInfo)
 					expectedRoutingTableEntry := models.NewRoutingTableEntry([]models.BackendServerInfo{sameBackendServerInfo})
-					Expect(routingTable.Get(routingKey)).Should(Equal(expectedRoutingTableEntry))
+					routingTable.UpsertBackendServerKey(routingKey, sameBackendServerInfo)
+					testutil.RoutingTableEntryMatches(routingTable.Get(routingKey), expectedRoutingTableEntry)
 				})
 
 				It("does not update routing configuration", func() {
@@ -222,7 +227,10 @@ var _ = Describe("RoutingTable", func() {
 					expectedRoutingTableEntry := models.NewRoutingTableEntry([]models.BackendServerInfo{backendServerInfo, differentBackendServerInfo})
 					updated := routingTable.UpsertBackendServerKey(routingKey, differentBackendServerInfo)
 					Expect(updated).To(BeTrue())
-					Expect(routingTable.Get(routingKey)).Should(Equal(expectedRoutingTableEntry))
+					testutil.RoutingTableEntryMatches(routingTable.Get(routingKey), expectedRoutingTableEntry)
+					actualDetails := routingTable.Get(routingKey).Backends[models.BackendServerKey{Address: "some-other-ip", Port: 1234}]
+					expectedDetails := expectedRoutingTableEntry.Backends[models.BackendServerKey{Address: "some-other-ip", Port: 1234}]
+					Expect(actualDetails.UpdatedTime.After(expectedDetails.UpdatedTime)).To(BeTrue())
 				})
 			})
 
@@ -239,7 +247,7 @@ var _ = Describe("RoutingTable", func() {
 					newBackendServerInfo := createBackendServerInfo("some-ip", 1234, modificationTag)
 					updated := routingTable.UpsertBackendServerKey(routingKey, newBackendServerInfo)
 					Expect(updated).To(BeFalse())
-					Expect(routingTable.Get(routingKey)).Should(Equal(existingRoutingTableEntry))
+					testutil.RoutingTableEntryMatches(routingTable.Get(routingKey), existingRoutingTableEntry)
 				})
 			})
 		})
@@ -286,7 +294,7 @@ var _ = Describe("RoutingTable", func() {
 					updated := routingTable.DeleteBackendServerKey(routingKey, backendServerInfo1)
 					Expect(updated).To(BeTrue())
 					expectedRoutingTableEntry := models.NewRoutingTableEntry([]models.BackendServerInfo{backendServerInfo2})
-					Expect(routingTable.Get(routingKey)).Should(Equal(expectedRoutingTableEntry))
+					testutil.RoutingTableEntryMatches(routingTable.Get(routingKey), expectedRoutingTableEntry)
 				})
 
 				Context("when a modification tag has the same guid but current index is greater", func() {
@@ -312,7 +320,7 @@ var _ = Describe("RoutingTable", func() {
 					It("deletes the backend", func() {
 						updated := routingTable.DeleteBackendServerKey(routingKey, backendServerInfo1)
 						Expect(updated).To(BeTrue())
-						Expect(routingTable.Get(routingKey)).Should(Equal(expectedRoutingTableEntry))
+						testutil.RoutingTableEntryMatches(routingTable.Get(routingKey), expectedRoutingTableEntry)
 					})
 				})
 
@@ -328,6 +336,154 @@ var _ = Describe("RoutingTable", func() {
 						Expect(routingTable.Size()).Should(Equal(0))
 					})
 				})
+			})
+		})
+	})
+
+	Describe("PruneEntries", func() {
+		var (
+			defaultTTL  uint16
+			routingKey1 models.RoutingKey
+			routingKey2 models.RoutingKey
+		)
+		BeforeEach(func() {
+			routingKey1 = models.RoutingKey{Port: 12}
+			backendServerKey := models.BackendServerKey{Address: "some-ip-1", Port: 1234}
+			backendServerDetails := models.BackendServerDetails{ModificationTag: modificationTag, UpdatedTime: time.Now().Add(-10 * time.Second)}
+			backendServerKey2 := models.BackendServerKey{Address: "some-ip-2", Port: 1235}
+			backendServerDetails2 := models.BackendServerDetails{ModificationTag: modificationTag, UpdatedTime: time.Now().Add(-3 * time.Second)}
+			backends := map[models.BackendServerKey]models.BackendServerDetails{
+				backendServerKey:  backendServerDetails,
+				backendServerKey2: backendServerDetails2,
+			}
+			routingTableEntry := models.RoutingTableEntry{Backends: backends}
+			updated := routingTable.Set(routingKey1, routingTableEntry)
+			Expect(updated).To(BeTrue())
+
+			routingKey2 = models.RoutingKey{Port: 13}
+			backendServerKey = models.BackendServerKey{Address: "some-ip-3", Port: 1234}
+			backendServerDetails = models.BackendServerDetails{ModificationTag: modificationTag, UpdatedTime: time.Now().Add(-10 * time.Second)}
+			backendServerKey2 = models.BackendServerKey{Address: "some-ip-4", Port: 1235}
+			backendServerDetails2 = models.BackendServerDetails{ModificationTag: modificationTag, UpdatedTime: time.Now()}
+			backends = map[models.BackendServerKey]models.BackendServerDetails{
+				backendServerKey:  backendServerDetails,
+				backendServerKey2: backendServerDetails2,
+			}
+			routingTableEntry = models.RoutingTableEntry{Backends: backends}
+			updated = routingTable.Set(routingKey2, routingTableEntry)
+			Expect(updated).To(BeTrue())
+		})
+
+		JustBeforeEach(func() {
+			routingTable.PruneEntries(defaultTTL)
+		})
+
+		Context("when it has expired entries", func() {
+			BeforeEach(func() {
+				defaultTTL = 5
+			})
+
+			It("prunes the expired entries", func() {
+				Expect(routingTable.Entries).To(HaveLen(2))
+				Expect(routingTable.Get(routingKey1).Backends).To(HaveLen(1))
+				Expect(routingTable.Get(routingKey2).Backends).To(HaveLen(1))
+			})
+
+			Context("when all the backends expire for given routing key", func() {
+				BeforeEach(func() {
+					defaultTTL = 2
+				})
+
+				It("prunes the expired entries and deletes the routing key", func() {
+					Expect(routingTable.Entries).To(HaveLen(1))
+					Expect(routingTable.Get(routingKey2).Backends).To(HaveLen(1))
+				})
+			})
+		})
+
+		Context("when it has no expired entries", func() {
+			BeforeEach(func() {
+				defaultTTL = 20
+			})
+
+			It("does not prune entries", func() {
+				Expect(routingTable.Entries).To(HaveLen(2))
+				Expect(routingTable.Get(routingKey1).Backends).To(HaveLen(2))
+				Expect(routingTable.Get(routingKey2).Backends).To(HaveLen(2))
+			})
+		})
+	})
+
+	Describe("BackendServerDetails", func() {
+		var (
+			now        = time.Now()
+			defaultTTL = uint16(20)
+		)
+
+		Context("when backend details have TTL", func() {
+			It("returns true if updated time is past expiration time", func() {
+				backendDetails := models.BackendServerDetails{TTL: 1, UpdatedTime: now.Add(-2 * time.Second)}
+				Expect(backendDetails.Expired(defaultTTL)).To(BeTrue())
+			})
+
+			It("returns false if updated time is not past expiration time", func() {
+				backendDetails := models.BackendServerDetails{TTL: 1, UpdatedTime: now}
+				Expect(backendDetails.Expired(defaultTTL)).To(BeFalse())
+			})
+		})
+
+		Context("when backend details do not have TTL", func() {
+			It("returns true if updated time is past expiration time", func() {
+				backendDetails := models.BackendServerDetails{TTL: 0, UpdatedTime: now.Add(-25 * time.Second)}
+				Expect(backendDetails.Expired(defaultTTL)).To(BeTrue())
+			})
+
+			It("returns false if updated time is not past expiration time", func() {
+				backendDetails := models.BackendServerDetails{TTL: 0, UpdatedTime: now}
+				Expect(backendDetails.Expired(defaultTTL)).To(BeFalse())
+			})
+		})
+	})
+
+	Describe("RoutingTableEntry", func() {
+		var (
+			routingTableEntry models.RoutingTableEntry
+			defaultTTL        uint16
+		)
+
+		BeforeEach(func() {
+			backendServerKey := models.BackendServerKey{Address: "some-ip-1", Port: 1234}
+			backendServerDetails := models.BackendServerDetails{ModificationTag: modificationTag, UpdatedTime: time.Now().Add(-10 * time.Second)}
+			backendServerKey2 := models.BackendServerKey{Address: "some-ip-2", Port: 1235}
+			backendServerDetails2 := models.BackendServerDetails{ModificationTag: modificationTag, UpdatedTime: time.Now()}
+			backends := map[models.BackendServerKey]models.BackendServerDetails{
+				backendServerKey:  backendServerDetails,
+				backendServerKey2: backendServerDetails2,
+			}
+			routingTableEntry = models.RoutingTableEntry{Backends: backends}
+		})
+
+		JustBeforeEach(func() {
+			routingTableEntry.PruneBackends(defaultTTL)
+		})
+
+		Context("when it has expired backends", func() {
+			BeforeEach(func() {
+				defaultTTL = 5
+			})
+
+			It("prunes expired backends", func() {
+				Expect(routingTableEntry.Backends).To(HaveLen(1))
+			})
+		})
+
+		Context("when it does not have any expired backends", func() {
+			BeforeEach(func() {
+				defaultTTL = 15
+			})
+
+			It("prunes expired backends", func() {
+				Expect(routingTableEntry.Backends).To(HaveLen(2))
 			})
 		})
 	})

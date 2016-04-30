@@ -84,10 +84,12 @@ var _ = Describe("Main", func() {
 		return configFile
 	}
 
-	verifyHaProxyConfigContent := func(haproxyFileName, expectedContent string) {
-		data, err := ioutil.ReadFile(haproxyFileName)
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(string(data)).Should(ContainSubstring(expectedContent))
+	verifyHaProxyConfigContent := func(haproxyFileName, expectedContent string, present bool) {
+		Eventually(func() bool {
+			data, err := ioutil.ReadFile(haproxyFileName)
+			Expect(err).ShouldNot(HaveOccurred())
+			return strings.Contains(string(data), expectedContent)
+		}, 6, 1).Should(Equal(present))
 	}
 
 	var (
@@ -150,8 +152,8 @@ var _ = Describe("Main", func() {
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("applied-fetched-routes-to-routing-table"))
 			expectedConfigEntry := "\nlisten listen_cfg_5222\n  mode tcp\n  bind :5222\n"
 			serverConfigEntry := "server server_some-ip-1_61000 some-ip-1:61000"
-			verifyHaProxyConfigContent(haproxyConfigFile, expectedConfigEntry)
-			verifyHaProxyConfigContent(haproxyConfigFile, serverConfigEntry)
+			verifyHaProxyConfigContent(haproxyConfigFile, expectedConfigEntry, true)
+			verifyHaProxyConfigContent(haproxyConfigFile, serverConfigEntry, true)
 		})
 
 		It("starts an SSE connection to the server", func() {
@@ -170,11 +172,37 @@ var _ = Describe("Main", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("handle-upsert-done"))
 			expectedConfigEntry := "\nlisten listen_cfg_5222\n  mode tcp\n  bind :5222\n"
-			verifyHaProxyConfigContent(haproxyConfigFile, expectedConfigEntry)
+			verifyHaProxyConfigContent(haproxyConfigFile, expectedConfigEntry, true)
 			oldServerConfigEntry := "server server_some-ip-1_61000 some-ip-1:61000"
-			verifyHaProxyConfigContent(haproxyConfigFile, oldServerConfigEntry)
+			verifyHaProxyConfigContent(haproxyConfigFile, oldServerConfigEntry, true)
 			newServerConfigEntry := "server server_some-ip-2_61000 some-ip-2:61000"
-			verifyHaProxyConfigContent(haproxyConfigFile, newServerConfigEntry)
+			verifyHaProxyConfigContent(haproxyConfigFile, newServerConfigEntry, true)
+		})
+
+		It("prunes stale routes", func() {
+			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Subscribing-to-routing-api-event-stream"))
+			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Successfully-subscribed-to-routing-api-event-stream"))
+			tcpRouteMapping := models.TcpRouteMapping{
+				TcpRoute: models.TcpRoute{
+					RouterGroupGuid: routerGroupGuid,
+					ExternalPort:    5222,
+				},
+				HostPort: 61000,
+				HostIP:   "some-ip-3",
+				TTL:      6,
+			}
+			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("handle-upsert-done"))
+			expectedConfigEntry := "\nlisten listen_cfg_5222\n  mode tcp\n  bind :5222\n"
+			verifyHaProxyConfigContent(haproxyConfigFile, expectedConfigEntry, true)
+			oldServerConfigEntry := "server server_some-ip-1_61000 some-ip-1:61000"
+			verifyHaProxyConfigContent(haproxyConfigFile, oldServerConfigEntry, true)
+			newServerConfigEntry := "server server_some-ip-3_61000 some-ip-3:61000"
+			verifyHaProxyConfigContent(haproxyConfigFile, newServerConfigEntry, true)
+			Eventually(session.Out, 10*time.Second, 1*time.Second).Should(gbytes.Say("prune-stale-routes.starting"))
+			Eventually(session.Out, 10*time.Second, 1*time.Second).Should(gbytes.Say("prune-stale-routes.completed"))
+			verifyHaProxyConfigContent(haproxyConfigFile, newServerConfigEntry, false)
 		})
 
 	})
@@ -289,9 +317,9 @@ var _ = Describe("Main", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("handle-upsert-done"))
 			expectedConfigEntry := "\nlisten listen_cfg_5222\n  mode tcp\n  bind :5222\n"
-			verifyHaProxyConfigContent(haproxyConfigFile, expectedConfigEntry)
+			verifyHaProxyConfigContent(haproxyConfigFile, expectedConfigEntry, true)
 			newServerConfigEntry := "server server_some-ip-3_61000 some-ip-3:61000"
-			verifyHaProxyConfigContent(haproxyConfigFile, newServerConfigEntry)
+			verifyHaProxyConfigContent(haproxyConfigFile, newServerConfigEntry, true)
 		})
 	})
 })

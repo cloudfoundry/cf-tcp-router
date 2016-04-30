@@ -9,6 +9,7 @@ import (
 	"github.com/cloudfoundry-incubator/routing-api"
 	apimodels "github.com/cloudfoundry-incubator/routing-api/models"
 	uaaclient "github.com/cloudfoundry-incubator/uaa-go-client"
+	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 )
 
@@ -17,6 +18,7 @@ type Updater interface {
 	HandleEvent(event routing_api.TcpEvent) error
 	Sync()
 	Syncing() bool
+	PruneStaleRoutes()
 }
 
 type updater struct {
@@ -28,10 +30,12 @@ type updater struct {
 	uaaClient        uaaclient.Client
 	cachedEvents     []routing_api.TcpEvent
 	lock             *sync.Mutex
+	klock            clock.Clock
+	defaultTTL       uint16
 }
 
 func NewUpdater(logger lager.Logger, routingTable *models.RoutingTable, configurer configurer.RouterConfigurer,
-	routingAPIClient routing_api.Client, uaaClient uaaclient.Client) Updater {
+	routingAPIClient routing_api.Client, uaaClient uaaclient.Client, klock clock.Clock, defaultTTL uint16) Updater {
 	return &updater{
 		logger:           logger,
 		routingTable:     routingTable,
@@ -41,7 +45,22 @@ func NewUpdater(logger lager.Logger, routingTable *models.RoutingTable, configur
 		routingAPIClient: routingAPIClient,
 		uaaClient:        uaaClient,
 		cachedEvents:     nil,
+		klock:            klock,
+		defaultTTL:       defaultTTL,
 	}
+}
+
+func (u *updater) PruneStaleRoutes() {
+	logger := u.logger.Session("prune-stale-routes")
+	logger.Debug("starting")
+
+	defer func() {
+		u.lock.Unlock()
+		logger.Debug("completed")
+	}()
+
+	u.lock.Lock()
+	u.routingTable.PruneEntries(u.defaultTTL)
 }
 
 func (u *updater) Sync() {

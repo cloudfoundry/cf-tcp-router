@@ -105,6 +105,18 @@ var dropsondePort = flag.Int(
 	"Port the local metron agent is listening on",
 )
 
+var staleRouteCheckInterval = flag.Duration(
+	"staleRouteCheckInterval",
+	30*time.Second,
+	"The interval at which router checks for expired routes",
+)
+
+var defaultRouteExpiry = flag.Duration(
+	"defaultRouteExpiry",
+	2*time.Minute,
+	"The default ttl for a route",
+)
+
 const (
 	dropsondeOrigin        = "router-configurer"
 	statsConnectionTimeout = 10 * time.Second
@@ -131,6 +143,16 @@ func main() {
 		os.Exit(1)
 	}
 
+	if defaultRouteExpiry.Seconds() > 65535 {
+		logger.Error("invalid-route-expiry", errors.New("route expiry cannot be greater than 65535"))
+		os.Exit(1)
+	}
+
+	if staleRouteCheckInterval.Seconds() > defaultRouteExpiry.Seconds() {
+		logger.Error("invalid-stale-route-check-interval", errors.New("stale route check interval cannot be greater than route expiry"))
+		os.Exit(1)
+	}
+
 	uaaClient := newUaaClient(logger, cfg, clock)
 	_, err = uaaClient.FetchToken(false)
 	if err != nil {
@@ -142,7 +164,12 @@ func main() {
 	logger.Debug("creating-routing-api-client", lager.Data{"api-location": routingAPIAddress})
 	routingAPIClient := routing_api.NewClient(routingAPIAddress)
 
-	updater := routing_table.NewUpdater(logger, &routingTable, configurer, routingAPIClient, uaaClient)
+	updater := routing_table.NewUpdater(logger, &routingTable, configurer, routingAPIClient, uaaClient, clock, uint16(defaultRouteExpiry.Seconds()))
+
+	ticker := clock.NewTicker(*staleRouteCheckInterval)
+
+	go startRoutePruner(ticker, updater)
+
 	syncChannel := make(chan struct{})
 	syncRunner := syncer.New(clock, *syncInterval, syncChannel, logger)
 	watcher := watcher.New(routingAPIClient, updater, uaaClient, *subscriptionRetryInterval, syncChannel, logger)
@@ -176,6 +203,15 @@ func main() {
 	}
 
 	logger.Info("exited")
+}
+
+func startRoutePruner(ticker clock.Ticker, updater routing_table.Updater) {
+	for {
+		select {
+		case <-ticker.C():
+			updater.PruneStaleRoutes()
+		}
+	}
 }
 
 func newUaaClient(logger lager.Logger, c *config.Config, klok clock.Clock) uaaclient.Client {

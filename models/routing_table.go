@@ -3,6 +3,7 @@ package models
 import (
 	"fmt"
 	"reflect"
+	"time"
 
 	routing_api_models "github.com/cloudfoundry-incubator/routing-api/models"
 	"github.com/pivotal-golang/lager"
@@ -27,6 +28,7 @@ type BackendServerKey struct {
 type BackendServerDetails struct {
 	ModificationTag routing_api_models.ModificationTag
 	TTL             uint16
+	UpdatedTime     time.Time
 }
 
 type RoutingTableEntry struct {
@@ -44,7 +46,7 @@ func NewRoutingTableEntry(backends []BackendServerInfo) RoutingTableEntry {
 	}
 	for _, backend := range backends {
 		backendServerKey := BackendServerKey{Address: backend.Address, Port: backend.Port}
-		backendServerDetails := BackendServerDetails{ModificationTag: backend.ModificationTag, TTL: backend.TTL}
+		backendServerDetails := BackendServerDetails{ModificationTag: backend.ModificationTag, TTL: backend.TTL, UpdatedTime: time.Now()}
 
 		routingTableEntry.Backends[backendServerKey] = backendServerDetails
 	}
@@ -55,6 +57,14 @@ func NewRoutingTable(logger lager.Logger) RoutingTable {
 	return RoutingTable{
 		Entries: make(map[RoutingKey]RoutingTableEntry),
 		logger:  logger.Session("routing-table"),
+	}
+}
+
+func (e RoutingTableEntry) PruneBackends(defaultTTL uint16) {
+	for backendKey, details := range e.Backends {
+		if details.Expired(defaultTTL) {
+			delete(e.Backends, backendKey)
+		}
 	}
 }
 
@@ -72,6 +82,17 @@ func (d BackendServerDetails) DeleteSucceededBy(other BackendServerDetails) bool
 	return d.ModificationTag == other.ModificationTag || d.ModificationTag.SucceededBy(&other.ModificationTag)
 }
 
+func (d BackendServerDetails) Expired(defaultTTL uint16) bool {
+	ttl := d.TTL
+	if ttl == 0 {
+		ttl = defaultTTL
+	}
+
+	expiryTime := time.Now().Add(-time.Duration(ttl) * time.Second)
+
+	return expiryTime.After(d.UpdatedTime)
+}
+
 func NewBackendServerInfo(key BackendServerKey, detail BackendServerDetails) BackendServerInfo {
 	return BackendServerInfo{
 		Address:         key.Address,
@@ -81,8 +102,17 @@ func NewBackendServerInfo(key BackendServerKey, detail BackendServerDetails) Bac
 	}
 }
 
+func (table RoutingTable) PruneEntries(defaultTTL uint16) {
+	for routeKey, entry := range table.Entries {
+		entry.PruneBackends(defaultTTL)
+		if len(entry.Backends) == 0 {
+			delete(table.Entries, routeKey)
+		}
+	}
+}
+
 func (table RoutingTable) serverKeyDetailsFromInfo(info BackendServerInfo) (BackendServerKey, BackendServerDetails) {
-	return BackendServerKey{Address: info.Address, Port: info.Port}, BackendServerDetails{ModificationTag: info.ModificationTag, TTL: info.TTL}
+	return BackendServerKey{Address: info.Address, Port: info.Port}, BackendServerDetails{ModificationTag: info.ModificationTag, TTL: info.TTL, UpdatedTime: time.Now()}
 }
 
 // Returns true if routing configuration should be modified, false if it should not.

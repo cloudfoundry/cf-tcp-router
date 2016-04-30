@@ -26,6 +26,9 @@ type FakeUpdater struct {
 	syncingReturns     struct {
 		result1 bool
 	}
+	PruneStaleRoutesStub        func()
+	pruneStaleRoutesMutex       sync.RWMutex
+	pruneStaleRoutesArgsForCall []struct{}
 }
 
 func (fake *FakeUpdater) HandleEvent(event routing_api.TcpEvent) error {
@@ -97,6 +100,21 @@ func (fake *FakeUpdater) SyncingReturns(result1 bool) {
 	fake.syncingReturns = struct {
 		result1 bool
 	}{result1}
+}
+
+func (fake *FakeUpdater) PruneStaleRoutes() {
+	fake.pruneStaleRoutesMutex.Lock()
+	fake.pruneStaleRoutesArgsForCall = append(fake.pruneStaleRoutesArgsForCall, struct{}{})
+	fake.pruneStaleRoutesMutex.Unlock()
+	if fake.PruneStaleRoutesStub != nil {
+		fake.PruneStaleRoutesStub()
+	}
+}
+
+func (fake *FakeUpdater) PruneStaleRoutesCallCount() int {
+	fake.pruneStaleRoutesMutex.RLock()
+	defer fake.pruneStaleRoutesMutex.RUnlock()
+	return len(fake.pruneStaleRoutesArgsForCall)
 }
 
 var _ routing_table.Updater = new(FakeUpdater)

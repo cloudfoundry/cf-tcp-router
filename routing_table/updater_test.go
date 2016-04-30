@@ -2,16 +2,19 @@ package routing_table_test
 
 import (
 	"errors"
+	"time"
 
 	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer/fakes"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/routing_table"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/testutil"
 	"github.com/cloudfoundry-incubator/routing-api"
 	"github.com/cloudfoundry-incubator/routing-api/fake_routing_api"
 	apimodels "github.com/cloudfoundry-incubator/routing-api/models"
 	routing_api_models "github.com/cloudfoundry-incubator/routing-api/models"
 	testUaaClient "github.com/cloudfoundry-incubator/uaa-go-client/fakes"
 	"github.com/cloudfoundry-incubator/uaa-go-client/schema"
+	"github.com/pivotal-golang/clock/fakeclock"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -26,6 +29,7 @@ var _ = Describe("Updater", func() {
 		externalPort5   = uint16(2225)
 		externalPort6   = uint16(2226)
 		routerGroupGuid = "rtrgrp001"
+		defaultTTL      = 60
 	)
 	var (
 		routingTable               *models.RoutingTable
@@ -40,12 +44,13 @@ var _ = Describe("Updater", func() {
 		tcpEvent                   routing_api.TcpEvent
 		ttl                        uint16
 		modificationTag            routing_api_models.ModificationTag
+		fakeClock                  *fakeclock.FakeClock
 	)
 
 	verifyRoutingTableEntry := func(key models.RoutingKey, entry models.RoutingTableEntry) {
 		existingEntry := routingTable.Get(key)
 		Expect(existingEntry).NotTo(BeZero())
-		Expect(existingEntry).Should(Equal(entry))
+		testutil.RoutingTableEntryMatches(existingEntry, entry)
 	}
 
 	BeforeEach(func() {
@@ -61,7 +66,8 @@ var _ = Describe("Updater", func() {
 		fakeUaaClient.FetchTokenReturns(token, nil)
 		tmpRoutingTable := models.NewRoutingTable(logger)
 		routingTable = &tmpRoutingTable
-		updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeUaaClient)
+		fakeClock = fakeclock.NewFakeClock(time.Now())
+		updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeUaaClient, fakeClock, defaultTTL)
 	})
 
 	Describe("HandleEvent", func() {
@@ -84,7 +90,7 @@ var _ = Describe("Updater", func() {
 			)
 			Expect(routingTable.Set(existingRoutingKey2, existingRoutingTableEntry2)).To(BeTrue())
 
-			updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeUaaClient)
+			updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeUaaClient, fakeClock, defaultTTL)
 		})
 
 		Context("when Upsert event is received", func() {
@@ -339,7 +345,6 @@ var _ = Describe("Updater", func() {
 	})
 
 	Describe("Sync", func() {
-
 		var (
 			doneChannel chan struct{}
 			tcpMappings []apimodels.TcpRouteMapping
@@ -582,5 +587,79 @@ var _ = Describe("Updater", func() {
 			})
 		})
 
+	})
+
+	Describe("Prune", func() {
+		BeforeEach(func() {
+			routingKey1 := models.RoutingKey{Port: externalPort1}
+			backendServerKey := models.BackendServerKey{Address: "some-ip-1", Port: 1234}
+			backendServerDetails := models.BackendServerDetails{ModificationTag: modificationTag, UpdatedTime: time.Now().Add(-50 * time.Second)}
+			backendServerKey2 := models.BackendServerKey{Address: "some-ip-2", Port: 1235}
+			backendServerDetails2 := models.BackendServerDetails{ModificationTag: modificationTag, UpdatedTime: time.Now().Add(-50 * time.Second)}
+			backends := map[models.BackendServerKey]models.BackendServerDetails{
+				backendServerKey:  backendServerDetails,
+				backendServerKey2: backendServerDetails2,
+			}
+			routingTableEntry := models.RoutingTableEntry{Backends: backends}
+			updated := routingTable.Set(routingKey1, routingTableEntry)
+			Expect(updated).To(BeTrue())
+
+			routingKey2 := models.RoutingKey{Port: externalPort2}
+			backendServerKey = models.BackendServerKey{Address: "some-ip-3", Port: 1234}
+			backendServerDetails = models.BackendServerDetails{ModificationTag: modificationTag, UpdatedTime: time.Now().Add(-10 * time.Second)}
+			backendServerKey2 = models.BackendServerKey{Address: "some-ip-4", Port: 1235}
+			backendServerDetails2 = models.BackendServerDetails{ModificationTag: modificationTag, UpdatedTime: time.Now()}
+			backends = map[models.BackendServerKey]models.BackendServerDetails{
+				backendServerKey:  backendServerDetails,
+				backendServerKey2: backendServerDetails2,
+			}
+			routingTableEntry = models.RoutingTableEntry{Backends: backends}
+			updated = routingTable.Set(routingKey2, routingTableEntry)
+			Expect(updated).To(BeTrue())
+
+			updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeUaaClient, fakeClock, defaultTTL)
+		})
+
+		Context("when none of the routes are stale", func() {
+			It("doesn't prune any routes", func() {
+				updater.PruneStaleRoutes()
+				Expect(fakeUaaClient.FetchTokenCallCount()).To(Equal(0))
+				Expect(routingTable.Size()).To(Equal(2))
+				expectedRoutingTableEntry1 := models.NewRoutingTableEntry(
+					[]models.BackendServerInfo{
+						models.BackendServerInfo{Address: "some-ip-1", Port: 1234, ModificationTag: modificationTag},
+						models.BackendServerInfo{Address: "some-ip-2", Port: 1235, ModificationTag: modificationTag},
+					},
+				)
+				verifyRoutingTableEntry(models.RoutingKey{Port: externalPort1}, expectedRoutingTableEntry1)
+				expectedRoutingTableEntry2 := models.NewRoutingTableEntry(
+					[]models.BackendServerInfo{
+						models.BackendServerInfo{Address: "some-ip-3", Port: 1234, ModificationTag: modificationTag},
+						models.BackendServerInfo{Address: "some-ip-4", Port: 1235, ModificationTag: modificationTag},
+					},
+				)
+				verifyRoutingTableEntry(models.RoutingKey{Port: externalPort2}, expectedRoutingTableEntry2)
+			})
+		})
+
+		Context("when some routes are stale", func() {
+			BeforeEach(func() {
+				fakeClock.IncrementBySeconds(65)
+				updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeUaaClient, fakeClock, 40)
+			})
+
+			It("prunes those routes", func() {
+				updater.PruneStaleRoutes()
+				Expect(fakeUaaClient.FetchTokenCallCount()).To(Equal(0))
+				Expect(routingTable.Size()).To(Equal(1))
+				expectedRoutingTableEntry2 := models.NewRoutingTableEntry(
+					[]models.BackendServerInfo{
+						models.BackendServerInfo{Address: "some-ip-3", Port: 1234, ModificationTag: modificationTag},
+						models.BackendServerInfo{Address: "some-ip-4", Port: 1235, ModificationTag: modificationTag},
+					},
+				)
+				verifyRoutingTableEntry(models.RoutingKey{Port: externalPort2}, expectedRoutingTableEntry2)
+			})
+		})
 	})
 })

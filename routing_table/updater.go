@@ -31,11 +31,11 @@ type updater struct {
 	cachedEvents     []routing_api.TcpEvent
 	lock             *sync.Mutex
 	klock            clock.Clock
-	defaultTTL       uint16
+	defaultTTL       int
 }
 
 func NewUpdater(logger lager.Logger, routingTable *models.RoutingTable, configurer configurer.RouterConfigurer,
-	routingAPIClient routing_api.Client, uaaClient uaaclient.Client, klock clock.Clock, defaultTTL uint16) Updater {
+	routingAPIClient routing_api.Client, uaaClient uaaclient.Client, klock clock.Clock, defaultTTL int) Updater {
 	return &updater{
 		logger:           logger,
 		routingTable:     routingTable,
@@ -162,11 +162,17 @@ func (u *updater) handleEvent(l lager.Logger, event routing_api.TcpEvent) error 
 func (u *updater) toRoutingTableEntry(logger lager.Logger, routeMapping apimodels.TcpRouteMapping) (models.RoutingKey, models.BackendServerInfo) {
 	logger.Debug("converting-tcp-route-mapping", lager.Data{"tcp-route": routeMapping})
 	routingKey := models.RoutingKey{Port: routeMapping.TcpRoute.ExternalPort}
+
+	var ttl int
+	if routeMapping.TTL != nil {
+		ttl = *routeMapping.TTL
+	}
+
 	backendServerInfo := models.BackendServerInfo{
 		Address:         routeMapping.HostIP,
 		Port:            routeMapping.HostPort,
 		ModificationTag: routeMapping.ModificationTag,
-		TTL:             routeMapping.TTL,
+		TTL:             ttl,
 	}
 	return routingKey, backendServerInfo
 }

@@ -17,7 +17,7 @@ type BackendServerInfo struct {
 	Address         string
 	Port            uint16
 	ModificationTag routing_api_models.ModificationTag
-	TTL             uint16
+	TTL             int
 }
 
 type BackendServerKey struct {
@@ -27,7 +27,7 @@ type BackendServerKey struct {
 
 type BackendServerDetails struct {
 	ModificationTag routing_api_models.ModificationTag
-	TTL             uint16
+	TTL             int
 	UpdatedTime     time.Time
 }
 
@@ -60,7 +60,7 @@ func NewRoutingTable(logger lager.Logger) RoutingTable {
 	}
 }
 
-func (e RoutingTableEntry) PruneBackends(defaultTTL uint16) {
+func (e RoutingTableEntry) PruneBackends(defaultTTL int) {
 	for backendKey, details := range e.Backends {
 		if details.Expired(defaultTTL) {
 			delete(e.Backends, backendKey)
@@ -82,7 +82,7 @@ func (d BackendServerDetails) DeleteSucceededBy(other BackendServerDetails) bool
 	return d.ModificationTag == other.ModificationTag || d.ModificationTag.SucceededBy(&other.ModificationTag)
 }
 
-func (d BackendServerDetails) Expired(defaultTTL uint16) bool {
+func (d BackendServerDetails) Expired(defaultTTL int) bool {
 	ttl := d.TTL
 	if ttl == 0 {
 		ttl = defaultTTL
@@ -102,7 +102,7 @@ func NewBackendServerInfo(key BackendServerKey, detail BackendServerDetails) Bac
 	}
 }
 
-func (table RoutingTable) PruneEntries(defaultTTL uint16) {
+func (table RoutingTable) PruneEntries(defaultTTL int) {
 	for routeKey, entry := range table.Entries {
 		entry.PruneBackends(defaultTTL)
 		if len(entry.Backends) == 0 {

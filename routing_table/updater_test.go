@@ -42,7 +42,7 @@ var _ = Describe("Updater", func() {
 		fakeRoutingApiClient       *fake_routing_api.FakeClient
 		fakeUaaClient              *testUaaClient.FakeClient
 		tcpEvent                   routing_api.TcpEvent
-		ttl                        uint16
+		ttl                        int
 		modificationTag            routing_api_models.ModificationTag
 		fakeClock                  *fakeclock.FakeClock
 	)
@@ -104,7 +104,7 @@ var _ = Describe("Updater", func() {
 							},
 							HostPort:        2346,
 							HostIP:          "some-ip-4",
-							TTL:             ttl,
+							TTL:             &ttl,
 							ModificationTag: modificationTag,
 						},
 						Action: "Upsert",
@@ -127,7 +127,7 @@ var _ = Describe("Updater", func() {
 			Context("when entry does exist", func() {
 				var (
 					newModificationTag routing_api_models.ModificationTag
-					newTTL             uint16
+					newTTL             int
 				)
 				BeforeEach(func() {
 					newModificationTag = routing_api_models.ModificationTag{Guid: "guid-1", Index: 1}
@@ -144,7 +144,7 @@ var _ = Describe("Updater", func() {
 								},
 								HostPort:        1234,
 								HostIP:          "some-ip-1",
-								TTL:             newTTL,
+								TTL:             &newTTL,
 								ModificationTag: newModificationTag,
 							},
 							Action: "Upsert",
@@ -176,7 +176,7 @@ var _ = Describe("Updater", func() {
 								HostPort:        1234,
 								HostIP:          "some-ip-5",
 								ModificationTag: newModificationTag,
-								TTL:             ttl,
+								TTL:             &ttl,
 							},
 							Action: "Upsert",
 						}
@@ -229,7 +229,7 @@ var _ = Describe("Updater", func() {
 							HostPort:        2346,
 							HostIP:          "some-ip-4",
 							ModificationTag: newModificationTag,
-							TTL:             ttl,
+							TTL:             &ttl,
 						},
 						Action: "Delete",
 					}
@@ -267,7 +267,7 @@ var _ = Describe("Updater", func() {
 								HostPort:        1234,
 								HostIP:          "some-ip-1",
 								ModificationTag: modificationTag,
-								TTL:             ttl,
+								TTL:             &ttl,
 							},
 							Action: "Delete",
 						}
@@ -321,7 +321,7 @@ var _ = Describe("Updater", func() {
 								HostPort:        1234,
 								HostIP:          "some-ip-5",
 								ModificationTag: newModificationTag,
-								TTL:             ttl,
+								TTL:             &ttl,
 							},
 							Action: "Delete",
 						}
@@ -367,7 +367,7 @@ var _ = Describe("Updater", func() {
 					HostPort:        61000,
 					HostIP:          "some-ip-1",
 					ModificationTag: modificationTag,
-					TTL:             ttl,
+					TTL:             &ttl,
 				},
 				apimodels.TcpRouteMapping{
 					TcpRoute: apimodels.TcpRoute{
@@ -377,7 +377,7 @@ var _ = Describe("Updater", func() {
 					HostPort:        61001,
 					HostIP:          "some-ip-2",
 					ModificationTag: modificationTag,
-					TTL:             ttl,
+					TTL:             &ttl,
 				},
 				apimodels.TcpRouteMapping{
 					TcpRoute: apimodels.TcpRoute{
@@ -387,7 +387,7 @@ var _ = Describe("Updater", func() {
 					HostPort:        60000,
 					HostIP:          "some-ip-3",
 					ModificationTag: modificationTag,
-					TTL:             ttl,
+					TTL:             &ttl,
 				},
 				apimodels.TcpRouteMapping{
 					TcpRoute: apimodels.TcpRoute{
@@ -397,7 +397,7 @@ var _ = Describe("Updater", func() {
 					HostPort:        60000,
 					HostIP:          "some-ip-4",
 					ModificationTag: modificationTag,
-					TTL:             ttl,
+					TTL:             &ttl,
 				},
 			}
 		})

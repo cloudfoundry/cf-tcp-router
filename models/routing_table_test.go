@@ -342,7 +342,7 @@ var _ = Describe("RoutingTable", func() {
 
 	Describe("PruneEntries", func() {
 		var (
-			defaultTTL  uint16
+			defaultTTL  int
 			routingKey1 models.RoutingKey
 			routingKey2 models.RoutingKey
 		)
@@ -417,7 +417,7 @@ var _ = Describe("RoutingTable", func() {
 	Describe("BackendServerDetails", func() {
 		var (
 			now        = time.Now()
-			defaultTTL = uint16(20)
+			defaultTTL = 20
 		)
 
 		Context("when backend details have TTL", func() {
@@ -448,7 +448,7 @@ var _ = Describe("RoutingTable", func() {
 	Describe("RoutingTableEntry", func() {
 		var (
 			routingTableEntry models.RoutingTableEntry
-			defaultTTL        uint16
+			defaultTTL        int
 		)
 
 		BeforeEach(func() {

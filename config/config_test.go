@@ -12,11 +12,11 @@ var _ = Describe("Config", func() {
 		It("loads the config", func() {
 			expectedCfg := config.Config{
 				OAuth: config.OAuthConfig{
-					TokenEndpoint: "uaa.service.cf.internal",
-					ClientName:    "someclient",
-					ClientSecret:  "somesecret",
-					Port:          8443,
-					SkipOAuthTLSVerification: true,
+					TokenEndpoint:     "uaa.service.cf.internal",
+					ClientName:        "someclient",
+					ClientSecret:      "somesecret",
+					Port:              8443,
+					SkipSSLValidation: true,
 				},
 				RoutingAPI: config.RoutingAPIConfig{
 					URI:          "http://routing-api.service.cf.internal",
@@ -63,11 +63,11 @@ var _ = Describe("Config", func() {
 		It("loads config and defaults missing fields", func() {
 			expectedCfg := config.Config{
 				OAuth: config.OAuthConfig{
-					TokenEndpoint: "uaa.service.cf.internal",
-					ClientName:    "",
-					ClientSecret:  "",
-					Port:          8443,
-					SkipOAuthTLSVerification: true,
+					TokenEndpoint:     "uaa.service.cf.internal",
+					ClientName:        "",
+					ClientSecret:      "",
+					Port:              8443,
+					SkipSSLValidation: true,
 				},
 				RoutingAPI: config.RoutingAPIConfig{
 					URI:  "http://routing-api.service.cf.internal",

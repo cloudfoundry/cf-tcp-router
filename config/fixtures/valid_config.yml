@@ -3,7 +3,7 @@ oauth:
   client_name: "someclient"
   client_secret: "somesecret"
   port: 8443
-  skip_oauth_tls_verification: true
+  skip_ssl_validation: true
 
 routing_api:
   uri: http://routing-api.service.cf.internal

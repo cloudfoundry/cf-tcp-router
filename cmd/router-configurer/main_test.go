@@ -72,7 +72,7 @@ var _ = Describe("Main", func() {
 
 		cfg := fmt.Sprintf("%s\n  port: %s\n%s\n  auth_disabled: %t\n  %s\n  port: %s\n", `oauth:
   token_endpoint: "127.0.0.1"
-  skip_oauth_tls_verification: true
+  skip_ssl_validation: true
   client_name: "someclient"
   client_secret: "somesecret"`, oauthServerPort,
 			`routing_api:`,

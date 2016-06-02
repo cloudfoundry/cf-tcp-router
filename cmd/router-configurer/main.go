@@ -230,7 +230,7 @@ func newUaaClient(logger lager.Logger, c *config.Config, klok clock.Clock) uaacl
 
 	cfg := &uaaconfig.Config{
 		UaaEndpoint:           tokenURL,
-		SkipVerification:      c.OAuth.SkipOAuthTLSVerification,
+		SkipVerification:      c.OAuth.SkipSSLValidation,
 		ClientName:            c.OAuth.ClientName,
 		ClientSecret:          c.OAuth.ClientSecret,
 		MaxNumberOfRetries:    uint32(*tokenFetchMaxRetries),

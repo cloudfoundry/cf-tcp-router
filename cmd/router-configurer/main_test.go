@@ -154,7 +154,7 @@ var _ = Describe("Main", func() {
 			tcpRouteMapping := models.NewTcpRouteMapping(routerGroupGuid, 5222, "some-ip-2", 61000, 120)
 			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("handle-upsert-done"))
+			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("handle-event.finished"))
 			expectedConfigEntry := "\nlisten listen_cfg_5222\n  mode tcp\n  bind :5222\n"
 			verifyHaProxyConfigContent(haproxyConfigFile, expectedConfigEntry, true)
 			oldServerConfigEntry := "server server_some-ip-1_61000 some-ip-1:61000"
@@ -169,7 +169,7 @@ var _ = Describe("Main", func() {
 			tcpRouteMapping := models.NewTcpRouteMapping(routerGroupGuid, 5222, "some-ip-3", 61000, 6)
 			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("handle-upsert-done"))
+			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("handle-event.finished"))
 			expectedConfigEntry := "\nlisten listen_cfg_5222\n  mode tcp\n  bind :5222\n"
 			verifyHaProxyConfigContent(haproxyConfigFile, expectedConfigEntry, true)
 			oldServerConfigEntry := "server server_some-ip-1_61000 some-ip-1:61000"
@@ -283,7 +283,7 @@ var _ = Describe("Main", func() {
 			tcpRouteMapping := models.NewTcpRouteMapping(routerGroupGuid, 5222, "some-ip-3", 61000, 120)
 			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 			Expect(err).ToNot(HaveOccurred())
-			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("handle-upsert-done"))
+			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("handle-event.finished"))
 			expectedConfigEntry := "\nlisten listen_cfg_5222\n  mode tcp\n  bind :5222\n"
 			verifyHaProxyConfigContent(haproxyConfigFile, expectedConfigEntry, true)
 			newServerConfigEntry := "server server_some-ip-3_61000 some-ip-3:61000"

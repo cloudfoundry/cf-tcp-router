@@ -127,7 +127,7 @@ func (table RoutingTable) Set(key RoutingKey, newEntry RoutingTableEntry) bool {
 
 // Returns true if routing configuration should be modified, false if it should not.
 func (table RoutingTable) UpsertBackendServerKey(key RoutingKey, info BackendServerInfo) bool {
-	logger := table.logger.Session("upsert-backend", lager.Data{"info": info})
+	logger := table.logger.Session("upsert-backend", lager.Data{"key": key, "info": info})
 
 	existingEntry, routingKeyFound := table.Entries[key]
 	if !routingKeyFound {
@@ -140,12 +140,13 @@ func (table RoutingTable) UpsertBackendServerKey(key RoutingKey, info BackendSer
 	newBackendKey, newBackendDetails := table.serverKeyDetailsFromInfo(info)
 	currentBackendDetails, backendFound := existingEntry.Backends[newBackendKey]
 
-	logger.Debug("upserting-backend", lager.Data{"old": currentBackendDetails, "new": newBackendDetails})
-
+	detailData := lager.Data{"old": currentBackendDetails, "new": newBackendDetails}
 	if !backendFound ||
 		currentBackendDetails.UpdateSucceededBy(newBackendDetails) {
-		logger.Debug("applying-change-to-table")
+		logger.Debug("applying-change-to-table", detailData)
 		existingEntry.Backends[newBackendKey] = newBackendDetails
+	} else {
+		logger.Debug("skipping-stale-event", detailData)
 	}
 
 	if !backendFound || currentBackendDetails.DifferentFrom(newBackendDetails) {
@@ -157,7 +158,7 @@ func (table RoutingTable) UpsertBackendServerKey(key RoutingKey, info BackendSer
 
 // Returns true if routing configuration should be modified, false if it should not.
 func (table RoutingTable) DeleteBackendServerKey(key RoutingKey, info BackendServerInfo) bool {
-	logger := table.logger.Session("delete-backend", lager.Data{"info": info})
+	logger := table.logger.Session("delete-backend", lager.Data{"key": key, "info": info})
 
 	backendServerKey, newDetails := table.serverKeyDetailsFromInfo(info)
 	existingEntry, routingKeyFound := table.Entries[key]
@@ -165,15 +166,16 @@ func (table RoutingTable) DeleteBackendServerKey(key RoutingKey, info BackendSer
 	if routingKeyFound {
 		existingDetails, backendFound := existingEntry.Backends[backendServerKey]
 
-		logger.Debug("removing-backend", lager.Data{"old": existingDetails, "new": newDetails})
-
+		detailData := lager.Data{"old": existingDetails, "new": newDetails}
 		if backendFound && existingDetails.DeleteSucceededBy(newDetails) {
-			logger.Debug("removing-from-table")
+			logger.Debug("removing-from-table", detailData)
 			delete(existingEntry.Backends, backendServerKey)
 			if len(existingEntry.Backends) == 0 {
 				delete(table.Entries, key)
 			}
 			return true
+		} else {
+			logger.Debug("skipping-stale-event", detailData)
 		}
 	}
 

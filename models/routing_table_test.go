@@ -10,6 +10,7 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("RoutingTable", func() {
@@ -211,6 +212,7 @@ var _ = Describe("RoutingTable", func() {
 					expectedRoutingTableEntry := models.NewRoutingTableEntry([]models.BackendServerInfo{sameBackendServerInfo})
 					routingTable.UpsertBackendServerKey(routingKey, sameBackendServerInfo)
 					testutil.RoutingTableEntryMatches(routingTable.Get(routingKey), expectedRoutingTableEntry)
+					Expect(logger).To(gbytes.Say("applying-change-to-table"))
 				})
 
 				It("does not update routing configuration", func() {
@@ -247,6 +249,7 @@ var _ = Describe("RoutingTable", func() {
 					newBackendServerInfo := createBackendServerInfo("some-ip", 1234, modificationTag)
 					updated := routingTable.UpsertBackendServerKey(routingKey, newBackendServerInfo)
 					Expect(updated).To(BeFalse())
+					Expect(logger).To(gbytes.Say("skipping-stale-event"))
 					testutil.RoutingTableEntryMatches(routingTable.Get(routingKey), existingRoutingTableEntry)
 				})
 			})
@@ -293,6 +296,7 @@ var _ = Describe("RoutingTable", func() {
 				It("deletes the backend", func() {
 					updated := routingTable.DeleteBackendServerKey(routingKey, backendServerInfo1)
 					Expect(updated).To(BeTrue())
+					Expect(logger).To(gbytes.Say("removing-from-table"))
 					expectedRoutingTableEntry := models.NewRoutingTableEntry([]models.BackendServerInfo{backendServerInfo2})
 					testutil.RoutingTableEntryMatches(routingTable.Get(routingKey), expectedRoutingTableEntry)
 				})
@@ -305,6 +309,7 @@ var _ = Describe("RoutingTable", func() {
 					It("does not deletes the backend", func() {
 						updated := routingTable.DeleteBackendServerKey(routingKey, backendServerInfo1)
 						Expect(updated).To(BeFalse())
+						Expect(logger).To(gbytes.Say("skipping-stale-event"))
 						Expect(routingTable.Get(routingKey)).Should(Equal(existingRoutingTableEntry))
 					})
 				})
@@ -320,6 +325,7 @@ var _ = Describe("RoutingTable", func() {
 					It("deletes the backend", func() {
 						updated := routingTable.DeleteBackendServerKey(routingKey, backendServerInfo1)
 						Expect(updated).To(BeTrue())
+						Expect(logger).To(gbytes.Say("removing-from-table"))
 						testutil.RoutingTableEntryMatches(routingTable.Get(routingKey), expectedRoutingTableEntry)
 					})
 				})

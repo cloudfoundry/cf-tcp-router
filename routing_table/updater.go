@@ -147,6 +147,8 @@ func (u *updater) HandleEvent(event routing_api.TcpEvent) error {
 
 func (u *updater) handleEvent(l lager.Logger, event routing_api.TcpEvent) error {
 	logger := l.Session("handle-event", lager.Data{"event": event})
+	logger.Debug("starting")
+	defer logger.Debug("finished")
 	action := event.Action
 	switch action {
 	case "Upsert":
@@ -178,9 +180,7 @@ func (u *updater) toRoutingTableEntry(logger lager.Logger, routeMapping apimodel
 }
 
 func (u *updater) handleUpsert(logger lager.Logger, routeMapping apimodels.TcpRouteMapping) error {
-	defer logger.Debug("handle-upsert-done")
 	routingKey, backendServerInfo := u.toRoutingTableEntry(logger, routeMapping)
-	logger.Debug("creating-routing-table-entry", lager.Data{"key": routingKey})
 
 	if u.routingTable.UpsertBackendServerKey(routingKey, backendServerInfo) && !u.syncing {
 		logger.Debug("calling-configurer")
@@ -191,9 +191,8 @@ func (u *updater) handleUpsert(logger lager.Logger, routeMapping apimodels.TcpRo
 }
 
 func (u *updater) handleDelete(logger lager.Logger, routeMapping apimodels.TcpRouteMapping) error {
-	defer logger.Debug("handle-delete-done")
 	routingKey, backendServerInfo := u.toRoutingTableEntry(logger, routeMapping)
-	logger.Debug("deleting-routing-table-entry", lager.Data{"key": routingKey})
+
 	if u.routingTable.DeleteBackendServerKey(routingKey, backendServerInfo) && !u.syncing {
 		logger.Debug("calling-configurer")
 		return u.configurer.Configure(*u.routingTable)

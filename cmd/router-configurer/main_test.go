@@ -1,11 +1,13 @@
 package main_test
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -38,8 +40,18 @@ var _ = Describe("Main", func() {
 	}
 
 	oAuthServer := func(logger lager.Logger) *ghttp.Server {
-		server := ghttp.NewTLSServer()
+		server := ghttp.NewUnstartedServer()
+		var basePath = path.Join(os.Getenv("GOPATH"), "src", "github.com", "cloudfoundry-incubator", "cf-tcp-router", "fixtures", "certs")
+		cert, err := tls.LoadX509KeyPair(filepath.Join(basePath, "server.pem"), filepath.Join(basePath, "server.key"))
+		Expect(err).ToNot(HaveOccurred())
+
+		tlsConfig := &tls.Config{
+			Certificates: []tls.Certificate{cert},
+		}
+		server.HTTPTestServer.TLS = tlsConfig
 		server.AllowUnhandledRequests = true
+		server.HTTPTestServer.StartTLS()
+
 		server.RouteToHandler("POST", "/oauth/token",
 			func(w http.ResponseWriter, req *http.Request) {
 				jsonBytes := []byte(`{"access_token":"some-token", "expires_in":10}`)
@@ -70,14 +82,22 @@ var _ = Describe("Main", func() {
 		randomConfigFileName := testutil.RandomFileName("router_configurer", ".yml")
 		configFile := path.Join(os.TempDir(), randomConfigFileName)
 
-		cfg := fmt.Sprintf("%s\n  port: %s\n%s\n  auth_disabled: %t\n  %s\n  port: %s\n", `oauth:
+		cfgString := `---
+oauth:
   token_endpoint: "127.0.0.1"
-  skip_ssl_validation: true
+  skip_ssl_validation: false
+  ca_certs: %s
   client_name: "someclient"
-  client_secret: "somesecret"`, oauthServerPort,
-			`routing_api:`,
-			routingApiAuthDisabled,
-			`uri: http://127.0.0.1`, routingApiServerPort)
+  client_secret: "somesecret"
+  port: %s
+routing_api:
+  auth_disabled: %t
+  uri: http://127.0.0.1
+  port: %s
+`
+		caCertsPath := filepath.Join(os.Getenv("GOPATH"), "src", "github.com", "cloudfoundry-incubator", "cf-tcp-router", "fixtures", "certs", "uaa-ca.pem")
+		cfg := fmt.Sprintf(cfgString, caCertsPath, oauthServerPort, routingApiAuthDisabled, routingApiServerPort)
+
 		err := utils.WriteToFile([]byte(cfg), configFile)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(utils.FileExists(configFile)).To(BeTrue())

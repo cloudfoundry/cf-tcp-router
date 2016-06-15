@@ -18,6 +18,7 @@ type OAuthConfig struct {
 	SkipSSLValidation bool   `yaml:"skip_ssl_validation"`
 	ClientName        string `yaml:"client_name"`
 	ClientSecret      string `yaml:"client_secret"`
+	CACerts           string `yaml:"ca_certs"`
 }
 
 type Config struct {

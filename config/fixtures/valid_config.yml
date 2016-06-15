@@ -4,6 +4,7 @@ oauth:
   client_secret: "somesecret"
   port: 8443
   skip_ssl_validation: true
+  ca_certs: "some-ca-cert"
 
 routing_api:
   uri: http://routing-api.service.cf.internal

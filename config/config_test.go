@@ -17,6 +17,7 @@ var _ = Describe("Config", func() {
 					ClientSecret:      "somesecret",
 					Port:              8443,
 					SkipSSLValidation: true,
+					CACerts:           "some-ca-cert",
 				},
 				RoutingAPI: config.RoutingAPIConfig{
 					URI:          "http://routing-api.service.cf.internal",

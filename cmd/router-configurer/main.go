@@ -236,6 +236,7 @@ func newUaaClient(logger lager.Logger, c *config.Config, klok clock.Clock) uaacl
 		MaxNumberOfRetries:    uint32(*tokenFetchMaxRetries),
 		RetryInterval:         *tokenFetchRetryInterval,
 		ExpirationBufferInSec: int64(*tokenFetchExpirationBufferTime),
+		CACerts:               c.OAuth.CACerts,
 	}
 
 	uaaClient, err := uaaclient.NewClient(logger, cfg, klok)

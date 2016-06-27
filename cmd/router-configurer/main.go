@@ -11,6 +11,7 @@ import (
 	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/config"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer/haproxy"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/metrics_reporter"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/metrics_reporter/haproxy_client"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
@@ -67,6 +68,12 @@ var configFile = flag.String(
 	"config",
 	"/var/vcap/jobs/router_configurer/config/router_configurer.yml",
 	"The Router configurer yml config.",
+)
+
+var haproxyReloader = flag.String(
+	"haproxyReloader",
+	"/var/vcap/jobs/router_configurer/bin/haproxy_reloader",
+	"Path to a script that reloads HAProxy.",
 )
 
 var syncInterval = flag.Duration(
@@ -134,8 +141,14 @@ func main() {
 	initializeDropsonde(logger)
 
 	routingTable := models.NewRoutingTable(logger)
-	configurer := configurer.NewConfigurer(logger,
-		*tcpLoadBalancer, *tcpLoadBalancerBaseCfg, *tcpLoadBalancerCfg)
+	reloaderRunner := haproxy.CreateCommandRunner(*haproxyReloader, logger)
+	configurer := configurer.NewConfigurer(
+		logger,
+		*tcpLoadBalancer,
+		*tcpLoadBalancerBaseCfg,
+		*tcpLoadBalancerCfg,
+		reloaderRunner,
+	)
 
 	cfg, err := config.New(*configFile)
 	if err != nil {

@@ -17,10 +17,10 @@ type RouterConfigurer interface {
 	Configure(routingTable models.RoutingTable) error
 }
 
-func NewConfigurer(logger lager.Logger, tcpLoadBalancer string, tcpLoadBalancerBaseCfg string, tcpLoadBalancerCfg string) RouterConfigurer {
+func NewConfigurer(logger lager.Logger, tcpLoadBalancer string, tcpLoadBalancerBaseCfg string, tcpLoadBalancerCfg string, scriptRunner haproxy.ScriptRunner) RouterConfigurer {
 	switch tcpLoadBalancer {
 	case HaProxyConfigurer:
-		routerHostInfo, err := haproxy.NewHaProxyConfigurer(logger, tcpLoadBalancerBaseCfg, tcpLoadBalancerCfg)
+		routerHostInfo, err := haproxy.NewHaProxyConfigurer(logger, tcpLoadBalancerBaseCfg, tcpLoadBalancerCfg, scriptRunner)
 		if err != nil {
 			logger.Fatal("could not create tcp load balancer",
 				err,

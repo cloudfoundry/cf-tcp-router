@@ -7,6 +7,7 @@ import (
 
 	cf_tcp_router "github.com/cloudfoundry-incubator/cf-tcp-router"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer/haproxy"
+	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer/haproxy/fakes"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/testutil"
 	"github.com/cloudfoundry-incubator/cf-tcp-router/utils"
@@ -38,7 +39,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 
 		Context("when empty base configuration file is passed", func() {
 			It("returns a ErrRouterConfigFileNotFound error", func() {
-				_, err := haproxy.NewHaProxyConfigurer(logger, "", haproxyConfigFile)
+				_, err := haproxy.NewHaProxyConfigurer(logger, "", haproxyConfigFile, nil)
 				Expect(err).Should(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring(cf_tcp_router.ErrRouterConfigFileNotFound))
 			})
@@ -46,7 +47,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 
 		Context("when empty configuration file is passed", func() {
 			It("returns a ErrRouterConfigFileNotFound error", func() {
-				_, err := haproxy.NewHaProxyConfigurer(logger, haproxyConfigTemplate, "")
+				_, err := haproxy.NewHaProxyConfigurer(logger, haproxyConfigTemplate, "", nil)
 				Expect(err).Should(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring(cf_tcp_router.ErrRouterConfigFileNotFound))
 			})
@@ -54,7 +55,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 
 		Context("when base configuration file does not exist", func() {
 			It("returns a ErrRouterConfigFileNotFound error", func() {
-				_, err := haproxy.NewHaProxyConfigurer(logger, "file/path/does/not/exists", haproxyConfigFile)
+				_, err := haproxy.NewHaProxyConfigurer(logger, "file/path/does/not/exists", haproxyConfigFile, nil)
 				Expect(err).Should(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring(cf_tcp_router.ErrRouterConfigFileNotFound))
 			})
@@ -62,7 +63,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 
 		Context("when configuration file does not exist", func() {
 			It("returns a ErrRouterConfigFileNotFound error", func() {
-				_, err := haproxy.NewHaProxyConfigurer(logger, haproxyConfigTemplate, "file/path/does/not/exists")
+				_, err := haproxy.NewHaProxyConfigurer(logger, haproxyConfigTemplate, "file/path/does/not/exists", nil)
 				Expect(err).Should(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring(cf_tcp_router.ErrRouterConfigFileNotFound))
 			})
@@ -83,7 +84,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 				haproxyConfigTemplateContent, err = ioutil.ReadFile(generatedHaproxyCfgFile)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				haproxyConfigurer, err = haproxy.NewHaProxyConfigurer(logger, haproxyConfigTemplate, generatedHaproxyCfgFile)
+				haproxyConfigurer, err = haproxy.NewHaProxyConfigurer(logger, haproxyConfigTemplate, generatedHaproxyCfgFile, nil)
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 
@@ -134,6 +135,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 
 		Context("when valid routing table and config file is passed", func() {
 			var (
+				scriptRunner                 *fakes.FakeScriptRunner
 				generatedHaproxyCfgFile      string
 				haproxyCfgBackupFile         string
 				err                          error
@@ -148,7 +150,9 @@ var _ = Describe("HaproxyConfigurer", func() {
 				haproxyConfigTemplateContent, err = ioutil.ReadFile(generatedHaproxyCfgFile)
 				Expect(err).ShouldNot(HaveOccurred())
 
-				haproxyConfigurer, err = haproxy.NewHaProxyConfigurer(logger, haproxyConfigTemplate, generatedHaproxyCfgFile)
+				scriptRunner = &fakes.FakeScriptRunner{}
+
+				haproxyConfigurer, err = haproxy.NewHaProxyConfigurer(logger, haproxyConfigTemplate, generatedHaproxyCfgFile, scriptRunner)
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 
@@ -161,7 +165,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 				Expect(err).ShouldNot(HaveOccurred())
 			})
 
-			Context("when CreateExternalPortMappings is called once", func() {
+			Context("when Configure is called once", func() {
 				Context("when only one mapping is provided as part of request", func() {
 
 					BeforeEach(func() {
@@ -187,6 +191,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 						verifyHaProxyConfigContent(generatedHaproxyCfgFile, listenCfg, true)
 						verifyHaProxyConfigContent(generatedHaproxyCfgFile, serverConfig1, true)
 						verifyHaProxyConfigContent(generatedHaproxyCfgFile, serverConfig2, true)
+						Expect(scriptRunner.RunCallCount()).To(Equal(1))
 					})
 				})
 
@@ -235,11 +240,12 @@ listen listen_cfg_3333
 						verifyHaProxyConfigContent(generatedHaproxyCfgFile, "server server_some-ip-3_1234 some-ip-3:1234", true)
 						verifyHaProxyConfigContent(generatedHaproxyCfgFile, "server server_some-ip-4_1235 some-ip-4:1235", true)
 						verifyHaProxyConfigContent(generatedHaproxyCfgFile, string(haproxyConfigTemplateContent), true)
+						Expect(scriptRunner.RunCallCount()).To(Equal(1))
 					})
 				})
 			})
 
-			Context("when Configure is called multiple times", func() {
+			Context("when Configure is called multiple times with different routes", func() {
 				BeforeEach(func() {
 					routingTable := models.NewRoutingTable(logger)
 					routingTableEntry := models.NewRoutingTableEntry(
@@ -287,6 +293,7 @@ listen listen_cfg_2222
 					verifyHaProxyConfigContent(generatedHaproxyCfgFile, "server server_some-ip-1_1234 some-ip-1:1234", false)
 					verifyHaProxyConfigContent(generatedHaproxyCfgFile, "server server_some-ip-2_1235 some-ip-2:1235", false)
 					verifyHaProxyConfigContent(generatedHaproxyCfgFile, string(haproxyConfigTemplateContent), true)
+					Expect(scriptRunner.RunCallCount()).To(Equal(2))
 				})
 			})
 		})

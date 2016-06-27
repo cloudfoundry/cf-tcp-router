@@ -19,9 +19,10 @@ type Configurer struct {
 	baseConfigFilePath string
 	configFilePath     string
 	configFileLock     *sync.Mutex
+	scriptRunner       ScriptRunner
 }
 
-func NewHaProxyConfigurer(logger lager.Logger, baseConfigFilePath string, configFilePath string) (*Configurer, error) {
+func NewHaProxyConfigurer(logger lager.Logger, baseConfigFilePath string, configFilePath string, scriptRunner ScriptRunner) (*Configurer, error) {
 	if !utils.FileExists(baseConfigFilePath) {
 		return nil, fmt.Errorf("%s: [%s]", cf_tcp_router.ErrRouterConfigFileNotFound, baseConfigFilePath)
 	}
@@ -33,6 +34,7 @@ func NewHaProxyConfigurer(logger lager.Logger, baseConfigFilePath string, config
 		baseConfigFilePath: baseConfigFilePath,
 		configFilePath:     configFilePath,
 		configFileLock:     new(sync.Mutex),
+		scriptRunner:       scriptRunner,
 	}, nil
 }
 
@@ -58,7 +60,7 @@ func (h *Configurer) Configure(routingTable models.RoutingTable) error {
 	}
 
 	for key, entry := range routingTable.Entries {
-		cfgContent, err = h.getListenConfiguration(key, entry, cfgContent)
+		cfgContent, err = h.getListenConfiguration(key, entry)
 		if err != nil {
 			continue
 		}
@@ -69,13 +71,24 @@ func (h *Configurer) Configure(routingTable models.RoutingTable) error {
 		}
 	}
 
-	return h.writeToConfig(buff.Bytes())
+	h.logger.Info("writing-config", lager.Data{"num-bytes": buff.Len()})
+	err = h.writeToConfig(buff.Bytes())
+	if err != nil {
+		return err
+	}
+
+	if h.scriptRunner != nil {
+		h.logger.Info("running-script")
+		err = h.scriptRunner.Run()
+		if err != nil {
+			h.logger.Error("failed-to-run-script", err)
+			return err
+		}
+	}
+	return nil
 }
 
-func (h *Configurer) getListenConfiguration(
-	key models.RoutingKey,
-	entry models.RoutingTableEntry,
-	cfgContent []byte) ([]byte, error) {
+func (h *Configurer) getListenConfiguration(key models.RoutingKey, entry models.RoutingTableEntry) ([]byte, error) {
 	var buff bytes.Buffer
 	_, err := buff.WriteString("\n")
 	if err != nil {

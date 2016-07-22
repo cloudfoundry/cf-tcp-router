@@ -114,7 +114,7 @@ defaults
 		EtcdCluster:  etcdUrl,
 		DevMode:      true,
 	}
-	routingApiClient = routing_api.NewClient(routingAPIAddress)
+	routingApiClient = routing_api.NewClient(routingAPIAddress, false)
 })
 
 var _ = AfterEach(func() {

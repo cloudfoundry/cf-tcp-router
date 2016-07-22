@@ -175,7 +175,7 @@ func main() {
 
 	routingAPIAddress := fmt.Sprintf("%s:%d", cfg.RoutingAPI.URI, cfg.RoutingAPI.Port)
 	logger.Debug("creating-routing-api-client", lager.Data{"api-location": routingAPIAddress})
-	routingAPIClient := routing_api.NewClient(routingAPIAddress)
+	routingAPIClient := routing_api.NewClient(routingAPIAddress, false)
 
 	updater := routing_table.NewUpdater(logger, &routingTable, configurer, routingAPIClient, uaaClient, clock, int(defaultRouteExpiry.Seconds()))
 

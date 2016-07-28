@@ -3,7 +3,7 @@ package config
 import (
 	"io/ioutil"
 
-	"github.com/cloudfoundry-incubator/candiedyaml"
+	"gopkg.in/yaml.v2"
 )
 
 type RoutingAPIConfig struct {
@@ -43,5 +43,5 @@ func (c *Config) initConfigFromFile(path string) error {
 		return e
 	}
 
-	return candiedyaml.Unmarshal(b, &c)
+	return yaml.Unmarshal(b, &c)
 }

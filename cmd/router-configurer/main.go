@@ -167,9 +167,11 @@ func main() {
 	}
 
 	uaaClient := newUaaClient(logger, cfg, clock)
-	_, err = uaaClient.FetchToken(false)
+
+	// Check UAA connectivity
+	_, err = uaaClient.FetchKey()
 	if err != nil {
-		logger.Error("error-fetching-oauth-token", err)
+		logger.Error("failed-connecting-to-uaa", err)
 		os.Exit(1)
 	}
 

@@ -52,6 +52,20 @@ var _ = Describe("Main", func() {
 		server.AllowUnhandledRequests = true
 		server.HTTPTestServer.StartTLS()
 
+		publicKey := "-----BEGIN PUBLIC KEY-----\\n" +
+			"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDHFr+KICms+tuT1OXJwhCUmR2d\\n" +
+			"KVy7psa8xzElSyzqx7oJyfJ1JZyOzToj9T5SfTIq396agbHJWVfYphNahvZ/7uMX\\n" +
+			"qHxf+ZH9BL1gk9Y6kCnbM5R60gfwjyW1/dQPjOzn9N394zd2FJoFHwdq9Qs0wBug\\n" +
+			"spULZVNRxq7veq/fzwIDAQAB\\n" +
+			"-----END PUBLIC KEY-----"
+
+		data := fmt.Sprintf("{\"alg\":\"rsa\", \"value\":\"%s\"}", publicKey)
+		server.RouteToHandler("GET", "/token_key",
+			ghttp.CombineHandlers(
+				ghttp.VerifyRequest("GET", "/token_key"),
+				ghttp.RespondWith(http.StatusOK, data)),
+		)
+
 		server.RouteToHandler("POST", "/oauth/token",
 			func(w http.ResponseWriter, req *http.Request) {
 				jsonBytes := []byte(`{"access_token":"some-token", "expires_in":10}`)
@@ -240,7 +254,7 @@ routing_api:
 			})
 
 			It("exits with error", func() {
-				Eventually(session.Out, 5*time.Second).Should(gbytes.Say("error-fetching-oauth-token"))
+				Eventually(session.Out, 5*time.Second).Should(gbytes.Say("failed-connecting-to-uaa"))
 				Eventually(session.Exited).Should(BeClosed())
 			})
 		})

@@ -7,10 +7,10 @@ import (
 	"os"
 	"sync"
 
-	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/utils"
+	"code.cloudfoundry.org/cf-tcp-router/models"
+	"code.cloudfoundry.org/cf-tcp-router/utils"
 
-	cf_tcp_router "github.com/cloudfoundry-incubator/cf-tcp-router"
+	"code.cloudfoundry.org/cf-tcp-router"
 	"github.com/pivotal-golang/lager"
 )
 

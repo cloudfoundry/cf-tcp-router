@@ -7,9 +7,9 @@ import (
 	"path"
 	"time"
 
-	"github.com/cloudfoundry-incubator/cf-tcp-router/metrics_reporter/haproxy_client"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/testutil"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/utils"
+	"code.cloudfoundry.org/cf-tcp-router/metrics_reporter/haproxy_client"
+	"code.cloudfoundry.org/cf-tcp-router/testutil"
+	"code.cloudfoundry.org/cf-tcp-router/utils"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"
 

@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudfoundry-incubator/cf-tcp-router/cmd/router-configurer/testrunner"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/testutil"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/utils"
+	"code.cloudfoundry.org/cf-tcp-router/cmd/router-configurer/testrunner"
+	"code.cloudfoundry.org/cf-tcp-router/testutil"
+	"code.cloudfoundry.org/cf-tcp-router/utils"
 	"github.com/cloudfoundry-incubator/routing-api"
 	routingtestrunner "github.com/cloudfoundry-incubator/routing-api/cmd/routing-api/testrunner"
 	"github.com/cloudfoundry-incubator/routing-api/models"
@@ -41,8 +41,10 @@ var _ = Describe("Main", func() {
 
 	oAuthServer := func(logger lager.Logger) *ghttp.Server {
 		server := ghttp.NewUnstartedServer()
-		var basePath = path.Join(os.Getenv("GOPATH"), "src", "github.com", "cloudfoundry-incubator", "cf-tcp-router", "fixtures", "certs")
-		cert, err := tls.LoadX509KeyPair(filepath.Join(basePath, "server.pem"), filepath.Join(basePath, "server.key"))
+		var basePath = path.Join("..", "..", "fixtures", "certs")
+		absPath, err := filepath.Abs(basePath)
+		Expect(err).ToNot(HaveOccurred())
+		cert, err := tls.LoadX509KeyPair(filepath.Join(absPath, "server.pem"), filepath.Join(absPath, "server.key"))
 		Expect(err).ToNot(HaveOccurred())
 
 		tlsConfig := &tls.Config{
@@ -109,10 +111,12 @@ routing_api:
   uri: http://127.0.0.1
   port: %s
 `
-		caCertsPath := filepath.Join(os.Getenv("GOPATH"), "src", "github.com", "cloudfoundry-incubator", "cf-tcp-router", "fixtures", "certs", "uaa-ca.pem")
-		cfg := fmt.Sprintf(cfgString, caCertsPath, oauthServerPort, routingApiAuthDisabled, routingApiServerPort)
+		var caCertsPath = path.Join("..", "..", "fixtures", "certs", "uaa-ca.pem")
+		absPath, err := filepath.Abs(caCertsPath)
+		Expect(err).ToNot(HaveOccurred())
+		cfg := fmt.Sprintf(cfgString, absPath, oauthServerPort, routingApiAuthDisabled, routingApiServerPort)
 
-		err := utils.WriteToFile([]byte(cfg), configFile)
+		err = utils.WriteToFile([]byte(cfg), configFile)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(utils.FileExists(configFile)).To(BeTrue())
 		return configFile
@@ -127,7 +131,6 @@ routing_api:
 	}
 
 	var (
-		externalIP  string
 		oauthServer *ghttp.Server
 		server      ifrit.Process
 		logger      *lagertest.TestLogger
@@ -136,7 +139,6 @@ routing_api:
 
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
-		externalIP = testutil.GetExternalIP()
 	})
 
 	Context("when both oauth and routing api servers are up and running", func() {

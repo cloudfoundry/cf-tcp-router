@@ -3,8 +3,8 @@ package models_test
 import (
 	"time"
 
-	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/testutil"
+	"code.cloudfoundry.org/cf-tcp-router/models"
+	"code.cloudfoundry.org/cf-tcp-router/testutil"
 	routing_api_models "github.com/cloudfoundry-incubator/routing-api/models"
 	"github.com/pivotal-golang/lager/lagertest"
 

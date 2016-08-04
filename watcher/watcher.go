@@ -5,7 +5,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/cloudfoundry-incubator/cf-tcp-router/routing_table"
+	"code.cloudfoundry.org/cf-tcp-router/routing_table"
 	"github.com/cloudfoundry-incubator/routing-api"
 	uaaclient "github.com/cloudfoundry-incubator/uaa-go-client"
 	"github.com/pivotal-golang/lager"

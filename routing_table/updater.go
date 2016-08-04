@@ -4,8 +4,8 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
+	"code.cloudfoundry.org/cf-tcp-router/configurer"
+	"code.cloudfoundry.org/cf-tcp-router/models"
 	"github.com/cloudfoundry-incubator/routing-api"
 	apimodels "github.com/cloudfoundry-incubator/routing-api/models"
 	uaaclient "github.com/cloudfoundry-incubator/uaa-go-client"

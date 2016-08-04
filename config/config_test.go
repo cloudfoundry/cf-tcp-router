@@ -1,7 +1,7 @@
 package config_test
 
 import (
-	"github.com/cloudfoundry-incubator/cf-tcp-router/config"
+	"code.cloudfoundry.org/cf-tcp-router/config"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

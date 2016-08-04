@@ -4,7 +4,7 @@ package fakes
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/cf-tcp-router/routing_table"
+	"code.cloudfoundry.org/cf-tcp-router/routing_table"
 	"github.com/cloudfoundry-incubator/routing-api"
 )
 

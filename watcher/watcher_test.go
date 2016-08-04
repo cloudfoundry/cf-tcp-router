@@ -5,8 +5,8 @@ import (
 	"os"
 	"time"
 
-	fake_routing_table "github.com/cloudfoundry-incubator/cf-tcp-router/routing_table/fakes"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/watcher"
+	fake_routing_table "code.cloudfoundry.org/cf-tcp-router/routing_table/fakes"
+	"code.cloudfoundry.org/cf-tcp-router/watcher"
 	"github.com/cloudfoundry-incubator/routing-api"
 	"github.com/cloudfoundry-incubator/routing-api/fake_routing_api"
 	"github.com/cloudfoundry-incubator/routing-api/models"

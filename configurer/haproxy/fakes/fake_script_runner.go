@@ -4,14 +4,14 @@ package fakes
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer/haproxy"
+	"code.cloudfoundry.org/cf-tcp-router/configurer/haproxy"
 )
 
 type FakeScriptRunner struct {
 	RunStub        func() error
 	runMutex       sync.RWMutex
 	runArgsForCall []struct{}
-	runReturns struct {
+	runReturns     struct {
 		result1 error
 	}
 }

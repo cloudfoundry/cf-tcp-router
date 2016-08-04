@@ -3,8 +3,8 @@ package configurer
 import (
 	"errors"
 
-	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer/haproxy"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
+	"code.cloudfoundry.org/cf-tcp-router/configurer/haproxy"
+	"code.cloudfoundry.org/cf-tcp-router/models"
 	"github.com/pivotal-golang/lager"
 )
 

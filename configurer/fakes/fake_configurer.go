@@ -4,8 +4,8 @@ package fakes
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
+	"code.cloudfoundry.org/cf-tcp-router/configurer"
+	"code.cloudfoundry.org/cf-tcp-router/models"
 )
 
 type FakeRouterConfigurer struct {

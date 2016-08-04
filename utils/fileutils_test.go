@@ -4,8 +4,8 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/cloudfoundry-incubator/cf-tcp-router/testutil"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/utils"
+	"code.cloudfoundry.org/cf-tcp-router/testutil"
+	"code.cloudfoundry.org/cf-tcp-router/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

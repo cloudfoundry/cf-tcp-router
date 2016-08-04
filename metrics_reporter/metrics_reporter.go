@@ -4,8 +4,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/cloudfoundry-incubator/cf-tcp-router/metrics_reporter/haproxy_client"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
+	"code.cloudfoundry.org/cf-tcp-router/metrics_reporter/haproxy_client"
+	"code.cloudfoundry.org/cf-tcp-router/models"
 	"github.com/pivotal-golang/clock"
 )
 

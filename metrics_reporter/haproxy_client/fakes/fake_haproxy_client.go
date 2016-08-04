@@ -4,7 +4,7 @@ package fakes
 import (
 	"sync"
 
-	"github.com/cloudfoundry-incubator/cf-tcp-router/metrics_reporter/haproxy_client"
+	"code.cloudfoundry.org/cf-tcp-router/metrics_reporter/haproxy_client"
 )
 
 type FakeHaproxyClient struct {

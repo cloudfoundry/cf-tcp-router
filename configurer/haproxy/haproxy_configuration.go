@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"fmt"
 
-	cf_tcp_router "github.com/cloudfoundry-incubator/cf-tcp-router"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
+	"code.cloudfoundry.org/cf-tcp-router"
+	"code.cloudfoundry.org/cf-tcp-router/models"
 )
 
 func BackendServerInfoToHaProxyConfig(bs models.BackendServerInfo) (string, error) {

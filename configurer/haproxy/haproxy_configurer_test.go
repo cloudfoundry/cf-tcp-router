@@ -5,12 +5,12 @@ import (
 	"io/ioutil"
 	"os"
 
-	cf_tcp_router "github.com/cloudfoundry-incubator/cf-tcp-router"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer/haproxy"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/configurer/haproxy/fakes"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/testutil"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/utils"
+	"code.cloudfoundry.org/cf-tcp-router"
+	"code.cloudfoundry.org/cf-tcp-router/configurer/haproxy"
+	"code.cloudfoundry.org/cf-tcp-router/configurer/haproxy/fakes"
+	"code.cloudfoundry.org/cf-tcp-router/models"
+	"code.cloudfoundry.org/cf-tcp-router/testutil"
+	"code.cloudfoundry.org/cf-tcp-router/utils"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

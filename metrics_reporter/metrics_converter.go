@@ -5,8 +5,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/cloudfoundry-incubator/cf-tcp-router/metrics_reporter/haproxy_client"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
+	"code.cloudfoundry.org/cf-tcp-router/metrics_reporter/haproxy_client"
+	"code.cloudfoundry.org/cf-tcp-router/models"
 )
 
 func Convert(proxyStats haproxy_client.HaproxyStats) *MetricsReport {

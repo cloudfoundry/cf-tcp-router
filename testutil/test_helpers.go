@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net"
 
-	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
+	"code.cloudfoundry.org/cf-tcp-router/models"
 	. "github.com/onsi/gomega"
 
 	uuid "github.com/nu7hatch/gouuid"

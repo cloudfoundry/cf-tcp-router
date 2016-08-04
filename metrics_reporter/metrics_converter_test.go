@@ -1,9 +1,9 @@
 package metrics_reporter_test
 
 import (
-	"github.com/cloudfoundry-incubator/cf-tcp-router/metrics_reporter"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/metrics_reporter/haproxy_client"
-	"github.com/cloudfoundry-incubator/cf-tcp-router/models"
+	"code.cloudfoundry.org/cf-tcp-router/metrics_reporter"
+	"code.cloudfoundry.org/cf-tcp-router/metrics_reporter/haproxy_client"
+	"code.cloudfoundry.org/cf-tcp-router/models"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 )

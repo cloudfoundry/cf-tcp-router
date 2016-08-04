@@ -4,7 +4,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/cloudfoundry-incubator/cf-tcp-router/syncer"
+	"code.cloudfoundry.org/cf-tcp-router/syncer"
 	pclock "github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 	"github.com/pivotal-golang/lager/lagertest"

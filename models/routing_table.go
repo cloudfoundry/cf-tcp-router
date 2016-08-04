@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"time"
 
-	routing_api_models "github.com/cloudfoundry-incubator/routing-api/models"
+	routing_api_models "code.cloudfoundry.org/routing-api/models"
 	"github.com/pivotal-golang/lager"
 )
 

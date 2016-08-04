@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"code.cloudfoundry.org/cf-tcp-router/routing_table"
-	"github.com/cloudfoundry-incubator/routing-api"
+	"code.cloudfoundry.org/routing-api"
 )
 
 type FakeUpdater struct {

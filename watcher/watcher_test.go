@@ -7,11 +7,11 @@ import (
 
 	fake_routing_table "code.cloudfoundry.org/cf-tcp-router/routing_table/fakes"
 	"code.cloudfoundry.org/cf-tcp-router/watcher"
+	"code.cloudfoundry.org/routing-api"
+	"code.cloudfoundry.org/routing-api/fake_routing_api"
+	"code.cloudfoundry.org/routing-api/models"
 	testUaaClient "code.cloudfoundry.org/uaa-go-client/fakes"
 	"code.cloudfoundry.org/uaa-go-client/schema"
-	"github.com/cloudfoundry-incubator/routing-api"
-	"github.com/cloudfoundry-incubator/routing-api/fake_routing_api"
-	"github.com/cloudfoundry-incubator/routing-api/models"
 	"github.com/tedsuo/ifrit"
 
 	. "github.com/onsi/ginkgo"

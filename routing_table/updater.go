@@ -6,9 +6,9 @@ import (
 
 	"code.cloudfoundry.org/cf-tcp-router/configurer"
 	"code.cloudfoundry.org/cf-tcp-router/models"
+	"code.cloudfoundry.org/routing-api"
+	apimodels "code.cloudfoundry.org/routing-api/models"
 	uaaclient "code.cloudfoundry.org/uaa-go-client"
-	"github.com/cloudfoundry-incubator/routing-api"
-	apimodels "github.com/cloudfoundry-incubator/routing-api/models"
 	"github.com/pivotal-golang/clock"
 	"github.com/pivotal-golang/lager"
 )

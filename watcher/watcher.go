@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/cf-tcp-router/routing_table"
+	"code.cloudfoundry.org/routing-api"
 	uaaclient "code.cloudfoundry.org/uaa-go-client"
-	"github.com/cloudfoundry-incubator/routing-api"
 	"github.com/pivotal-golang/lager"
 )
 

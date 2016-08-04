@@ -8,8 +8,8 @@ import (
 
 	"code.cloudfoundry.org/cf-tcp-router/testutil"
 	"code.cloudfoundry.org/cf-tcp-router/utils"
-	"github.com/cloudfoundry-incubator/routing-api"
-	routingtestrunner "github.com/cloudfoundry-incubator/routing-api/cmd/routing-api/testrunner"
+	"code.cloudfoundry.org/routing-api"
+	routingtestrunner "code.cloudfoundry.org/routing-api/cmd/routing-api/testrunner"
 	"github.com/cloudfoundry/storeadapter"
 	"github.com/cloudfoundry/storeadapter/storerunner/etcdstorerunner"
 	. "github.com/onsi/ginkgo"
@@ -48,7 +48,7 @@ func TestRouterConfigurer(t *testing.T) {
 var _ = SynchronizedBeforeSuite(func() []byte {
 	routerConfigurer, err := gexec.Build("code.cloudfoundry.org/cf-tcp-router/cmd/router-configurer", "-race")
 	Expect(err).NotTo(HaveOccurred())
-	routingAPIBin, err := gexec.Build("github.com/cloudfoundry-incubator/routing-api/cmd/routing-api", "-race")
+	routingAPIBin, err := gexec.Build("code.cloudfoundry.org/routing-api/cmd/routing-api", "-race")
 	Expect(err).NotTo(HaveOccurred())
 	payload, err := json.Marshal(map[string]string{
 		"router-configurer": routerConfigurer,

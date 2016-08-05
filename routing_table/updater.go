@@ -6,11 +6,11 @@ import (
 
 	"code.cloudfoundry.org/cf-tcp-router/configurer"
 	"code.cloudfoundry.org/cf-tcp-router/models"
+	"code.cloudfoundry.org/clock"
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/routing-api"
 	apimodels "code.cloudfoundry.org/routing-api/models"
 	uaaclient "code.cloudfoundry.org/uaa-go-client"
-	"github.com/pivotal-golang/clock"
-	"github.com/pivotal-golang/lager"
 )
 
 //go:generate counterfeiter -o fakes/fake_updater.go . Updater

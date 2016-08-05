@@ -5,8 +5,8 @@ import (
 
 	"code.cloudfoundry.org/cf-tcp-router/models"
 	"code.cloudfoundry.org/cf-tcp-router/testutil"
+	"code.cloudfoundry.org/lager/lagertest"
 	routing_api_models "code.cloudfoundry.org/routing-api/models"
-	"github.com/pivotal-golang/lager/lagertest"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

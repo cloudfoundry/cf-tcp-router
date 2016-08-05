@@ -11,7 +11,7 @@ import (
 	"code.cloudfoundry.org/cf-tcp-router/utils"
 
 	"code.cloudfoundry.org/cf-tcp-router"
-	"github.com/pivotal-golang/lager"
+	"code.cloudfoundry.org/lager"
 )
 
 type Configurer struct {

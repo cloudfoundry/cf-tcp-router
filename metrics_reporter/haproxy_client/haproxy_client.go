@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/pivotal-golang/lager"
+	"code.cloudfoundry.org/lager"
 )
 
 //go:generate counterfeiter -o fakes/fake_haproxy_client.go . HaproxyClient

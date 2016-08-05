@@ -8,9 +8,9 @@ import (
 	emitter_fakes "code.cloudfoundry.org/cf-tcp-router/metrics_reporter/fakes"
 	"code.cloudfoundry.org/cf-tcp-router/metrics_reporter/haproxy_client"
 	haproxy_fakes "code.cloudfoundry.org/cf-tcp-router/metrics_reporter/haproxy_client/fakes"
+	"code.cloudfoundry.org/clock/fakeclock"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/pivotal-golang/clock/fakeclock"
 	"github.com/tedsuo/ifrit"
 )
 

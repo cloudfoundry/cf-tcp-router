@@ -16,14 +16,14 @@ import (
 	"code.cloudfoundry.org/cf-tcp-router/routing_table"
 	"code.cloudfoundry.org/cf-tcp-router/syncer"
 	"code.cloudfoundry.org/cf-tcp-router/watcher"
+	"code.cloudfoundry.org/cflager"
+	"code.cloudfoundry.org/clock"
+	"code.cloudfoundry.org/debugserver"
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/routing-api"
 	uaaclient "code.cloudfoundry.org/uaa-go-client"
 	uaaconfig "code.cloudfoundry.org/uaa-go-client/config"
-	"github.com/cloudfoundry-incubator/cf-debug-server"
-	"github.com/cloudfoundry-incubator/cf-lager"
 	"github.com/cloudfoundry/dropsonde"
-	"github.com/pivotal-golang/clock"
-	"github.com/pivotal-golang/lager"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
 	"github.com/tedsuo/ifrit/sigmon"
@@ -130,11 +130,11 @@ const (
 )
 
 func main() {
-	cf_debug_server.AddFlags(flag.CommandLine)
-	cf_lager.AddFlags(flag.CommandLine)
+	debugserver.AddFlags(flag.CommandLine)
+	cflager.AddFlags(flag.CommandLine)
 	flag.Parse()
 
-	logger, reconfigurableSink := cf_lager.New("router-configurer")
+	logger, reconfigurableSink := cflager.New("router-configurer")
 	logger.Info("starting")
 	clock := clock.NewClock()
 
@@ -199,9 +199,9 @@ func main() {
 		{"metricsReporter", metricsReporter},
 	}
 
-	if dbgAddr := cf_debug_server.DebugAddress(flag.CommandLine); dbgAddr != "" {
+	if dbgAddr := debugserver.DebugAddress(flag.CommandLine); dbgAddr != "" {
 		members = append(grouper.Members{
-			{"debug-server", cf_debug_server.Runner(dbgAddr, reconfigurableSink)},
+			{"debug-server", debugserver.Runner(dbgAddr, reconfigurableSink)},
 		}, members...)
 	}
 

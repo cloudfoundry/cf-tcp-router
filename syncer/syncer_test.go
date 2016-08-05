@@ -5,9 +5,9 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/cf-tcp-router/syncer"
-	pclock "github.com/pivotal-golang/clock"
-	"github.com/pivotal-golang/lager"
-	"github.com/pivotal-golang/lager/lagertest"
+	pclock "code.cloudfoundry.org/clock"
+	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/lagertest"
 	"github.com/tedsuo/ifrit"
 
 	. "github.com/onsi/ginkgo"

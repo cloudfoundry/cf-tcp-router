@@ -5,8 +5,8 @@ import (
 	"reflect"
 	"time"
 
+	"code.cloudfoundry.org/lager"
 	routing_api_models "code.cloudfoundry.org/routing-api/models"
-	"github.com/pivotal-golang/lager"
 )
 
 type RoutingKey struct {

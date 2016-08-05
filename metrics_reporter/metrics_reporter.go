@@ -6,7 +6,7 @@ import (
 
 	"code.cloudfoundry.org/cf-tcp-router/metrics_reporter/haproxy_client"
 	"code.cloudfoundry.org/cf-tcp-router/models"
-	"github.com/pivotal-golang/clock"
+	"code.cloudfoundry.org/clock"
 )
 
 type MetricsReport struct {

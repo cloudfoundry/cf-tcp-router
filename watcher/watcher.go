@@ -6,9 +6,9 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/cf-tcp-router/routing_table"
+	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/routing-api"
 	uaaclient "code.cloudfoundry.org/uaa-go-client"
-	"github.com/pivotal-golang/lager"
 )
 
 type Watcher struct {

@@ -32,12 +32,11 @@ var (
 	etcdRunner  *etcdstorerunner.ETCDClusterRunner
 	etcdAdapter storeadapter.StoreAdapter
 
-	routingAPIAddress      string
-	routingAPIArgs         routingtestrunner.Args
-	routingAPIPort         uint16
-	routingAPIIP           string
-	routingAPISystemDomain string
-	routingApiClient       routing_api.Client
+	routingAPIAddress string
+	routingAPIArgs    routingtestrunner.Args
+	routingAPIPort    uint16
+	routingAPIIP      string
+	routingApiClient  routing_api.Client
 )
 
 func TestRouterConfigurer(t *testing.T) {
@@ -103,16 +102,13 @@ defaults
 
 	routingAPIPort = uint16(6900 + GinkgoParallelNode())
 	routingAPIIP = "127.0.0.1"
-	routingAPISystemDomain = "example.com"
 	routingAPIAddress = fmt.Sprintf("http://%s:%d", routingAPIIP, routingAPIPort)
 
 	routingAPIArgs = routingtestrunner.Args{
-		Port:         routingAPIPort,
-		IP:           routingAPIIP,
-		SystemDomain: routingAPISystemDomain,
-		ConfigPath:   createConfig(),
-		EtcdCluster:  etcdUrl,
-		DevMode:      true,
+		Port:       routingAPIPort,
+		IP:         routingAPIIP,
+		ConfigPath: createConfig(etcdUrl),
+		DevMode:    true,
 	}
 	routingApiClient = routing_api.NewClient(routingAPIAddress, false)
 })
@@ -133,11 +129,10 @@ var _ = SynchronizedAfterSuite(func() {
 	gexec.CleanupBuildArtifacts()
 })
 
-func createConfig() string {
+func createConfig(etcdUrl string) string {
 	configFilePath := fmt.Sprintf("/tmp/example_%d.yml", GinkgoParallelNode())
-	err := utils.WriteToFile(
-		[]byte(
-			`log_guid: "my_logs"
+
+	configStr := `log_guid: "my_logs"
 uaa_verification_key: "-----BEGIN PUBLIC KEY-----
 
       MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDHFr+KICms+tuT1OXJwhCUmR2d
@@ -157,12 +152,16 @@ metron_config:
 metrics_reporting_interval: "500ms"
 statsd_endpoint: "localhost:8125"
 statsd_client_flush_interval: "10ms"
+system_domain: "example.com"
 router_groups:
 - name: "default-tcp"
   type: "tcp"
   reservable_ports: "1024-65535"
-`),
-		configFilePath)
+etcd:
+  node_urls: ["%s"]`
+
+	configBytes := []byte(fmt.Sprintf(configStr, etcdUrl))
+	err := utils.WriteToFile(configBytes, configFilePath)
 	Expect(err).ShouldNot(HaveOccurred())
 	Expect(utils.FileExists(configFilePath)).To(BeTrue())
 

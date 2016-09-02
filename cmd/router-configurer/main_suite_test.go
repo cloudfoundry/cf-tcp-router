@@ -8,6 +8,7 @@ import (
 
 	"code.cloudfoundry.org/cf-tcp-router/testutil"
 	"code.cloudfoundry.org/cf-tcp-router/utils"
+	"code.cloudfoundry.org/consuladapter/consulrunner"
 	"code.cloudfoundry.org/routing-api"
 	routingtestrunner "code.cloudfoundry.org/routing-api/cmd/routing-api/testrunner"
 	"github.com/cloudfoundry/storeadapter"
@@ -26,6 +27,8 @@ var (
 	haproxyConfigFile       string
 	haproxyConfigBackupFile string
 	haproxyBaseConfigFile   string
+
+	consulRunner *consulrunner.ClusterRunner
 
 	etcdPort    int
 	etcdUrl     string
@@ -66,6 +69,8 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	routerConfigurerPort = 7000 + GinkgoParallelNode()
 	routerConfigurerPath = context["router-configurer"]
 	routingAPIBinPath = context["routing-api"]
+
+	setupConsul()
 })
 
 var _ = BeforeEach(func() {
@@ -107,7 +112,7 @@ defaults
 	routingAPIArgs = routingtestrunner.Args{
 		Port:       routingAPIPort,
 		IP:         routingAPIIP,
-		ConfigPath: createConfig(etcdUrl),
+		ConfigPath: createConfig(etcdUrl, consulRunner.URL()),
 		DevMode:    true,
 	}
 	routingApiClient = routing_api.NewClient(routingAPIAddress, false)
@@ -125,11 +130,12 @@ var _ = AfterEach(func() {
 })
 
 var _ = SynchronizedAfterSuite(func() {
+	teardownConsul()
 }, func() {
 	gexec.CleanupBuildArtifacts()
 })
 
-func createConfig(etcdUrl string) string {
+func createConfig(etcdUrl, consulUrl string) string {
 	configFilePath := fmt.Sprintf("/tmp/example_%d.yml", GinkgoParallelNode())
 
 	configStr := `log_guid: "my_logs"
@@ -158,12 +164,24 @@ router_groups:
   type: "tcp"
   reservable_ports: "1024-65535"
 etcd:
-  node_urls: ["%s"]`
+  node_urls: ["%s"]
+consul_cluster:
+  servers: "%s"`
 
-	configBytes := []byte(fmt.Sprintf(configStr, etcdUrl))
+	configBytes := []byte(fmt.Sprintf(configStr, etcdUrl, consulUrl))
 	err := utils.WriteToFile(configBytes, configFilePath)
 	Expect(err).ShouldNot(HaveOccurred())
 	Expect(utils.FileExists(configFilePath)).To(BeTrue())
 
 	return configFilePath
+}
+
+func setupConsul() {
+	consulRunner = consulrunner.NewClusterRunner(9001+GinkgoParallelNode()*consulrunner.PortOffsetLength, 1, "http")
+	consulRunner.Start()
+	consulRunner.WaitUntilReady()
+}
+
+func teardownConsul() {
+	consulRunner.Stop()
 }

@@ -96,18 +96,17 @@ var _ = Describe("Updater", func() {
 		Context("when Upsert event is received", func() {
 			Context("when entry does not exist", func() {
 				BeforeEach(func() {
+					mapping := apimodels.NewTcpRouteMappingWithModificationTag(
+						routerGroupGuid,
+						externalPort4,
+						"some-ip-4",
+						2346,
+						ttl,
+						modificationTag,
+					)
 					tcpEvent = routing_api.TcpEvent{
-						TcpRouteMapping: apimodels.TcpRouteMapping{
-							TcpRoute: apimodels.TcpRoute{
-								RouterGroupGuid: routerGroupGuid,
-								ExternalPort:    externalPort4,
-							},
-							HostPort:        2346,
-							HostIP:          "some-ip-4",
-							TTL:             &ttl,
-							ModificationTag: modificationTag,
-						},
-						Action: "Upsert",
+						TcpRouteMapping: mapping,
+						Action:          "Upsert",
 					}
 				})
 
@@ -136,18 +135,17 @@ var _ = Describe("Updater", func() {
 
 				Context("an existing backend is provided", func() {
 					BeforeEach(func() {
+						mapping := apimodels.NewTcpRouteMappingWithModificationTag(
+							routerGroupGuid,
+							externalPort1,
+							"some-ip-1",
+							1234,
+							newTTL,
+							newModificationTag,
+						)
 						tcpEvent = routing_api.TcpEvent{
-							TcpRouteMapping: apimodels.TcpRouteMapping{
-								TcpRoute: apimodels.TcpRoute{
-									RouterGroupGuid: routerGroupGuid,
-									ExternalPort:    externalPort1,
-								},
-								HostPort:        1234,
-								HostIP:          "some-ip-1",
-								TTL:             &newTTL,
-								ModificationTag: newModificationTag,
-							},
-							Action: "Upsert",
+							TcpRouteMapping: mapping,
+							Action:          "Upsert",
 						}
 					})
 
@@ -167,18 +165,17 @@ var _ = Describe("Updater", func() {
 
 				Context("and a new backend is provided", func() {
 					BeforeEach(func() {
+						mapping := apimodels.NewTcpRouteMappingWithModificationTag(
+							routerGroupGuid,
+							externalPort1,
+							"some-ip-5",
+							1234,
+							ttl,
+							newModificationTag,
+						)
 						tcpEvent = routing_api.TcpEvent{
-							TcpRouteMapping: apimodels.TcpRouteMapping{
-								TcpRoute: apimodels.TcpRoute{
-									RouterGroupGuid: routerGroupGuid,
-									ExternalPort:    externalPort1,
-								},
-								HostPort:        1234,
-								HostIP:          "some-ip-5",
-								ModificationTag: newModificationTag,
-								TTL:             &ttl,
-							},
-							Action: "Upsert",
+							TcpRouteMapping: mapping,
+							Action:          "Upsert",
 						}
 					})
 
@@ -220,18 +217,17 @@ var _ = Describe("Updater", func() {
 
 			Context("when entry does not exist", func() {
 				BeforeEach(func() {
+					mapping := apimodels.NewTcpRouteMappingWithModificationTag(
+						routerGroupGuid,
+						externalPort4,
+						"some-ip-4",
+						2346,
+						ttl,
+						newModificationTag,
+					)
 					tcpEvent = routing_api.TcpEvent{
-						TcpRouteMapping: apimodels.TcpRouteMapping{
-							TcpRoute: apimodels.TcpRoute{
-								RouterGroupGuid: routerGroupGuid,
-								ExternalPort:    externalPort4,
-							},
-							HostPort:        2346,
-							HostIP:          "some-ip-4",
-							ModificationTag: newModificationTag,
-							TTL:             &ttl,
-						},
-						Action: "Delete",
+						TcpRouteMapping: mapping,
+						Action:          "Delete",
 					}
 				})
 
@@ -258,18 +254,17 @@ var _ = Describe("Updater", func() {
 							},
 						)
 						Expect(routingTable.Set(existingRoutingKey5, existingRoutingTableEntry5)).To(BeTrue())
+						mapping := apimodels.NewTcpRouteMappingWithModificationTag(
+							routerGroupGuid,
+							externalPort5,
+							"some-ip-1",
+							1234,
+							ttl,
+							modificationTag,
+						)
 						tcpEvent = routing_api.TcpEvent{
-							TcpRouteMapping: apimodels.TcpRouteMapping{
-								TcpRoute: apimodels.TcpRoute{
-									RouterGroupGuid: routerGroupGuid,
-									ExternalPort:    externalPort5,
-								},
-								HostPort:        1234,
-								HostIP:          "some-ip-1",
-								ModificationTag: modificationTag,
-								TTL:             &ttl,
-							},
-							Action: "Delete",
+							TcpRouteMapping: mapping,
+							Action:          "Delete",
 						}
 					})
 
@@ -312,18 +307,17 @@ var _ = Describe("Updater", func() {
 						)
 						Expect(routingTable.Set(existingRoutingKey6, existingRoutingTableEntry6)).To(BeTrue())
 
+						mapping := apimodels.NewTcpRouteMappingWithModificationTag(
+							routerGroupGuid,
+							externalPort5,
+							"some-ip-5",
+							1234,
+							ttl,
+							newModificationTag,
+						)
 						tcpEvent = routing_api.TcpEvent{
-							TcpRouteMapping: apimodels.TcpRouteMapping{
-								TcpRoute: apimodels.TcpRoute{
-									RouterGroupGuid: routerGroupGuid,
-									ExternalPort:    externalPort5,
-								},
-								HostPort:        1234,
-								HostIP:          "some-ip-5",
-								ModificationTag: newModificationTag,
-								TTL:             &ttl,
-							},
-							Action: "Delete",
+							TcpRouteMapping: mapping,
+							Action:          "Delete",
 						}
 					})
 
@@ -359,46 +353,38 @@ var _ = Describe("Updater", func() {
 		BeforeEach(func() {
 			doneChannel = make(chan struct{})
 			tcpMappings = []apimodels.TcpRouteMapping{
-				apimodels.TcpRouteMapping{
-					TcpRoute: apimodels.TcpRoute{
-						RouterGroupGuid: routerGroupGuid,
-						ExternalPort:    externalPort1,
-					},
-					HostPort:        61000,
-					HostIP:          "some-ip-1",
-					ModificationTag: modificationTag,
-					TTL:             &ttl,
-				},
-				apimodels.TcpRouteMapping{
-					TcpRoute: apimodels.TcpRoute{
-						RouterGroupGuid: routerGroupGuid,
-						ExternalPort:    externalPort1,
-					},
-					HostPort:        61001,
-					HostIP:          "some-ip-2",
-					ModificationTag: modificationTag,
-					TTL:             &ttl,
-				},
-				apimodels.TcpRouteMapping{
-					TcpRoute: apimodels.TcpRoute{
-						RouterGroupGuid: routerGroupGuid,
-						ExternalPort:    externalPort2,
-					},
-					HostPort:        60000,
-					HostIP:          "some-ip-3",
-					ModificationTag: modificationTag,
-					TTL:             &ttl,
-				},
-				apimodels.TcpRouteMapping{
-					TcpRoute: apimodels.TcpRoute{
-						RouterGroupGuid: routerGroupGuid,
-						ExternalPort:    externalPort2,
-					},
-					HostPort:        60000,
-					HostIP:          "some-ip-4",
-					ModificationTag: modificationTag,
-					TTL:             &ttl,
-				},
+				apimodels.NewTcpRouteMappingWithModificationTag(
+					routerGroupGuid,
+					externalPort1,
+					"some-ip-1",
+					61000,
+					ttl,
+					modificationTag,
+				),
+				apimodels.NewTcpRouteMappingWithModificationTag(
+					routerGroupGuid,
+					externalPort1,
+					"some-ip-2",
+					61001,
+					ttl,
+					modificationTag,
+				),
+				apimodels.NewTcpRouteMappingWithModificationTag(
+					routerGroupGuid,
+					externalPort2,
+					"some-ip-3",
+					60000,
+					ttl,
+					modificationTag,
+				),
+				apimodels.NewTcpRouteMappingWithModificationTag(
+					routerGroupGuid,
+					externalPort2,
+					"some-ip-4",
+					60000,
+					ttl,
+					modificationTag,
+				),
 			}
 		})
 
@@ -450,15 +436,14 @@ var _ = Describe("Updater", func() {
 					go invokeSync(doneChannel)
 					Eventually(updater.Syncing).Should(BeTrue())
 					tcpEvent = routing_api.TcpEvent{
-						TcpRouteMapping: apimodels.TcpRouteMapping{
-							TcpRoute: apimodels.TcpRoute{
-								RouterGroupGuid: routerGroupGuid,
-								ExternalPort:    externalPort1,
-							},
-							HostPort:        61001,
-							HostIP:          "some-ip-2",
-							ModificationTag: modificationTag,
-						},
+						TcpRouteMapping: apimodels.NewTcpRouteMappingWithModificationTag(
+							routerGroupGuid,
+							externalPort1,
+							"some-ip-2",
+							61001,
+							0,
+							modificationTag,
+						),
 						Action: "Delete",
 					}
 					updater.HandleEvent(tcpEvent)

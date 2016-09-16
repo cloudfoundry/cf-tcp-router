@@ -85,14 +85,13 @@ var _ = Describe("Watcher", func() {
 
 		JustBeforeEach(func() {
 			tcpEvent = routing_api.TcpEvent{
-				TcpRouteMapping: models.TcpRouteMapping{
-					TcpRoute: models.TcpRoute{
-						RouterGroupGuid: routerGroupGuid,
-						ExternalPort:    61000,
-					},
-					HostPort: 5222,
-					HostIP:   "some-ip-1",
-				},
+				TcpRouteMapping: models.NewTcpRouteMapping(
+					routerGroupGuid,
+					61000,
+					"some-ip-1",
+					5222,
+					0,
+				),
 				Action: "Upsert",
 			}
 			eventChannel <- tcpEvent
@@ -112,14 +111,13 @@ var _ = Describe("Watcher", func() {
 
 		JustBeforeEach(func() {
 			tcpEvent = routing_api.TcpEvent{
-				TcpRouteMapping: models.TcpRouteMapping{
-					TcpRoute: models.TcpRoute{
-						RouterGroupGuid: routerGroupGuid,
-						ExternalPort:    61000,
-					},
-					HostPort: 5222,
-					HostIP:   "some-ip-1",
-				},
+				TcpRouteMapping: models.NewTcpRouteMapping(
+					routerGroupGuid,
+					61000,
+					"some-ip-1",
+					5222,
+					0,
+				),
 				Action: "Delete",
 			}
 			eventChannel <- tcpEvent

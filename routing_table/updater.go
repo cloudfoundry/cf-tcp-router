@@ -163,7 +163,7 @@ func (u *updater) handleEvent(l lager.Logger, event routing_api.TcpEvent) error 
 
 func (u *updater) toRoutingTableEntry(logger lager.Logger, routeMapping apimodels.TcpRouteMapping) (models.RoutingKey, models.BackendServerInfo) {
 	logger.Debug("converting-tcp-route-mapping", lager.Data{"tcp-route": routeMapping})
-	routingKey := models.RoutingKey{Port: routeMapping.TcpRoute.ExternalPort}
+	routingKey := models.RoutingKey{Port: routeMapping.ExternalPort}
 
 	var ttl int
 	if routeMapping.TTL != nil {

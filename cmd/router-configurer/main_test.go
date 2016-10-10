@@ -149,9 +149,13 @@ routing_api:
 		logger.Info("shutting-down")
 		session.Signal(os.Interrupt)
 		Eventually(session.Exited, 5*time.Second).Should(BeClosed())
+
 		server.Signal(os.Interrupt)
 		Eventually(server.Wait(), 5*time.Second).Should(Receive())
-		oauthServer.Close()
+
+		if oauthServer != nil {
+			oauthServer.Close()
+		}
 	})
 
 	Context("when both oauth and routing api servers are up and running", func() {

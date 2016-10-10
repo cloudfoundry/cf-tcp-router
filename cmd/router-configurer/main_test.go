@@ -145,6 +145,15 @@ routing_api:
 		logger = lagertest.NewTestLogger("test")
 	})
 
+	AfterEach(func() {
+		logger.Info("shutting-down")
+		session.Signal(os.Interrupt)
+		Eventually(session.Exited, 5*time.Second).Should(BeClosed())
+		server.Signal(os.Interrupt)
+		Eventually(server.Wait(), 5*time.Second).Should(Receive())
+		oauthServer.Close()
+	})
+
 	Context("when both oauth and routing api servers are up and running", func() {
 		BeforeEach(func() {
 			oauthServer = oAuthServer(logger)
@@ -169,15 +178,6 @@ routing_api:
 			runner := testrunner.New(routerConfigurerPath, routerConfigurerArgs)
 			session, err = gexec.Start(runner.Command, allOutput, allOutput)
 			Expect(err).ToNot(HaveOccurred())
-		})
-
-		AfterEach(func() {
-			logger.Info("shutting-down")
-			session.Signal(os.Interrupt)
-			Eventually(session.Exited, 5*time.Second).Should(BeClosed())
-			server.Signal(os.Interrupt)
-			Eventually(server.Wait(), 5*time.Second).Should(Receive())
-			oauthServer.Close()
 		})
 
 		It("syncs with routing api", func() {
@@ -232,13 +232,6 @@ routing_api:
 		BeforeEach(func() {
 			server = routingApiServer(logger)
 			oauthServerPort = "1111"
-
-		})
-
-		AfterEach(func() {
-			logger.Info("shutting-down")
-			server.Signal(os.Interrupt)
-			Eventually(server.Wait(), 5*time.Second).Should(Receive())
 		})
 
 		JustBeforeEach(func() {
@@ -275,11 +268,6 @@ routing_api:
 				}
 			})
 
-			AfterEach(func() {
-				session.Signal(os.Interrupt)
-				Eventually(session.Exited, 5*time.Second).Should(BeClosed())
-			})
-
 			It("does not call oauth server to get auth token and starts SSE connection with routing api", func() {
 				Eventually(session.Out, 5*time.Second).Should(gbytes.Say("creating-noop-uaa-client"))
 				Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Successfully-subscribed-to-routing-api-event-stream"))
@@ -302,15 +290,6 @@ routing_api:
 			var err error
 			session, err = gexec.Start(runner.Command, allOutput, allOutput)
 			Expect(err).ToNot(HaveOccurred())
-		})
-
-		AfterEach(func() {
-			logger.Info("shutting-down")
-			session.Signal(os.Interrupt)
-			Eventually(session.Exited, 5*time.Second).Should(BeClosed())
-			oauthServer.Close()
-			server.Signal(os.Interrupt)
-			Eventually(server.Wait(), 5*time.Second).Should(Receive())
 		})
 
 		It("keeps trying to connect and doesn't blow up", func() {

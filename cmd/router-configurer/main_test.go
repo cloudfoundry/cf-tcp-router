@@ -151,7 +151,7 @@ routing_api:
 		Eventually(session.Exited, 5*time.Second).Should(BeClosed())
 
 		server.Signal(os.Interrupt)
-		Eventually(server.Wait(), 5*time.Second).Should(Receive())
+		Eventually(server.Wait(), 7*time.Second).Should(Receive())
 
 		if oauthServer != nil {
 			oauthServer.Close()

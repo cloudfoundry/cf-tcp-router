@@ -25,6 +25,7 @@ import (
 	"github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/ghttp"
 	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/ginkgomon"
 )
 
 var _ = Describe("Main", func() {
@@ -93,7 +94,7 @@ var _ = Describe("Main", func() {
 	routingApiServer := func(logger lager.Logger) ifrit.Process {
 		server := routingtestrunner.New(routingAPIBinPath, routingAPIArgs)
 		logger.Info("starting-routing-api-server")
-		process := ifrit.Invoke(server)
+		process := ginkgomon.Invoke(server)
 		routerGroupGuid = getRouterGroupGuid(routingAPIArgs.Port)
 		return process
 	}
@@ -150,9 +151,7 @@ routing_api:
 		session.Signal(os.Interrupt)
 		Eventually(session.Exited, 5*time.Second).Should(BeClosed())
 
-		server.Signal(os.Interrupt)
-		Eventually(server.Wait(), 7*time.Second).Should(Receive())
-
+		ginkgomon.Interrupt(server, "10s")
 		if oauthServer != nil {
 			oauthServer.Close()
 		}

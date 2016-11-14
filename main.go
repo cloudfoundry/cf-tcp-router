@@ -67,13 +67,13 @@ var subscriptionRetryInterval = flag.Int(
 
 var configFile = flag.String(
 	"config",
-	"/var/vcap/jobs/router_configurer/config/router_configurer.yml",
+	"/var/vcap/jobs/tcp_router/config/tcp_router.yml",
 	"The Router configurer yml config.",
 )
 
 var haproxyReloader = flag.String(
 	"haproxyReloader",
-	"/var/vcap/jobs/router_configurer/bin/haproxy_reloader",
+	"/var/vcap/jobs/tcp_router/bin/haproxy_reloader",
 	"Path to a script that reloads HAProxy.",
 )
 
@@ -126,7 +126,7 @@ var defaultRouteExpiry = flag.Duration(
 )
 
 const (
-	dropsondeOrigin        = "router-configurer"
+	dropsondeOrigin        = "tcp-router"
 	statsConnectionTimeout = 10 * time.Second
 )
 
@@ -135,7 +135,7 @@ func main() {
 	cflager.AddFlags(flag.CommandLine)
 	flag.Parse()
 
-	logger, reconfigurableSink := cflager.New("router-configurer")
+	logger, reconfigurableSink := cflager.New("tcp-router")
 	logger.Info("starting")
 	clock := clock.NewClock()
 

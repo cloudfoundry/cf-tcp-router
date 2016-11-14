@@ -21,9 +21,9 @@ import (
 )
 
 var (
-	routerConfigurerPath    string
+	tcpRouterPath           string
 	routingAPIBinPath       string
-	routerConfigurerPort    int
+	tcpRouterPort           int
 	haproxyConfigFile       string
 	haproxyConfigBackupFile string
 	haproxyBaseConfigFile   string
@@ -43,19 +43,19 @@ var (
 	catCmd                    *exec.Cmd
 )
 
-func TestRouterConfigurer(t *testing.T) {
+func TestTCPRouter(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "RouterConfigurer Suite")
+	RunSpecs(t, "TCPRouter Suite")
 }
 
 var _ = SynchronizedBeforeSuite(func() []byte {
-	routerConfigurer, err := gexec.Build("code.cloudfoundry.org/cf-tcp-router/cmd/router-configurer", "-race")
+	tcpRouter, err := gexec.Build("code.cloudfoundry.org/cf-tcp-router", "-race")
 	Expect(err).NotTo(HaveOccurred())
 	routingAPIBin, err := gexec.Build("code.cloudfoundry.org/routing-api/cmd/routing-api", "-race")
 	Expect(err).NotTo(HaveOccurred())
 	payload, err := json.Marshal(map[string]string{
-		"router-configurer": routerConfigurer,
-		"routing-api":       routingAPIBin,
+		"tcp-router":  tcpRouter,
+		"routing-api": routingAPIBin,
 	})
 
 	Expect(err).NotTo(HaveOccurred())
@@ -67,8 +67,8 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	err := json.Unmarshal(payload, &context)
 	Expect(err).NotTo(HaveOccurred())
 
-	routerConfigurerPort = 7000 + GinkgoParallelNode()
-	routerConfigurerPath = context["router-configurer"]
+	tcpRouterPort = 7000 + GinkgoParallelNode()
+	tcpRouterPath = context["tcp-router"]
 	routingAPIBinPath = context["routing-api"]
 
 	setupConsul()

@@ -5,7 +5,6 @@ import (
 	"io/ioutil"
 	"os"
 
-	"code.cloudfoundry.org/cf-tcp-router"
 	"code.cloudfoundry.org/cf-tcp-router/configurer/haproxy"
 	"code.cloudfoundry.org/cf-tcp-router/configurer/haproxy/fakes"
 	"code.cloudfoundry.org/cf-tcp-router/models"
@@ -47,7 +46,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 			It("returns a ErrRouterConfigFileNotFound error", func() {
 				_, err := haproxy.NewHaProxyConfigurer(logger, "", haproxyConfigFile, fakeMonitor, nil)
 				Expect(err).Should(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(cf_tcp_router.ErrRouterConfigFileNotFound))
+				Expect(err.Error()).To(ContainSubstring(haproxy.ErrRouterConfigFileNotFound))
 			})
 		})
 
@@ -55,7 +54,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 			It("returns a ErrRouterConfigFileNotFound error", func() {
 				_, err := haproxy.NewHaProxyConfigurer(logger, haproxyConfigTemplate, "", fakeMonitor, nil)
 				Expect(err).Should(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(cf_tcp_router.ErrRouterConfigFileNotFound))
+				Expect(err.Error()).To(ContainSubstring(haproxy.ErrRouterConfigFileNotFound))
 			})
 		})
 
@@ -63,7 +62,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 			It("returns a ErrRouterConfigFileNotFound error", func() {
 				_, err := haproxy.NewHaProxyConfigurer(logger, "file/path/does/not/exist", haproxyConfigFile, fakeMonitor, nil)
 				Expect(err).Should(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(cf_tcp_router.ErrRouterConfigFileNotFound))
+				Expect(err.Error()).To(ContainSubstring(haproxy.ErrRouterConfigFileNotFound))
 			})
 		})
 
@@ -71,7 +70,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 			It("returns a ErrRouterConfigFileNotFound error", func() {
 				_, err := haproxy.NewHaProxyConfigurer(logger, haproxyConfigTemplate, "file/path/does/not/exist", fakeMonitor, nil)
 				Expect(err).Should(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring(cf_tcp_router.ErrRouterConfigFileNotFound))
+				Expect(err.Error()).To(ContainSubstring(haproxy.ErrRouterConfigFileNotFound))
 			})
 		})
 

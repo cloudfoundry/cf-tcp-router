@@ -70,7 +70,6 @@ func (m *monitor) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 
 func watchPID(pidFile string, logger lager.Logger) error {
 	fileBytes, err := ioutil.ReadFile(pidFile)
-	logger.Info(string(fileBytes))
 	if err != nil {
 		logger.Error("exiting", fmt.Errorf("Cannot read file %s", pidFile))
 		return err
@@ -82,7 +81,6 @@ func watchPID(pidFile string, logger lager.Logger) error {
 		return err
 	}
 
-	logger.Debug("checking-pid", lager.Data{"pid": pid})
 	if !running(pid) {
 		err := fmt.Errorf("PID %d not found", pid)
 		logger.Error("exiting", err)

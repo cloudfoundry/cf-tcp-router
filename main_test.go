@@ -7,11 +7,10 @@ import (
 	"net/http"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"time"
 
-	"code.cloudfoundry.org/cf-tcp-router/cmd/router-configurer/testrunner"
+	"code.cloudfoundry.org/cf-tcp-router/testrunner"
 	"code.cloudfoundry.org/cf-tcp-router/testutil"
 	"code.cloudfoundry.org/cf-tcp-router/utils"
 	"code.cloudfoundry.org/lager"
@@ -42,10 +41,7 @@ var _ = Describe("Main", func() {
 
 	oAuthServer := func(logger lager.Logger) *ghttp.Server {
 		server := ghttp.NewUnstartedServer()
-		var basePath = path.Join("..", "..", "fixtures", "certs")
-		absPath, err := filepath.Abs(basePath)
-		Expect(err).ToNot(HaveOccurred())
-		cert, err := tls.LoadX509KeyPair(filepath.Join(absPath, "server.pem"), filepath.Join(absPath, "server.key"))
+		cert, err := tls.LoadX509KeyPair("fixtures/certs/server.pem", "fixtures/certs/server.key")
 		Expect(err).ToNot(HaveOccurred())
 
 		tlsConfig := &tls.Config{
@@ -100,7 +96,7 @@ var _ = Describe("Main", func() {
 	}
 
 	generateConfigFile := func(oauthServerPort, routingApiServerPort string, routingApiAuthDisabled bool) string {
-		randomConfigFileName := testutil.RandomFileName("router_configurer", ".yml")
+		randomConfigFileName := testutil.RandomFileName("tcp_router", ".yml")
 		configFile := path.Join(os.TempDir(), randomConfigFileName)
 
 		cfgString := `---
@@ -117,12 +113,9 @@ routing_api:
   port: %s
 haproxy_pid_file: %s
 `
-		var caCertsPath = path.Join("..", "..", "fixtures", "certs", "uaa-ca.pem")
-		absPath, err := filepath.Abs(caCertsPath)
-		Expect(err).ToNot(HaveOccurred())
-		cfg := fmt.Sprintf(cfgString, absPath, oauthServerPort, routingApiAuthDisabled, routingApiServerPort, longRunningProcessPidFile)
+		cfg := fmt.Sprintf(cfgString, "fixtures/certs/uaa-ca.pem", oauthServerPort, routingApiAuthDisabled, routingApiServerPort, longRunningProcessPidFile)
 
-		err = utils.WriteToFile([]byte(cfg), configFile)
+		err := utils.WriteToFile([]byte(cfg), configFile)
 		Expect(err).ShouldNot(HaveOccurred())
 		Expect(utils.FileExists(configFile)).To(BeTrue())
 		return configFile
@@ -164,7 +157,7 @@ haproxy_pid_file: %s
 			server = routingApiServer(logger)
 			oauthServerPort := getServerPort(oauthServer.URL())
 			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), false)
-			routerConfigurerArgs := testrunner.Args{
+			tcpRouterArgs := testrunner.Args{
 				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 				LoadBalancerConfigFilePath:     haproxyConfigFile,
 				ConfigFilePath:                 configFile,
@@ -179,7 +172,7 @@ haproxy_pid_file: %s
 			Expect(contains(tcpRouteMappings, tcpRouteMapping)).To(BeTrue())
 
 			allOutput := logger.Buffer()
-			runner := testrunner.New(routerConfigurerPath, routerConfigurerArgs)
+			runner := testrunner.New(tcpRouterPath, tcpRouterArgs)
 			session, err = gexec.Start(runner.Command, allOutput, allOutput)
 			Expect(err).ToNot(HaveOccurred())
 		})
@@ -229,9 +222,9 @@ haproxy_pid_file: %s
 
 	Context("Oauth server is down", func() {
 		var (
-			routerConfigurerArgs testrunner.Args
-			configFile           string
-			oauthServerPort      string
+			tcpRouterArgs   testrunner.Args
+			configFile      string
+			oauthServerPort string
 		)
 		BeforeEach(func() {
 			server = routingApiServer(logger)
@@ -240,7 +233,7 @@ haproxy_pid_file: %s
 
 		JustBeforeEach(func() {
 			allOutput := logger.Buffer()
-			runner := testrunner.New(routerConfigurerPath, routerConfigurerArgs)
+			runner := testrunner.New(tcpRouterPath, tcpRouterArgs)
 			var err error
 			session, err = gexec.Start(runner.Command, allOutput, allOutput)
 			Expect(err).ToNot(HaveOccurred())
@@ -249,7 +242,7 @@ haproxy_pid_file: %s
 		Context("routing api auth is enabled", func() {
 			BeforeEach(func() {
 				configFile = generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), false)
-				routerConfigurerArgs = testrunner.Args{
+				tcpRouterArgs = testrunner.Args{
 					BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 					LoadBalancerConfigFilePath:     haproxyConfigFile,
 					ConfigFilePath:                 configFile,
@@ -265,7 +258,7 @@ haproxy_pid_file: %s
 		Context("routing api auth is disabled", func() {
 			BeforeEach(func() {
 				configFile = generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), true)
-				routerConfigurerArgs = testrunner.Args{
+				tcpRouterArgs = testrunner.Args{
 					BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 					LoadBalancerConfigFilePath:     haproxyConfigFile,
 					ConfigFilePath:                 configFile,
@@ -284,13 +277,13 @@ haproxy_pid_file: %s
 			oauthServer = oAuthServer(logger)
 			oauthServerPort := getServerPort(oauthServer.URL())
 			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), false)
-			routerConfigurerArgs := testrunner.Args{
+			tcpRouterArgs := testrunner.Args{
 				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 				LoadBalancerConfigFilePath:     haproxyConfigFile,
 				ConfigFilePath:                 configFile,
 			}
 			allOutput := logger.Buffer()
-			runner := testrunner.New(routerConfigurerPath, routerConfigurerArgs)
+			runner := testrunner.New(tcpRouterPath, tcpRouterArgs)
 			var err error
 			session, err = gexec.Start(runner.Command, allOutput, allOutput)
 			Expect(err).ToNot(HaveOccurred())
@@ -320,13 +313,13 @@ haproxy_pid_file: %s
 			server = routingApiServer(logger)
 			oauthServerPort := getServerPort(oauthServer.URL())
 			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), false)
-			routerConfigurerArgs := testrunner.Args{
+			tcpRouterArgs := testrunner.Args{
 				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 				LoadBalancerConfigFilePath:     haproxyConfigFile,
 				ConfigFilePath:                 configFile,
 			}
 
-			runner := testrunner.New(routerConfigurerPath, routerConfigurerArgs)
+			runner := testrunner.New(tcpRouterPath, tcpRouterArgs)
 
 			var err error
 			session, err = gexec.Start(runner.Command, GinkgoWriter, GinkgoWriter)

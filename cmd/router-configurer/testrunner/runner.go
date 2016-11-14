@@ -2,6 +2,7 @@ package testrunner
 
 import (
 	"os/exec"
+	"path"
 	"time"
 
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -18,6 +19,7 @@ func (args Args) ArgSlice() []string {
 	return []string{
 		"-tcpLoadBalancerConfig=" + args.LoadBalancerConfigFilePath,
 		"-tcpLoadBalancerBaseConfig=" + args.BaseLoadBalancerConfigFilePath,
+		"-haproxyReloader=" + path.Join("..", "..", "fixtures", "fake_haproxy_reloader"),
 		"-config=" + args.ConfigFilePath,
 		"-tokenFetchRetryInterval", "1s",
 		"-staleRouteCheckInterval", "5s",

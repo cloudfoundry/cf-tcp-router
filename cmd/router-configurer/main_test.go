@@ -115,11 +115,12 @@ routing_api:
   auth_disabled: %t
   uri: http://127.0.0.1
   port: %s
+haproxy_pid_file: %s
 `
 		var caCertsPath = path.Join("..", "..", "fixtures", "certs", "uaa-ca.pem")
 		absPath, err := filepath.Abs(caCertsPath)
 		Expect(err).ToNot(HaveOccurred())
-		cfg := fmt.Sprintf(cfgString, absPath, oauthServerPort, routingApiAuthDisabled, routingApiServerPort)
+		cfg := fmt.Sprintf(cfgString, absPath, oauthServerPort, routingApiAuthDisabled, routingApiServerPort, longRunningProcessPidFile)
 
 		err = utils.WriteToFile([]byte(cfg), configFile)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -310,6 +311,39 @@ routing_api:
 			verifyHaProxyConfigContent(haproxyConfigFile, expectedConfigEntry, true)
 			newServerConfigEntry := "server server_some-ip-3_61000 some-ip-3:61000"
 			verifyHaProxyConfigContent(haproxyConfigFile, newServerConfigEntry, true)
+		})
+	})
+
+	Context("when haproxy is down", func() {
+		BeforeEach(func() {
+			oauthServer = oAuthServer(logger)
+			server = routingApiServer(logger)
+			oauthServerPort := getServerPort(oauthServer.URL())
+			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), false)
+			routerConfigurerArgs := testrunner.Args{
+				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
+				LoadBalancerConfigFilePath:     haproxyConfigFile,
+				ConfigFilePath:                 configFile,
+			}
+
+			runner := testrunner.New(routerConfigurerPath, routerConfigurerArgs)
+
+			var err error
+			session, err = gexec.Start(runner.Command, GinkgoWriter, GinkgoWriter)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		AfterEach(func() {
+			setupLongRunningProcess()
+		})
+
+		It("exits", func() {
+			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Subscribing-to-routing-api-event-stream"))
+			Consistently(session.Exited).ShouldNot(BeClosed())
+
+			killLongRunningProcess()
+
+			Eventually(session.Exited, "5s").Should(BeClosed())
 		})
 	})
 })

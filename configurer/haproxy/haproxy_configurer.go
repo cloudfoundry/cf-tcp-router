@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"code.cloudfoundry.org/cf-tcp-router/models"
+	"code.cloudfoundry.org/cf-tcp-router/monitor"
 	"code.cloudfoundry.org/cf-tcp-router/utils"
 
 	"code.cloudfoundry.org/cf-tcp-router"
@@ -19,10 +20,11 @@ type Configurer struct {
 	baseConfigFilePath string
 	configFilePath     string
 	configFileLock     *sync.Mutex
+	monitor            monitor.Monitor
 	scriptRunner       ScriptRunner
 }
 
-func NewHaProxyConfigurer(logger lager.Logger, baseConfigFilePath string, configFilePath string, scriptRunner ScriptRunner) (*Configurer, error) {
+func NewHaProxyConfigurer(logger lager.Logger, baseConfigFilePath string, configFilePath string, monitor monitor.Monitor, scriptRunner ScriptRunner) (*Configurer, error) {
 	if !utils.FileExists(baseConfigFilePath) {
 		return nil, fmt.Errorf("%s: [%s]", cf_tcp_router.ErrRouterConfigFileNotFound, baseConfigFilePath)
 	}
@@ -34,11 +36,13 @@ func NewHaProxyConfigurer(logger lager.Logger, baseConfigFilePath string, config
 		baseConfigFilePath: baseConfigFilePath,
 		configFilePath:     configFilePath,
 		configFileLock:     new(sync.Mutex),
+		monitor:            monitor,
 		scriptRunner:       scriptRunner,
 	}, nil
 }
 
 func (h *Configurer) Configure(routingTable models.RoutingTable) error {
+	h.monitor.StopWatching()
 	h.configFileLock.Lock()
 	defer h.configFileLock.Unlock()
 
@@ -84,6 +88,7 @@ func (h *Configurer) Configure(routingTable models.RoutingTable) error {
 			h.logger.Error("failed-to-run-script", err)
 			return err
 		}
+		h.monitor.StartWatching()
 	}
 	return nil
 }

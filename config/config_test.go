@@ -24,6 +24,7 @@ var _ = Describe("Config", func() {
 					Port:         3000,
 					AuthDisabled: false,
 				},
+				HaProxyPidFile: "/path/to/pid/file",
 			}
 			cfg, err := config.New("fixtures/valid_config.yml")
 			Expect(err).NotTo(HaveOccurred())
@@ -46,6 +47,13 @@ var _ = Describe("Config", func() {
 		})
 	})
 
+	Context("when haproxy pid file is missing", func() {
+		It("return error", func() {
+			_, err := config.New("fixtures/no_haproxy.yml")
+			Expect(err).To(HaveOccurred())
+		})
+	})
+
 	Context("when oauth section is  missing", func() {
 		It("loads only routing api section", func() {
 			expectedCfg := config.Config{
@@ -53,6 +61,7 @@ var _ = Describe("Config", func() {
 					URI:  "http://routing-api.service.cf.internal",
 					Port: 3000,
 				},
+				HaProxyPidFile: "/path/to/pid/file",
 			}
 			cfg, err := config.New("fixtures/no_oauth.yml")
 			Expect(err).NotTo(HaveOccurred())
@@ -74,6 +83,7 @@ var _ = Describe("Config", func() {
 					URI:  "http://routing-api.service.cf.internal",
 					Port: 3000,
 				},
+				HaProxyPidFile: "/path/to/pid/file",
 			}
 			cfg, err := config.New("fixtures/missing_oauth_fields.yml")
 			Expect(err).NotTo(HaveOccurred())

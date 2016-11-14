@@ -3,7 +3,9 @@ package main_test
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
+	"os/exec"
 	"path"
 
 	"code.cloudfoundry.org/cf-tcp-router/testutil"
@@ -36,6 +38,9 @@ var (
 	routingAPIPort    uint16
 	routingAPIIP      string
 	routingApiClient  routing_api.Client
+
+	longRunningProcessPidFile string
+	catCmd                    *exec.Cmd
 )
 
 func TestRouterConfigurer(t *testing.T) {
@@ -78,6 +83,30 @@ func setupDB() {
 	Expect(err).NotTo(HaveOccurred())
 }
 
+func setupLongRunningProcess() {
+	catCmd = exec.Command("cat")
+	err := catCmd.Start()
+	Expect(err).ToNot(HaveOccurred())
+	pid := catCmd.Process.Pid
+
+	file, err := ioutil.TempFile(os.TempDir(), "test-pid-file")
+	Expect(err).ToNot(HaveOccurred())
+	_, err = file.WriteString(fmt.Sprintf("%d", pid))
+	Expect(err).ToNot(HaveOccurred())
+	defer file.Close()
+
+	longRunningProcessPidFile = file.Name()
+}
+
+func killLongRunningProcess() {
+	err := os.Remove(longRunningProcessPidFile)
+	Expect(err).ToNot(HaveOccurred())
+	if catCmd.ProcessState == nil {
+		err := catCmd.Process.Kill()
+		Expect(err).ToNot(HaveOccurred())
+	}
+}
+
 var _ = BeforeEach(func() {
 	randomFileName := testutil.RandomFileName("haproxy_", ".cfg")
 	randomBackupFileName := fmt.Sprintf("%s.bak", randomFileName)
@@ -116,6 +145,8 @@ defaults
 	Expect(err).NotTo(HaveOccurred())
 
 	routingApiClient = routing_api.NewClient(routingAPIAddress, false)
+
+	setupLongRunningProcess()
 })
 
 var _ = AfterEach(func() {
@@ -125,6 +156,7 @@ var _ = AfterEach(func() {
 	os.Remove(haproxyConfigBackupFile)
 
 	dbAllocator.Reset()
+	killLongRunningProcess()
 })
 
 var _ = SynchronizedAfterSuite(func() {

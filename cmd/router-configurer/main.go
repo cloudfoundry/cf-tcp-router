@@ -13,6 +13,7 @@ import (
 	"code.cloudfoundry.org/cf-tcp-router/metrics_reporter"
 	"code.cloudfoundry.org/cf-tcp-router/metrics_reporter/haproxy_client"
 	"code.cloudfoundry.org/cf-tcp-router/models"
+	"code.cloudfoundry.org/cf-tcp-router/monitor"
 	"code.cloudfoundry.org/cf-tcp-router/routing_table"
 	"code.cloudfoundry.org/cf-tcp-router/syncer"
 	"code.cloudfoundry.org/cf-tcp-router/watcher"
@@ -140,6 +141,14 @@ func main() {
 
 	initializeDropsonde(logger)
 
+	cfg, err := config.New(*configFile)
+	if err != nil {
+		logger.Error("failed-to-unmarshal-config-file", err)
+		os.Exit(1)
+	}
+
+	monitor := monitor.New(cfg.HaProxyPidFile, logger)
+
 	routingTable := models.NewRoutingTable(logger)
 	reloaderRunner := haproxy.CreateCommandRunner(*haproxyReloader, logger)
 	configurer := configurer.NewConfigurer(
@@ -147,14 +156,9 @@ func main() {
 		*tcpLoadBalancer,
 		*tcpLoadBalancerBaseCfg,
 		*tcpLoadBalancerCfg,
+		monitor,
 		reloaderRunner,
 	)
-
-	cfg, err := config.New(*configFile)
-	if err != nil {
-		logger.Error("failed-to-unmarshal-config-file", err)
-		os.Exit(1)
-	}
 
 	if defaultRouteExpiry.Seconds() > 65535 {
 		logger.Error("invalid-route-expiry", errors.New("route expiry cannot be greater than 65535"))
@@ -197,6 +201,7 @@ func main() {
 		{"watcher", watcher},
 		{"syncer", syncRunner},
 		{"metricsReporter", metricsReporter},
+		{"monitor", monitor},
 	}
 
 	if dbgAddr := debugserver.DebugAddress(flag.CommandLine); dbgAddr != "" {
@@ -207,11 +212,11 @@ func main() {
 
 	group := grouper.NewOrdered(os.Interrupt, members)
 
-	monitor := ifrit.Invoke(sigmon.New(group))
+	process := ifrit.Invoke(sigmon.New(group))
 
 	logger.Info("started")
 
-	err = <-monitor.Wait()
+	err = <-process.Wait()
 	if err != nil {
 		logger.Error("exited-with-failure", err)
 		os.Exit(1)

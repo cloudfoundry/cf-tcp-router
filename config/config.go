@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"io/ioutil"
 
 	"gopkg.in/yaml.v2"
@@ -22,8 +23,9 @@ type OAuthConfig struct {
 }
 
 type Config struct {
-	OAuth      OAuthConfig      `yaml:"oauth"`
-	RoutingAPI RoutingAPIConfig `yaml:"routing_api"`
+	OAuth          OAuthConfig      `yaml:"oauth"`
+	RoutingAPI     RoutingAPIConfig `yaml:"routing_api"`
+	HaProxyPidFile string           `yaml:"haproxy_pid_file"`
 }
 
 func New(path string) (*Config, error) {
@@ -43,5 +45,10 @@ func (c *Config) initConfigFromFile(path string) error {
 		return e
 	}
 
-	return yaml.Unmarshal(b, &c)
+	yaml.Unmarshal(b, &c)
+
+	if c.HaProxyPidFile == "" {
+		return errors.New("haproxy_pid_file is required")
+	}
+	return nil
 }

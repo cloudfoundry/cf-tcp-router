@@ -17,10 +17,10 @@ import (
 	"code.cloudfoundry.org/cf-tcp-router/routing_table"
 	"code.cloudfoundry.org/cf-tcp-router/syncer"
 	"code.cloudfoundry.org/cf-tcp-router/watcher"
-	"code.cloudfoundry.org/cflager"
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/debugserver"
 	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/lagerflags"
 	"code.cloudfoundry.org/routing-api"
 	uaaclient "code.cloudfoundry.org/uaa-go-client"
 	uaaconfig "code.cloudfoundry.org/uaa-go-client/config"
@@ -132,10 +132,10 @@ const (
 
 func main() {
 	debugserver.AddFlags(flag.CommandLine)
-	cflager.AddFlags(flag.CommandLine)
+	lagerflags.AddFlags(flag.CommandLine)
 	flag.Parse()
 
-	logger, reconfigurableSink := cflager.New("tcp-router")
+	logger, reconfigurableSink := lagerflags.New("tcp-router")
 	logger.Info("starting")
 	clock := clock.NewClock()
 

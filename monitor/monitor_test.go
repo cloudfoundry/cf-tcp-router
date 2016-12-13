@@ -73,37 +73,6 @@ var _ = Describe("Monitor", func() {
 			Consistently(waitChan, "3s").ShouldNot(Receive())
 		})
 
-		Context("when the PID inside the pid file changes", func() {
-			var (
-				newPid    int
-				secondCat *exec.Cmd
-			)
-			BeforeEach(func() {
-				// Start long lived process and write PID file
-				secondCat = exec.Command("cat")
-				err := secondCat.Start()
-				Expect(err).ToNot(HaveOccurred())
-				newPid = secondCat.Process.Pid
-			})
-
-			AfterEach(func() {
-				if secondCat.ProcessState == nil {
-					err := secondCat.Process.Kill()
-					Expect(err).ToNot(HaveOccurred())
-				}
-			})
-
-			It("continues running", func() {
-				waitChan := process.Wait()
-				Consistently(waitChan, "3s").ShouldNot(Receive())
-
-				err := ioutil.WriteFile(pidFile, []byte(fmt.Sprintf("%d", newPid)), 0644)
-				Expect(err).NotTo(HaveOccurred())
-
-				Consistently(waitChan, "3s").ShouldNot(Receive())
-			})
-		})
-
 		Context("when haproxy PIDs go away", func() {
 			It("exits non-zero exit code", func() {
 				waitChan := process.Wait()

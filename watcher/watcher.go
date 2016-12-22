@@ -17,9 +17,6 @@ type Watcher struct {
 	uaaClient                 uaaclient.Client
 	subscriptionRetryInterval int
 	syncChannel               chan struct{}
-	eventChan                 chan routing_api.TcpEvent
-	stopEventSource           chan struct{}
-	eventSource               atomic.Value
 	logger                    lager.Logger
 }
 
@@ -37,94 +34,90 @@ func New(
 		uaaClient:                 uaaClient,
 		subscriptionRetryInterval: subscriptionRetryInterval,
 		syncChannel:               syncChannel,
-		eventChan:                 make(chan routing_api.TcpEvent),
-		stopEventSource:           make(chan struct{}),
 		logger:                    logger.Session("watcher"),
 	}
 }
 
-func (w *Watcher) Run(signal <-chan os.Signal, ready chan<- struct{}) error {
-	w.logger.Debug("starting")
-	defer w.logger.Debug("finished")
+func (watcher *Watcher) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
+	watcher.logger.Debug("starting")
+	defer watcher.logger.Debug("finished")
 
-	go w.subscribe()
-	close(ready)
-	w.logger.Debug("started")
-	w.handleEvent(signal)
-	return nil
-}
+	eventChan := make(chan routing_api.TcpEvent)
 
-func (w *Watcher) subscribe() {
+	var eventSource atomic.Value
+	var stopEventSource int32
 	canUseCachedToken := true
-	for {
-		select {
-		case <-w.stopEventSource:
-			return
-		default:
-			token, err := w.uaaClient.FetchToken(!canUseCachedToken)
+	go func() {
+		var es routing_api.TcpEventSource
+
+		for {
+			if atomic.LoadInt32(&stopEventSource) == 1 {
+				return
+			}
+			token, err := watcher.uaaClient.FetchToken(!canUseCachedToken)
 			if err != nil {
-				w.logger.Error("error-fetching-token", err)
-				time.Sleep(time.Duration(w.subscriptionRetryInterval) * time.Second)
+				watcher.logger.Error("error-fetching-token", err)
+				time.Sleep(time.Duration(watcher.subscriptionRetryInterval) * time.Second)
 				continue
 			}
-			w.routingAPIClient.SetToken(token.AccessToken)
+			watcher.routingAPIClient.SetToken(token.AccessToken)
 
-			w.logger.Info("Subscribing-to-routing-api-event-stream")
-			es, err := w.routingAPIClient.SubscribeToTcpEvents()
+			watcher.logger.Info("Subscribing-to-routing-api-event-stream")
+			es, err = watcher.routingAPIClient.SubscribeToTcpEvents()
 			if err != nil {
 				if err.Error() == "unauthorized" {
-					w.logger.Error("invalid-oauth-token", err)
+					watcher.logger.Error("invalid-oauth-token", err)
 					canUseCachedToken = false
 				} else {
 					canUseCachedToken = true
 				}
-				w.logger.Error("failed-subscribing-to-routing-api-event-stream", err)
-				time.Sleep(time.Duration(w.subscriptionRetryInterval) * time.Second)
+				watcher.logger.Error("failed-subscribing-to-routing-api-event-stream", err)
+				time.Sleep(time.Duration(watcher.subscriptionRetryInterval) * time.Second)
 				continue
 			} else {
 				canUseCachedToken = true
 			}
-			w.logger.Info("Successfully-subscribed-to-routing-api-event-stream")
+			watcher.logger.Info("Successfully-subscribed-to-routing-api-event-stream")
 
-			w.eventSource.Store(es)
-			w.nextEvent(es)
+			eventSource.Store(es)
+
+			var event routing_api.TcpEvent
+			for {
+				event, err = es.Next()
+				if err != nil {
+					watcher.logger.Error("failed-to-get-next-routing-api-event", err)
+					err = es.Close()
+					if err != nil {
+						watcher.logger.Error("failed-closing-routing-api-event-source", err)
+					}
+					break
+				}
+				eventChan <- event
+			}
 		}
-	}
-}
+	}()
 
-func (w *Watcher) handleEvent(signal <-chan os.Signal) {
+	close(ready)
+	watcher.logger.Debug("started")
+
 	for {
 		select {
-		case event := <-w.eventChan:
-			w.updater.HandleEvent(event)
+		case event := <-eventChan:
+			watcher.updater.HandleEvent(event)
 
-		case <-w.syncChannel:
-			go w.updater.Sync()
+		case <-watcher.syncChannel:
+			go watcher.updater.Sync()
 
-		case <-signal:
-			w.logger.Info("stopping")
-			close(w.stopEventSource)
-			if es := w.eventSource.Load(); es != nil {
+		case <-signals:
+			watcher.logger.Info("stopping")
+			atomic.StoreInt32(&stopEventSource, 1)
+			if es := eventSource.Load(); es != nil {
 				err := es.(routing_api.TcpEventSource).Close()
 				if err != nil {
-					w.logger.Error("failed-closing-routing-api-event-source", err)
+					watcher.logger.Error("failed-closing-routing-api-event-source", err)
 				}
 			}
+			return nil
 		}
-	}
-}
-
-func (w *Watcher) nextEvent(es routing_api.TcpEventSource) {
-	for {
-		event, err := es.Next()
-		if err != nil {
-			w.logger.Error("failed-to-get-next-routing-api-event", err)
-			err = es.Close()
-			if err != nil {
-				w.logger.Error("failed-closing-routing-api-event-source", err)
-			}
-			break
-		}
-		w.eventChan <- event
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"code.cloudfoundry.org/cf-tcp-router/config"
@@ -145,6 +146,9 @@ func main() {
 	if err != nil {
 		logger.Error("failed-to-unmarshal-config-file", err)
 		os.Exit(1)
+	}
+	if len(cfg.IsolationSegments) > 0 {
+		logger.Info("retrieved-isolation-segments", map[string]interface{}{"isolation_segments": fmt.Sprintf("[%s]", strings.Join(cfg.IsolationSegments, ","))})
 	}
 
 	monitor := monitor.New(cfg.HaProxyPidFile, logger)

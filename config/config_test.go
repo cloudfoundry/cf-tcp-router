@@ -24,7 +24,8 @@ var _ = Describe("Config", func() {
 					Port:         3000,
 					AuthDisabled: false,
 				},
-				HaProxyPidFile: "/path/to/pid/file",
+				HaProxyPidFile:    "/path/to/pid/file",
+				IsolationSegments: []string{"foo-iso-seg"},
 			}
 			cfg, err := config.New("fixtures/valid_config.yml")
 			Expect(err).NotTo(HaveOccurred())

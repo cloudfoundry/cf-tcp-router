@@ -12,3 +12,4 @@ routing_api:
   auth_disabled: false
 
 haproxy_pid_file: /path/to/pid/file
+isolation_segments: ["foo-iso-seg"]

@@ -112,6 +112,7 @@ routing_api:
   uri: http://127.0.0.1
   port: %s
 haproxy_pid_file: %s
+isolation_segments: ["foo-iso-seg"]
 `
 		cfg := fmt.Sprintf(cfgString, "fixtures/certs/uaa-ca.pem", oauthServerPort, routingApiAuthDisabled, routingApiServerPort, longRunningProcessPidFile)
 

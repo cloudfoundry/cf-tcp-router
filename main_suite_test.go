@@ -11,6 +11,7 @@ import (
 	"code.cloudfoundry.org/cf-tcp-router/testutil"
 	"code.cloudfoundry.org/cf-tcp-router/utils"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
+	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/routing-api"
 	routingtestrunner "code.cloudfoundry.org/routing-api/cmd/routing-api/testrunner"
 	. "github.com/onsi/ginkgo"
@@ -43,6 +44,13 @@ var (
 	catCmd                    *exec.Cmd
 )
 
+func nextAvailPort() int {
+	port, err := localip.LocalPort()
+	Expect(err).ToNot(HaveOccurred())
+
+	return int(port)
+}
+
 func TestTCPRouter(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "TCPRouter Suite")
@@ -67,7 +75,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	err := json.Unmarshal(payload, &context)
 	Expect(err).NotTo(HaveOccurred())
 
-	tcpRouterPort = 7000 + GinkgoParallelNode()
+	tcpRouterPort = nextAvailPort()
 	tcpRouterPath = context["tcp-router"]
 	routingAPIBinPath = context["routing-api"]
 
@@ -76,7 +84,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 })
 
 func setupDB() {
-	dbAllocator = routingtestrunner.NewDbAllocator(4001 + GinkgoParallelNode())
+	dbAllocator = routingtestrunner.NewDbAllocator(nextAvailPort())
 
 	var err error
 	dbId, err = dbAllocator.Create()
@@ -132,7 +140,7 @@ defaults
 	Expect(err).ShouldNot(HaveOccurred())
 	Expect(utils.FileExists(haproxyConfigFile)).To(BeTrue())
 
-	routingAPIPort = uint16(6900 + GinkgoParallelNode())
+	routingAPIPort = uint16(nextAvailPort())
 	routingAPIIP = "127.0.0.1"
 	routingAPIAddress = fmt.Sprintf("http://%s:%d", routingAPIIP, routingAPIPort)
 

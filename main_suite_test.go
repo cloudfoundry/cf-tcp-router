@@ -84,7 +84,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 })
 
 func setupDB() {
-	dbAllocator = routingtestrunner.NewDbAllocator(nextAvailPort())
+	dbAllocator = routingtestrunner.NewDbAllocator()
 
 	var err error
 	dbId, err = dbAllocator.Create()

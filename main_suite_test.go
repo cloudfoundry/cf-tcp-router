@@ -86,9 +86,9 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 func setupDB() {
 	dbAllocator = routingtestrunner.NewDbAllocator()
 
-	var err error
-	dbId, err = dbAllocator.Create()
+	dbConfig, err := dbAllocator.Create()
 	Expect(err).NotTo(HaveOccurred())
+	dbId = dbConfig.Schema
 }
 
 func setupLongRunningProcess() {
@@ -144,10 +144,12 @@ defaults
 	routingAPIIP = "127.0.0.1"
 	routingAPIAddress = fmt.Sprintf("http://%s:%d", routingAPIIP, routingAPIPort)
 
+	dbCACert := os.Getenv("SQL_SERVER_CA_CERT")
 	routingAPIArgs, err = routingtestrunner.NewRoutingAPIArgs(
 		routingAPIIP,
 		routingAPIPort,
 		dbId,
+		dbCACert,
 		consulRunner.URL(),
 	)
 	Expect(err).NotTo(HaveOccurred())

@@ -2,6 +2,7 @@ package main_test
 
 import (
 	"crypto/tls"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -18,17 +19,17 @@ import (
 	"code.cloudfoundry.org/routing-api"
 	routingtestrunner "code.cloudfoundry.org/routing-api/cmd/routing-api/testrunner"
 	"code.cloudfoundry.org/routing-api/models"
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
 	"github.com/onsi/gomega/ghttp"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Main", func() {
-
 	var (
 		routerGroupGuid string
 	)
@@ -39,13 +40,11 @@ var _ = Describe("Main", func() {
 		return endpoints[2]
 	}
 
-	oAuthServer := func(logger lager.Logger) *ghttp.Server {
+	oAuthServer := func(logger lager.Logger, serverCert tls.Certificate) *ghttp.Server {
 		server := ghttp.NewUnstartedServer()
-		cert, err := tls.LoadX509KeyPair("fixtures/certs/server.pem", "fixtures/certs/server.key")
-		Expect(err).ToNot(HaveOccurred())
 
 		tlsConfig := &tls.Config{
-			Certificates: []tls.Certificate{cert},
+			Certificates: []tls.Certificate{serverCert},
 		}
 		server.HTTPTestServer.TLS = tlsConfig
 		server.AllowUnhandledRequests = true
@@ -95,7 +94,7 @@ var _ = Describe("Main", func() {
 		return process
 	}
 
-	generateConfigFile := func(oauthServerPort, routingApiServerPort string, routingApiAuthDisabled bool) string {
+	generateConfigFile := func(oauthServerPort, routingApiServerPort string, caCertsPath string, routingApiAuthDisabled bool) string {
 		randomConfigFileName := testutil.RandomFileName("tcp_router", ".yml")
 		configFile := path.Join(os.TempDir(), randomConfigFileName)
 
@@ -114,7 +113,7 @@ routing_api:
 haproxy_pid_file: %s
 isolation_segments: ["foo-iso-seg"]
 `
-		cfg := fmt.Sprintf(cfgString, "fixtures/certs/uaa-ca.pem", oauthServerPort, routingApiAuthDisabled, routingApiServerPort, longRunningProcessPidFile)
+		cfg := fmt.Sprintf(cfgString, caCertsPath, oauthServerPort, routingApiAuthDisabled, routingApiServerPort, longRunningProcessPidFile)
 
 		err := utils.WriteToFile([]byte(cfg), configFile)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -135,9 +134,28 @@ isolation_segments: ["foo-iso-seg"]
 		server      ifrit.Process
 		logger      *lagertest.TestLogger
 		session     *gexec.Session
+		servCert    tls.Certificate
+		caPath      string
 	)
 
 	BeforeEach(func() {
+		caCert, caPrivKey, err := createCA()
+		Expect(err).ToNot(HaveOccurred())
+
+		f, err := ioutil.TempFile("", "routing-api-uaa-ca")
+		Expect(err).ToNot(HaveOccurred())
+
+		caPath = f.Name()
+
+		err = pem.Encode(f, &pem.Block{Type: "CERTIFICATE", Bytes: caCert.Raw})
+		Expect(err).ToNot(HaveOccurred())
+
+		err = f.Close()
+		Expect(err).ToNot(HaveOccurred())
+
+		servCert, err = createCertificate(caCert, caPrivKey, isCA)
+		Expect(err).ToNot(HaveOccurred())
+
 		logger = lagertest.NewTestLogger("test")
 	})
 
@@ -145,6 +163,9 @@ isolation_segments: ["foo-iso-seg"]
 		logger.Info("shutting-down")
 		session.Signal(os.Interrupt)
 		Eventually(session.Exited, 5*time.Second).Should(BeClosed())
+
+		err := os.Remove(caPath)
+		Expect(err).NotTo(HaveOccurred())
 
 		ginkgomon.Interrupt(server, "10s")
 		if oauthServer != nil {
@@ -154,10 +175,10 @@ isolation_segments: ["foo-iso-seg"]
 
 	Context("when both oauth and routing api servers are up and running", func() {
 		BeforeEach(func() {
-			oauthServer = oAuthServer(logger)
+			oauthServer = oAuthServer(logger, servCert)
 			server = routingApiServer(logger)
 			oauthServerPort := getServerPort(oauthServer.URL())
-			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), false)
+			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), caPath, false)
 			tcpRouterArgs := testrunner.Args{
 				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 				LoadBalancerConfigFilePath:     haproxyConfigFile,
@@ -242,7 +263,7 @@ isolation_segments: ["foo-iso-seg"]
 
 		Context("routing api auth is enabled", func() {
 			BeforeEach(func() {
-				configFile = generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), false)
+				configFile = generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), caPath, false)
 				tcpRouterArgs = testrunner.Args{
 					BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 					LoadBalancerConfigFilePath:     haproxyConfigFile,
@@ -258,7 +279,7 @@ isolation_segments: ["foo-iso-seg"]
 
 		Context("routing api auth is disabled", func() {
 			BeforeEach(func() {
-				configFile = generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), true)
+				configFile = generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), caPath, true)
 				tcpRouterArgs = testrunner.Args{
 					BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 					LoadBalancerConfigFilePath:     haproxyConfigFile,
@@ -275,9 +296,9 @@ isolation_segments: ["foo-iso-seg"]
 
 	Context("Routing API server is down", func() {
 		BeforeEach(func() {
-			oauthServer = oAuthServer(logger)
+			oauthServer = oAuthServer(logger, servCert)
 			oauthServerPort := getServerPort(oauthServer.URL())
-			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), false)
+			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), caPath, false)
 			tcpRouterArgs := testrunner.Args{
 				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 				LoadBalancerConfigFilePath:     haproxyConfigFile,
@@ -310,10 +331,10 @@ isolation_segments: ["foo-iso-seg"]
 
 	Context("when haproxy is down", func() {
 		BeforeEach(func() {
-			oauthServer = oAuthServer(logger)
+			oauthServer = oAuthServer(logger, servCert)
 			server = routingApiServer(logger)
 			oauthServerPort := getServerPort(oauthServer.URL())
-			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), false)
+			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), caPath, false)
 			tcpRouterArgs := testrunner.Args{
 				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 				LoadBalancerConfigFilePath:     haproxyConfigFile,

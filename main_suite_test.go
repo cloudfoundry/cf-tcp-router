@@ -14,9 +14,10 @@ import (
 	"code.cloudfoundry.org/localip"
 	"code.cloudfoundry.org/routing-api"
 	routingtestrunner "code.cloudfoundry.org/routing-api/cmd/routing-api/testrunner"
+	"github.com/onsi/gomega/gexec"
+
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gexec"
 
 	"testing"
 )
@@ -65,7 +66,6 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 		"tcp-router":  tcpRouter,
 		"routing-api": routingAPIBin,
 	})
-
 	Expect(err).NotTo(HaveOccurred())
 
 	return payload

@@ -7,7 +7,6 @@ import (
 	"strconv"
 	"strings"
 	"sync/atomic"
-	"syscall"
 	"time"
 
 	"code.cloudfoundry.org/lager"
@@ -74,32 +73,13 @@ func watchPID(pidFile string, logger lager.Logger) error {
 		logger.Error("exiting", fmt.Errorf("Cannot read file %s", pidFile))
 		return err
 	}
+
 	data := strings.TrimSpace(string(fileBytes))
-	pid, err := strconv.Atoi(data)
+	_, err = strconv.Atoi(data)
 	if err != nil {
 		logger.Error("exiting", fmt.Errorf("Cannot convert file %s to integer", pidFile), lager.Data{"contents": data})
 		return err
 	}
 
-	if !running(pid) {
-		err := fmt.Errorf("PID %d not found", pid)
-		logger.Error("exiting", err)
-		return err
-	}
 	return nil
-
-}
-
-func running(pid int) bool {
-	process, err := os.FindProcess(pid)
-	if err != nil {
-		return false
-	} else {
-		err := process.Signal(syscall.Signal(0))
-		if err != nil {
-			return false
-		}
-	}
-
-	return true
 }

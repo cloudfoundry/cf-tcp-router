@@ -24,6 +24,7 @@ var _ = Describe("Monitor", func() {
 		pidFile     string
 		catCmd      *exec.Cmd
 	)
+
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("test")
 
@@ -52,8 +53,7 @@ var _ = Describe("Monitor", func() {
 	})
 
 	AfterEach(func() {
-		err := os.Remove(pidFile)
-		Expect(err).ToNot(HaveOccurred())
+		os.Remove(pidFile)
 
 		if catCmd.ProcessState == nil {
 			err := catCmd.Process.Kill()
@@ -73,12 +73,15 @@ var _ = Describe("Monitor", func() {
 			Consistently(waitChan, "3s").ShouldNot(Receive())
 		})
 
-		Context("when haproxy PIDs go away", func() {
+		Context("when haproxy PID file goes away", func() {
 			It("exits non-zero exit code", func() {
 				waitChan := process.Wait()
 				Consistently(waitChan, "3s").ShouldNot(Receive())
 
-				err := catCmd.Process.Kill()
+				err := os.Remove(pidFile)
+				Expect(err).NotTo(HaveOccurred())
+
+				err = catCmd.Process.Kill()
 				Expect(err).ToNot(HaveOccurred())
 				catCmd.Wait()
 
@@ -111,7 +114,7 @@ var _ = Describe("Monitor", func() {
 				testMonitor.StartWatching()
 			})
 
-			It("monitors the new pid", func() {
+			It("reads the new pid from the file", func() {
 				waitChan := process.Wait()
 				Consistently(waitChan, "3s").ShouldNot(Receive())
 
@@ -134,5 +137,4 @@ var _ = Describe("Monitor", func() {
 			Expect(err).To(HaveOccurred())
 		})
 	})
-
 })

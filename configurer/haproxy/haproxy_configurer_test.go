@@ -255,7 +255,7 @@ listen listen_cfg_3333
 			})
 
 			Context("when script runner returns a 'no child processes' error", func() {
-				FIt("should not return an error", func() {
+				It("should not return an error", func() {
 					scriptRunner.RunReturns(errors.New("waitid: no child processes"))
 
 					routingTable := models.NewRoutingTable(logger)

@@ -5,17 +5,20 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"os/signal"
+	"strconv"
 	"sync"
+	"syscall"
 
 	"code.cloudfoundry.org/cf-tcp-router/models"
 	"code.cloudfoundry.org/cf-tcp-router/monitor"
 	"code.cloudfoundry.org/cf-tcp-router/utils"
-
 	"code.cloudfoundry.org/lager"
 )
 
 const (
 	ErrRouterConfigFileNotFound = "Configuration file not found"
+	ErrNoChildProcesses         = "waitid: no child processes"
 )
 
 type Configurer struct {
@@ -86,8 +89,27 @@ func (h *Configurer) Configure(routingTable models.RoutingTable) error {
 
 	if h.scriptRunner != nil {
 		h.logger.Info("running-script")
+
+		signalChannel := make(chan os.Signal, 2)
+		signal.Notify(signalChannel, syscall.SIGCHLD)
+		go func() {
+			sig := <-signalChannel
+			if sig == syscall.SIGCHLD {
+				r := syscall.Rusage{}
+				for {
+					pid, waitErr := syscall.Wait4(-1, nil, 0, &r)
+					pidstring := strconv.Itoa(pid)
+					if waitErr != nil {
+						h.logger.Debug("wait4-failed", lager.Data{"pid": pidstring, "message": waitErr})
+					} else {
+						h.logger.Debug("wait4-suceeded", lager.Data{"pid": pidstring})
+					}
+				}
+			}
+		}()
+
 		err = h.scriptRunner.Run()
-		if err != nil {
+		if err != nil && err.Error() != ErrNoChildProcesses {
 			h.logger.Error("failed-to-run-script", err)
 			return err
 		}

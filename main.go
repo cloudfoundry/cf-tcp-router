@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
-	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -168,19 +167,14 @@ func main() {
 	)
 
 	// Reap child processes to prevent zombies when running in a container (BPM)
-	signalChannel := make(chan os.Signal, 2)
-	signal.Notify(signalChannel, syscall.SIGCHLD)
 	go func() {
-		sig := <-signalChannel
-		if sig == syscall.SIGCHLD {
-			r := syscall.Rusage{}
-			for {
-				pid, waitErr := syscall.Wait4(-1, nil, 0, &r)
-				pidstring := strconv.Itoa(pid)
-				if waitErr != nil {
-					logger.Debug("wait4-failed", lager.Data{"pid": pidstring, "message": waitErr})
-				} else {
-					logger.Debug("wait4-suceeded", lager.Data{"pid": pidstring})
+		signalChannel := make(chan os.Signal)
+		signal.Notify(signalChannel, syscall.SIGCHLD)
+		for {
+			select {
+			case sig := <-signalChannel:
+				if sig == syscall.SIGCHLD {
+					syscall.Wait4(-1, nil, syscall.WNOHANG, nil)
 				}
 			}
 		}

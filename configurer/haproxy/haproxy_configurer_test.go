@@ -1,7 +1,6 @@
 package haproxy_test
 
 import (
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -251,25 +250,6 @@ listen listen_cfg_3333
 						Expect(scriptRunner.RunCallCount()).To(Equal(1))
 						Expect(fakeMonitor.StartWatchingCallCount()).To(Equal(1))
 					})
-				})
-			})
-
-			Context("when script runner returns a 'no child processes' error", func() {
-				It("should not return an error", func() {
-					scriptRunner.RunReturns(errors.New("waitid: no child processes"))
-
-					routingTable := models.NewRoutingTable(logger)
-					routingTableEntry := models.NewRoutingTableEntry(
-						[]models.BackendServerInfo{
-							models.BackendServerInfo{Address: "some-ip-1", Port: 1234},
-							models.BackendServerInfo{Address: "some-ip-2", Port: 1235},
-						},
-					)
-					routinTableKey := models.RoutingKey{Port: 2222}
-					ok := routingTable.Set(routinTableKey, routingTableEntry)
-					Expect(ok).To(BeTrue())
-
-					Expect(haproxyConfigurer.Configure(routingTable)).To(BeNil())
 				})
 			})
 

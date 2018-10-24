@@ -15,7 +15,6 @@ import (
 
 const (
 	ErrRouterConfigFileNotFound = "Configuration file not found"
-	ErrNoChildProcesses         = "waitid: no child processes"
 )
 
 type Configurer struct {
@@ -88,7 +87,7 @@ func (h *Configurer) Configure(routingTable models.RoutingTable) error {
 		h.logger.Info("running-script")
 
 		err = h.scriptRunner.Run()
-		if err != nil && err.Error() != ErrNoChildProcesses {
+		if err != nil {
 			h.logger.Error("failed-to-run-script", err)
 			return err
 		}

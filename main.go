@@ -5,7 +5,10 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"os/signal"
+	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"code.cloudfoundry.org/cf-tcp-router/config"
@@ -163,6 +166,25 @@ func main() {
 		monitor,
 		reloaderRunner,
 	)
+
+	// Reap child processes to prevent zombies when running in a container (BPM)
+	signalChannel := make(chan os.Signal, 2)
+	signal.Notify(signalChannel, syscall.SIGCHLD)
+	go func() {
+		sig := <-signalChannel
+		if sig == syscall.SIGCHLD {
+			r := syscall.Rusage{}
+			for {
+				pid, waitErr := syscall.Wait4(-1, nil, 0, &r)
+				pidstring := strconv.Itoa(pid)
+				if waitErr != nil {
+					logger.Debug("wait4-failed", lager.Data{"pid": pidstring, "message": waitErr})
+				} else {
+					logger.Debug("wait4-suceeded", lager.Data{"pid": pidstring})
+				}
+			}
+		}
+	}()
 
 	if defaultRouteExpiry.Seconds() > 65535 {
 		logger.Error("invalid-route-expiry", errors.New("route expiry cannot be greater than 65535"))

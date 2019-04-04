@@ -16,7 +16,7 @@ import (
 	"code.cloudfoundry.org/cf-tcp-router/utils"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
-	"code.cloudfoundry.org/routing-api"
+	routing_api "code.cloudfoundry.org/routing-api"
 	routingtestrunner "code.cloudfoundry.org/routing-api/cmd/routing-api/testrunner"
 	"code.cloudfoundry.org/routing-api/models"
 	"github.com/onsi/gomega/gbytes"
@@ -90,7 +90,7 @@ var _ = Describe("Main", func() {
 		server := routingtestrunner.New(routingAPIBinPath, routingAPIArgs)
 		logger.Info("starting-routing-api-server")
 		process := ginkgomon.Invoke(server)
-		routerGroupGuid = getRouterGroupGuid(routingAPIArgs.Port)
+		routerGroupGuid = getRouterGroupGuid(routingAPIArgs.Port())
 		return process
 	}
 

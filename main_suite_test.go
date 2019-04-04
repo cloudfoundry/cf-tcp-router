@@ -7,14 +7,20 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"time"
 
 	"code.cloudfoundry.org/cf-tcp-router/testutil"
 	"code.cloudfoundry.org/cf-tcp-router/utils"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
 	"code.cloudfoundry.org/localip"
-	"code.cloudfoundry.org/routing-api"
+	"code.cloudfoundry.org/locket/cmd/locket/config"
+	"code.cloudfoundry.org/locket/cmd/locket/testrunner"
+	routing_api "code.cloudfoundry.org/routing-api"
 	routingtestrunner "code.cloudfoundry.org/routing-api/cmd/routing-api/testrunner"
+	routing_api_config "code.cloudfoundry.org/routing-api/config"
 	"github.com/onsi/gomega/gexec"
+	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/ginkgomon"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -34,6 +40,12 @@ var (
 	dbAllocator  routingtestrunner.DbAllocator
 
 	dbId string
+
+	locketDBAllocator routingtestrunner.DbAllocator
+	locketBinPath     string
+	locketProcess     ifrit.Process
+	locketPort        uint16
+	locketDbConfig    *routing_api_config.SqlDB
 
 	routingAPIAddress string
 	routingAPIArgs    routingtestrunner.Args
@@ -62,9 +74,13 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	Expect(err).NotTo(HaveOccurred())
 	routingAPIBin, err := gexec.Build("code.cloudfoundry.org/routing-api/cmd/routing-api", "-race")
 	Expect(err).NotTo(HaveOccurred())
+	locketBin, err := gexec.Build("code.cloudfoundry.org/locket/cmd/locket", "-race")
+	Expect(err).NotTo(HaveOccurred())
+
 	payload, err := json.Marshal(map[string]string{
 		"tcp-router":  tcpRouter,
 		"routing-api": routingAPIBin,
+		"locket":      locketBin,
 	})
 	Expect(err).NotTo(HaveOccurred())
 
@@ -78,9 +94,15 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	tcpRouterPort = nextAvailPort()
 	tcpRouterPath = context["tcp-router"]
 	routingAPIBinPath = context["routing-api"]
+	locketBinPath = context["locket"]
 
-	setupConsul()
 	setupDB()
+	locketPort = uint16(nextAvailPort())
+	locketDBAllocator = routingtestrunner.NewDbAllocator()
+
+	locketDbConfig, err = locketDBAllocator.Create()
+	Expect(err).NotTo(HaveOccurred())
+
 })
 
 func setupDB() {
@@ -116,6 +138,8 @@ func killLongRunningProcess() {
 }
 
 var _ = BeforeEach(func() {
+	setupLocket()
+
 	randomFileName := testutil.RandomFileName("haproxy_", ".cfg")
 	randomBackupFileName := fmt.Sprintf("%s.bak", randomFileName)
 	randomBaseFileName := testutil.RandomFileName("haproxy_base_", ".cfg")
@@ -150,7 +174,7 @@ defaults
 		routingAPIPort,
 		dbId,
 		dbCACert,
-		consulRunner.URL(),
+		fmt.Sprintf("localhost:%d", locketPort),
 	)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -165,16 +189,30 @@ var _ = AfterEach(func() {
 
 	os.Remove(haproxyConfigBackupFile)
 
+	teardownLocket()
 	dbAllocator.Reset()
+	locketDBAllocator.Reset()
 	killLongRunningProcess()
 })
 
 var _ = SynchronizedAfterSuite(func() {
-	teardownConsul()
 	dbAllocator.Delete()
+	locketDBAllocator.Delete()
 }, func() {
 	gexec.CleanupBuildArtifacts()
 })
+
+func setupLocket() {
+	locketRunner := testrunner.NewLocketRunner(locketBinPath, func(c *config.LocketConfig) {
+		c.DatabaseConnectionString = "root:password@/" + locketDbConfig.Schema
+		c.ListenAddress = fmt.Sprintf("localhost:%d", locketPort)
+	})
+	locketProcess = ginkgomon.Invoke(locketRunner)
+}
+
+func teardownLocket() {
+	ginkgomon.Interrupt(locketProcess, 5*time.Second)
+}
 
 func setupConsul() {
 	consulRunner = consulrunner.NewClusterRunner(consulrunner.ClusterRunnerConfig{

@@ -94,7 +94,7 @@ var _ = Describe("Main", func() {
 		return process
 	}
 
-	generateConfigFile := func(oauthServerPort, routingApiServerPort string, caCertsPath string, routingApiAuthDisabled bool) string {
+	generateConfigFile := func(oauthServerPort, routingApiServerPort string, uaaCACertsPath string, routingApiAuthDisabled bool) string {
 		randomConfigFileName := testutil.RandomFileName("tcp_router", ".yml")
 		configFile := path.Join(os.TempDir(), randomConfigFileName)
 
@@ -113,7 +113,7 @@ routing_api:
 haproxy_pid_file: %s
 isolation_segments: ["foo-iso-seg"]
 `
-		cfg := fmt.Sprintf(cfgString, caCertsPath, oauthServerPort, routingApiAuthDisabled, routingApiServerPort, longRunningProcessPidFile)
+		cfg := fmt.Sprintf(cfgString, uaaCACertsPath, oauthServerPort, routingApiAuthDisabled, routingApiServerPort, longRunningProcessPidFile)
 
 		err := utils.WriteToFile([]byte(cfg), configFile)
 		Expect(err).ShouldNot(HaveOccurred())
@@ -134,26 +134,26 @@ isolation_segments: ["foo-iso-seg"]
 		server      ifrit.Process
 		logger      *lagertest.TestLogger
 		session     *gexec.Session
-		servCert    tls.Certificate
-		caPath      string
+		uaaServCert tls.Certificate
+		uaaCAPath   string
 	)
 
 	BeforeEach(func() {
-		caCert, caPrivKey, err := createCA()
+		uaaCACert, uaaCAPrivKey, err := createCA()
 		Expect(err).ToNot(HaveOccurred())
 
 		f, err := ioutil.TempFile("", "routing-api-uaa-ca")
 		Expect(err).ToNot(HaveOccurred())
 
-		caPath = f.Name()
+		uaaCAPath = f.Name()
 
-		err = pem.Encode(f, &pem.Block{Type: "CERTIFICATE", Bytes: caCert.Raw})
+		err = pem.Encode(f, &pem.Block{Type: "CERTIFICATE", Bytes: uaaCACert.Raw})
 		Expect(err).ToNot(HaveOccurred())
 
 		err = f.Close()
 		Expect(err).ToNot(HaveOccurred())
 
-		servCert, err = createCertificate(caCert, caPrivKey, isCA)
+		uaaServCert, err = createCertificate(uaaCACert, uaaCAPrivKey, isCA)
 		Expect(err).ToNot(HaveOccurred())
 
 		logger = lagertest.NewTestLogger("test")
@@ -164,7 +164,7 @@ isolation_segments: ["foo-iso-seg"]
 		session.Signal(os.Interrupt)
 		Eventually(session.Exited, 5*time.Second).Should(BeClosed())
 
-		err := os.Remove(caPath)
+		err := os.Remove(uaaCAPath)
 		Expect(err).NotTo(HaveOccurred())
 
 		ginkgomon.Interrupt(server, "10s")
@@ -175,10 +175,10 @@ isolation_segments: ["foo-iso-seg"]
 
 	Context("when both oauth and routing api servers are up and running", func() {
 		BeforeEach(func() {
-			oauthServer = oAuthServer(logger, servCert)
+			oauthServer = oAuthServer(logger, uaaServCert)
 			server = routingApiServer(logger)
 			oauthServerPort := getServerPort(oauthServer.URL())
-			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), caPath, false)
+			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), uaaCAPath, false)
 			tcpRouterArgs := testrunner.Args{
 				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 				LoadBalancerConfigFilePath:     haproxyConfigFile,
@@ -263,7 +263,7 @@ isolation_segments: ["foo-iso-seg"]
 
 		Context("routing api auth is enabled", func() {
 			BeforeEach(func() {
-				configFile = generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), caPath, false)
+				configFile = generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), uaaCAPath, false)
 				tcpRouterArgs = testrunner.Args{
 					BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 					LoadBalancerConfigFilePath:     haproxyConfigFile,
@@ -279,7 +279,7 @@ isolation_segments: ["foo-iso-seg"]
 
 		Context("routing api auth is disabled", func() {
 			BeforeEach(func() {
-				configFile = generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), caPath, true)
+				configFile = generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), uaaCAPath, true)
 				tcpRouterArgs = testrunner.Args{
 					BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 					LoadBalancerConfigFilePath:     haproxyConfigFile,
@@ -296,9 +296,9 @@ isolation_segments: ["foo-iso-seg"]
 
 	Context("Routing API server is down", func() {
 		BeforeEach(func() {
-			oauthServer = oAuthServer(logger, servCert)
+			oauthServer = oAuthServer(logger, uaaServCert)
 			oauthServerPort := getServerPort(oauthServer.URL())
-			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), caPath, false)
+			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), uaaCAPath, false)
 			tcpRouterArgs := testrunner.Args{
 				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 				LoadBalancerConfigFilePath:     haproxyConfigFile,
@@ -331,10 +331,10 @@ isolation_segments: ["foo-iso-seg"]
 
 	Context("when haproxy is down", func() {
 		BeforeEach(func() {
-			oauthServer = oAuthServer(logger, servCert)
+			oauthServer = oAuthServer(logger, uaaServCert)
 			server = routingApiServer(logger)
 			oauthServerPort := getServerPort(oauthServer.URL())
-			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), caPath, false)
+			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), uaaCAPath, false)
 			tcpRouterArgs := testrunner.Args{
 				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 				LoadBalancerConfigFilePath:     haproxyConfigFile,

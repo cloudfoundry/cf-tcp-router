@@ -354,11 +354,10 @@ isolation_segments: ["foo-iso-seg"]
 
 		It("exits", func() {
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Subscribing-to-routing-api-event-stream"))
-			Consistently(session.Exited).ShouldNot(BeClosed())
 
 			killLongRunningProcess()
 
-			Eventually(session.Exited, "5s").Should(BeClosed())
+			Eventually(session, "5s").Should(gexec.Exit())
 		})
 	})
 })

@@ -129,12 +129,12 @@ func setupLongRunningProcess() {
 }
 
 func killLongRunningProcess() {
-	err := os.Remove(longRunningProcessPidFile)
-	Expect(err).ToNot(HaveOccurred())
-	if catCmd.ProcessState == nil {
+	isAlive := catCmd.ProcessState == nil
+	if isAlive {
 		err := catCmd.Process.Kill()
 		Expect(err).ToNot(HaveOccurred())
 	}
+	Expect(os.Remove(longRunningProcessPidFile)).To(Succeed())
 }
 
 var _ = BeforeEach(func() {

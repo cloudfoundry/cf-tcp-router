@@ -18,6 +18,7 @@ import (
 	routing_api "code.cloudfoundry.org/routing-api"
 	routingtestrunner "code.cloudfoundry.org/routing-api/cmd/routing-api/testrunner"
 	routing_api_config "code.cloudfoundry.org/routing-api/config"
+	"code.cloudfoundry.org/routing-api/models"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -31,7 +32,6 @@ import (
 var (
 	tcpRouterPath           string
 	routingAPIBinPath       string
-	tcpRouterPort           int
 	haproxyConfigFile       string
 	haproxyConfigBackupFile string
 	haproxyBaseConfigFile   string
@@ -91,7 +91,6 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	err := json.Unmarshal(payload, &context)
 	Expect(err).NotTo(HaveOccurred())
 
-	tcpRouterPort = nextAvailPort()
 	tcpRouterPath = context["tcp-router"]
 	routingAPIBinPath = context["routing-api"]
 	locketBinPath = context["locket"]
@@ -226,4 +225,42 @@ func setupConsul() {
 
 func teardownConsul() {
 	consulRunner.Stop()
+}
+
+func getRouterGroupGuid(routingApiClient routing_api.Client) string {
+	var routerGroups []models.RouterGroup
+	Eventually(func() error {
+		var err error
+		routerGroups, err = routingApiClient.RouterGroups()
+		return err
+	}, "30s", "1s").ShouldNot(HaveOccurred(), "Failed to connect to Routing API server after 30s.")
+	Expect(routerGroups).ToNot(HaveLen(0))
+	return routerGroups[0].Guid
+}
+
+func generateTCPRouterConfigFile(oauthServerPort, routingApiServerPort string, uaaCACertsPath string, routingApiAuthDisabled bool) string {
+	randomConfigFileName := testutil.RandomFileName("tcp_router", ".yml")
+	configFile := path.Join(os.TempDir(), randomConfigFileName)
+
+	cfgString := `---
+oauth:
+  token_endpoint: "127.0.0.1"
+  skip_ssl_validation: false
+  ca_certs: %s
+  client_name: "someclient"
+  client_secret: "somesecret"
+  port: %s
+routing_api:
+  auth_disabled: %t
+  uri: http://127.0.0.1
+  port: %s
+haproxy_pid_file: %s
+isolation_segments: ["foo-iso-seg"]
+`
+	cfg := fmt.Sprintf(cfgString, uaaCACertsPath, oauthServerPort, routingApiAuthDisabled, routingApiServerPort, longRunningProcessPidFile)
+
+	err := utils.WriteToFile([]byte(cfg), configFile)
+	Expect(err).ShouldNot(HaveOccurred())
+	Expect(utils.FileExists(configFile)).To(BeTrue())
+	return configFile
 }

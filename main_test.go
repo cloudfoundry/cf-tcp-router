@@ -7,16 +7,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path"
 	"strings"
 	"time"
 
 	"code.cloudfoundry.org/cf-tcp-router/testrunner"
-	"code.cloudfoundry.org/cf-tcp-router/testutil"
-	"code.cloudfoundry.org/cf-tcp-router/utils"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
-	routing_api "code.cloudfoundry.org/routing-api"
 	routingtestrunner "code.cloudfoundry.org/routing-api/cmd/routing-api/testrunner"
 	"code.cloudfoundry.org/routing-api/models"
 	"github.com/onsi/gomega/gbytes"
@@ -74,51 +70,11 @@ var _ = Describe("Main", func() {
 		return server
 	}
 
-	getRouterGroupGuid := func(port uint16) string {
-		client := routing_api.NewClient(fmt.Sprintf("http://127.0.0.1:%d", port), false)
-		var routerGroups []models.RouterGroup
-		Eventually(func() error {
-			var err error
-			routerGroups, err = client.RouterGroups()
-			return err
-		}, "30s", "1s").ShouldNot(HaveOccurred(), "Failed to connect to Routing API server after 30s.")
-		Expect(routerGroups).ToNot(HaveLen(0))
-		return routerGroups[0].Guid
-	}
-
 	routingApiServer := func(logger lager.Logger) ifrit.Process {
 		server := routingtestrunner.New(routingAPIBinPath, routingAPIArgs)
 		logger.Info("starting-routing-api-server")
 		process := ginkgomon.Invoke(server)
-		routerGroupGuid = getRouterGroupGuid(routingAPIArgs.Port())
 		return process
-	}
-
-	generateConfigFile := func(oauthServerPort, routingApiServerPort string, uaaCACertsPath string, routingApiAuthDisabled bool) string {
-		randomConfigFileName := testutil.RandomFileName("tcp_router", ".yml")
-		configFile := path.Join(os.TempDir(), randomConfigFileName)
-
-		cfgString := `---
-oauth:
-  token_endpoint: "127.0.0.1"
-  skip_ssl_validation: false
-  ca_certs: %s
-  client_name: "someclient"
-  client_secret: "somesecret"
-  port: %s
-routing_api:
-  auth_disabled: %t
-  uri: http://127.0.0.1
-  port: %s
-haproxy_pid_file: %s
-isolation_segments: ["foo-iso-seg"]
-`
-		cfg := fmt.Sprintf(cfgString, uaaCACertsPath, oauthServerPort, routingApiAuthDisabled, routingApiServerPort, longRunningProcessPidFile)
-
-		err := utils.WriteToFile([]byte(cfg), configFile)
-		Expect(err).ShouldNot(HaveOccurred())
-		Expect(utils.FileExists(configFile)).To(BeTrue())
-		return configFile
 	}
 
 	verifyHaProxyConfigContent := func(haproxyFileName, expectedContent string, present bool) {
@@ -177,8 +133,9 @@ isolation_segments: ["foo-iso-seg"]
 		BeforeEach(func() {
 			oauthServer = oAuthServer(logger, uaaServCert)
 			server = routingApiServer(logger)
+			routerGroupGuid = getRouterGroupGuid(routingApiClient)
 			oauthServerPort := getServerPort(oauthServer.URL())
-			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), uaaCAPath, false)
+			configFile := generateTCPRouterConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), uaaCAPath, false)
 			tcpRouterArgs := testrunner.Args{
 				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 				LoadBalancerConfigFilePath:     haproxyConfigFile,
@@ -263,7 +220,7 @@ isolation_segments: ["foo-iso-seg"]
 
 		Context("routing api auth is enabled", func() {
 			BeforeEach(func() {
-				configFile = generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), uaaCAPath, false)
+				configFile = generateTCPRouterConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), uaaCAPath, false)
 				tcpRouterArgs = testrunner.Args{
 					BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 					LoadBalancerConfigFilePath:     haproxyConfigFile,
@@ -279,7 +236,7 @@ isolation_segments: ["foo-iso-seg"]
 
 		Context("routing api auth is disabled", func() {
 			BeforeEach(func() {
-				configFile = generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), uaaCAPath, true)
+				configFile = generateTCPRouterConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), uaaCAPath, true)
 				tcpRouterArgs = testrunner.Args{
 					BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 					LoadBalancerConfigFilePath:     haproxyConfigFile,
@@ -298,7 +255,7 @@ isolation_segments: ["foo-iso-seg"]
 		BeforeEach(func() {
 			oauthServer = oAuthServer(logger, uaaServCert)
 			oauthServerPort := getServerPort(oauthServer.URL())
-			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), uaaCAPath, false)
+			configFile := generateTCPRouterConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), uaaCAPath, false)
 			tcpRouterArgs := testrunner.Args{
 				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 				LoadBalancerConfigFilePath:     haproxyConfigFile,
@@ -317,6 +274,7 @@ isolation_segments: ["foo-iso-seg"]
 			Consistently(session.Out, 5*time.Second).ShouldNot(gbytes.Say("Successfully-subscribed-to-routing-api-event-stream"))
 			By("starting routing api server")
 			server = routingApiServer(logger)
+			routerGroupGuid = getRouterGroupGuid(routingApiClient)
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Successfully-subscribed-to-routing-api-event-stream"))
 			tcpRouteMapping := models.NewTcpRouteMapping(routerGroupGuid, 5222, "some-ip-3", 61000, 120)
 			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
@@ -334,7 +292,7 @@ isolation_segments: ["foo-iso-seg"]
 			oauthServer = oAuthServer(logger, uaaServCert)
 			server = routingApiServer(logger)
 			oauthServerPort := getServerPort(oauthServer.URL())
-			configFile := generateConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), uaaCAPath, false)
+			configFile := generateTCPRouterConfigFile(oauthServerPort, fmt.Sprintf("%d", routingAPIPort), uaaCAPath, false)
 			tcpRouterArgs := testrunner.Args{
 				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 				LoadBalancerConfigFilePath:     haproxyConfigFile,

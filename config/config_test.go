@@ -23,6 +23,10 @@ var _ = Describe("Config", func() {
 					URI:          "http://routing-api.service.cf.internal",
 					Port:         3000,
 					AuthDisabled: false,
+
+					ClientCertificatePath: "/a/client_cert",
+					ClientPrivateKeyPath:  "/b/private_key",
+					CACertificatePath:     "/c/ca_cert",
 				},
 				HaProxyPidFile:    "/path/to/pid/file",
 				IsolationSegments: []string{"foo-iso-seg"},

@@ -4,13 +4,17 @@ import (
 	"errors"
 	"io/ioutil"
 
-	"gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v2"
 )
 
 type RoutingAPIConfig struct {
 	URI          string `yaml:"uri"`
 	Port         int    `yaml:"port"`
 	AuthDisabled bool   `yaml:"auth_disabled"`
+
+	ClientCertificatePath string `yaml:"client_cert_path"`
+	ClientPrivateKeyPath  string `yaml:"client_private_key_path"`
+	CACertificatePath     string `yaml:"ca_cert_path"`
 }
 
 type OAuthConfig struct {

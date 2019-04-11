@@ -24,7 +24,8 @@ import (
 	"code.cloudfoundry.org/debugserver"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
-	"code.cloudfoundry.org/routing-api"
+	routing_api "code.cloudfoundry.org/routing-api"
+	"code.cloudfoundry.org/tlsconfig"
 	uaaclient "code.cloudfoundry.org/uaa-go-client"
 	uaaconfig "code.cloudfoundry.org/uaa-go-client/config"
 	"github.com/cloudfoundry/dropsonde"
@@ -200,8 +201,29 @@ func main() {
 	}
 
 	routingAPIAddress := fmt.Sprintf("%s:%d", cfg.RoutingAPI.URI, cfg.RoutingAPI.Port)
+
+	var routingAPIClient routing_api.Client
+
+	isMtlsEnabled := (cfg.RoutingAPI.ClientCertificatePath != "" &&
+		cfg.RoutingAPI.ClientPrivateKeyPath != "" &&
+		cfg.RoutingAPI.CACertificatePath != "")
+
+	if isMtlsEnabled {
+		tlsConfig, err := tlsconfig.Build(
+			tlsconfig.WithInternalServiceDefaults(),
+			tlsconfig.WithIdentityFromFile(cfg.RoutingAPI.ClientCertificatePath, cfg.RoutingAPI.ClientPrivateKeyPath),
+		).Client(
+			tlsconfig.WithAuthorityFromFile(cfg.RoutingAPI.CACertificatePath),
+		)
+		if err != nil {
+			logger.Fatal("failed-to-create-tls-config", err)
+		}
+		routingAPIClient = routing_api.NewClientWithTLSConfig(routingAPIAddress, tlsConfig)
+	} else {
+		routingAPIClient = routing_api.NewClient(routingAPIAddress, false)
+	}
+
 	logger.Debug("creating-routing-api-client", lager.Data{"api-location": routingAPIAddress})
-	routingAPIClient := routing_api.NewClient(routingAPIAddress, false)
 
 	updater := routing_table.NewUpdater(logger, &routingTable, configurer, routingAPIClient, uaaClient, clock, int(defaultRouteExpiry.Seconds()))
 

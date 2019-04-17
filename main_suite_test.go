@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	"code.cloudfoundry.org/gorouter/test_util"
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
@@ -17,7 +18,6 @@ import (
 	"code.cloudfoundry.org/cf-tcp-router/testutil"
 	"code.cloudfoundry.org/cf-tcp-router/utils"
 	"code.cloudfoundry.org/consuladapter/consulrunner"
-	"code.cloudfoundry.org/localip"
 	locket_config "code.cloudfoundry.org/locket/cmd/locket/config"
 	"code.cloudfoundry.org/locket/cmd/locket/testrunner"
 	routing_api "code.cloudfoundry.org/routing-api"
@@ -68,9 +68,7 @@ var (
 )
 
 func nextAvailPort() int {
-	port, err := localip.LocalPort()
-	Expect(err).ToNot(HaveOccurred())
-
+	port := test_util.NextAvailPort()
 	return int(port)
 }
 

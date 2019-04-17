@@ -16,7 +16,6 @@ import (
 	"code.cloudfoundry.org/cf-tcp-router/config"
 	"code.cloudfoundry.org/cf-tcp-router/testutil"
 	"code.cloudfoundry.org/cf-tcp-router/utils"
-	"code.cloudfoundry.org/consuladapter/consulrunner"
 	"code.cloudfoundry.org/localip"
 	locket_config "code.cloudfoundry.org/locket/cmd/locket/config"
 	"code.cloudfoundry.org/locket/cmd/locket/testrunner"
@@ -41,8 +40,7 @@ var (
 	haproxyConfigBackupFile string
 	haproxyBaseConfigFile   string
 
-	consulRunner *consulrunner.ClusterRunner
-	dbAllocator  routingtestrunner.DbAllocator
+	dbAllocator routingtestrunner.DbAllocator
 
 	dbId string
 
@@ -238,20 +236,6 @@ func setupLocket() {
 
 func teardownLocket() {
 	ginkgomon.Interrupt(locketProcess, 5*time.Second)
-}
-
-func setupConsul() {
-	consulRunner = consulrunner.NewClusterRunner(consulrunner.ClusterRunnerConfig{
-		StartingPort: 9001 + GinkgoParallelNode()*consulrunner.PortOffsetLength,
-		NumNodes:     1,
-		Scheme:       "http",
-	})
-	consulRunner.Start()
-	consulRunner.WaitUntilReady()
-}
-
-func teardownConsul() {
-	consulRunner.Stop()
 }
 
 func getRouterGroupGuid(routingApiClient routing_api.Client) string {

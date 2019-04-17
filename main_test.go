@@ -138,42 +138,6 @@ var _ = Describe("Main", func() {
 		}
 	})
 
-	Context("when the mTLS client is not enabled", func() {
-		BeforeEach(func() {
-			oauthServer = oAuthServer(logger, uaaServCert)
-			server = routingApiServer(logger)
-			routerGroupGuid = getRouterGroupGuid(routingApiClient)
-			oauthServerPort := getServerPort(oauthServer.URL())
-			configFile := generateTCPRouterConfigFile(oauthServerPort, uaaCAPath, false, false)
-			tcpRouterArgs := testrunner.Args{
-				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
-				LoadBalancerConfigFilePath:     haproxyConfigFile,
-				ConfigFilePath:                 configFile,
-			}
-
-			tcpRouteMapping := models.NewTcpRouteMapping(routerGroupGuid, 5222, "some-ip-1", 61000, 120)
-			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
-			Expect(err).ToNot(HaveOccurred())
-
-			tcpRouteMappings, err := routingApiClient.TcpRouteMappings()
-			Expect(err).NotTo(HaveOccurred())
-			Expect(contains(tcpRouteMappings, tcpRouteMapping)).To(BeTrue())
-
-			allOutput := logger.Buffer()
-			runner := testrunner.New(tcpRouterPath, tcpRouterArgs)
-			session, err = gexec.Start(runner.Command, allOutput, allOutput)
-			Expect(err).ToNot(HaveOccurred())
-		})
-
-		It("can still use HTTP to talk to the routing API", func() {
-			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("applied-fetched-routes-to-routing-table"))
-			expectedConfigEntry := "\nlisten listen_cfg_5222\n  mode tcp\n  bind :5222\n"
-			serverConfigEntry := "server server_some-ip-1_61000 some-ip-1:61000"
-			verifyHaProxyConfigContent(haproxyConfigFile, expectedConfigEntry, true)
-			verifyHaProxyConfigContent(haproxyConfigFile, serverConfigEntry, true)
-		})
-	})
-
 	Context("when both oauth and routing api servers are up and running", func() {
 		BeforeEach(func() {
 			oauthServer = oAuthServer(logger, uaaServCert)

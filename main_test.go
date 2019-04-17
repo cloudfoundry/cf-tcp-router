@@ -144,7 +144,7 @@ var _ = Describe("Main", func() {
 			server = routingApiServer(logger)
 			routerGroupGuid = getRouterGroupGuid(routingApiClient)
 			oauthServerPort := getServerPort(oauthServer.URL())
-			configFile := generateTCPRouterConfigFile(oauthServerPort, uaaCAPath, false, true)
+			configFile := generateTCPRouterConfigFile(oauthServerPort, uaaCAPath, false)
 			tcpRouterArgs := testrunner.Args{
 				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 				LoadBalancerConfigFilePath:     haproxyConfigFile,
@@ -229,7 +229,7 @@ var _ = Describe("Main", func() {
 
 		Context("routing api auth is enabled", func() {
 			BeforeEach(func() {
-				configFile = generateTCPRouterConfigFile(oauthServerPort, uaaCAPath, false, true)
+				configFile = generateTCPRouterConfigFile(oauthServerPort, uaaCAPath, false)
 				tcpRouterArgs = testrunner.Args{
 					BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 					LoadBalancerConfigFilePath:     haproxyConfigFile,
@@ -245,7 +245,7 @@ var _ = Describe("Main", func() {
 
 		Context("routing api auth is disabled", func() {
 			BeforeEach(func() {
-				configFile = generateTCPRouterConfigFile(oauthServerPort, uaaCAPath, true, true)
+				configFile = generateTCPRouterConfigFile(oauthServerPort, uaaCAPath, true)
 				tcpRouterArgs = testrunner.Args{
 					BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 					LoadBalancerConfigFilePath:     haproxyConfigFile,
@@ -264,7 +264,7 @@ var _ = Describe("Main", func() {
 		BeforeEach(func() {
 			oauthServer = oAuthServer(logger, uaaServCert)
 			oauthServerPort := getServerPort(oauthServer.URL())
-			configFile := generateTCPRouterConfigFile(oauthServerPort, uaaCAPath, false, true)
+			configFile := generateTCPRouterConfigFile(oauthServerPort, uaaCAPath, false)
 			tcpRouterArgs := testrunner.Args{
 				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 				LoadBalancerConfigFilePath:     haproxyConfigFile,
@@ -301,7 +301,7 @@ var _ = Describe("Main", func() {
 			oauthServer = oAuthServer(logger, uaaServCert)
 			server = routingApiServer(logger)
 			oauthServerPort := getServerPort(oauthServer.URL())
-			configFile := generateTCPRouterConfigFile(oauthServerPort, uaaCAPath, false, true)
+			configFile := generateTCPRouterConfigFile(oauthServerPort, uaaCAPath, false)
 			tcpRouterArgs := testrunner.Args{
 				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 				LoadBalancerConfigFilePath:     haproxyConfigFile,

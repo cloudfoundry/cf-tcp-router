@@ -249,7 +249,7 @@ func getRouterGroupGuid(routingApiClient routing_api.Client) string {
 	return routerGroups[0].Guid
 }
 
-func generateTCPRouterConfigFile(oauthServerPort int, uaaCACertsPath string, routingApiAuthDisabled, useMTLS bool) string {
+func generateTCPRouterConfigFile(oauthServerPort int, uaaCACertsPath string, routingApiAuthDisabled bool) string {
 	tcpRouterConfig := config.Config{
 		OAuth: config.OAuthConfig{
 			TokenEndpoint:     "127.0.0.1",
@@ -268,16 +268,11 @@ func generateTCPRouterConfigFile(oauthServerPort int, uaaCACertsPath string, rou
 		},
 	}
 
-	if useMTLS {
-		tcpRouterConfig.RoutingAPI.URI = "https://127.0.0.1"
-		tcpRouterConfig.RoutingAPI.Port = routingAPIMTLSPort
-		tcpRouterConfig.RoutingAPI.ClientCertificatePath = routingAPIClientCertPath
-		tcpRouterConfig.RoutingAPI.ClientPrivateKeyPath = routingAPIClientPrivateKeyPath
-		tcpRouterConfig.RoutingAPI.CACertificatePath = routingAPICAFileName
-	} else {
-		tcpRouterConfig.RoutingAPI.URI = "http://127.0.0.1"
-		tcpRouterConfig.RoutingAPI.Port = routingAPIPort
-	}
+	tcpRouterConfig.RoutingAPI.URI = "https://127.0.0.1"
+	tcpRouterConfig.RoutingAPI.Port = routingAPIMTLSPort
+	tcpRouterConfig.RoutingAPI.ClientCertificatePath = routingAPIClientCertPath
+	tcpRouterConfig.RoutingAPI.ClientPrivateKeyPath = routingAPIClientPrivateKeyPath
+	tcpRouterConfig.RoutingAPI.CACertificatePath = routingAPICAFileName
 
 	bs, err := yaml.Marshal(tcpRouterConfig)
 	Expect(err).NotTo(HaveOccurred())

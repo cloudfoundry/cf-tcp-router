@@ -11,8 +11,7 @@ import (
 	"testing"
 	"time"
 
-	testhelpers "test-helpers"
-
+	tls_helpers "code.cloudfoundry.org/cf-routing-test-helpers/tls"
 	"code.cloudfoundry.org/cf-tcp-router/config"
 	"code.cloudfoundry.org/cf-tcp-router/testutil"
 	"code.cloudfoundry.org/cf-tcp-router/utils"
@@ -178,8 +177,8 @@ defaults
 
 	dbCACert := os.Getenv("SQL_SERVER_CA_CERT")
 
-	routingAPICAFileName, routingAPICAPrivateKey = testhelpers.GenerateCa()
-	routingAPIServerCertPath, routingAPIServerKeyPath, _ := testhelpers.GenerateCertAndKey(routingAPICAFileName, routingAPICAPrivateKey)
+	routingAPICAFileName, routingAPICAPrivateKey = tls_helpers.GenerateCa()
+	routingAPIServerCertPath, routingAPIServerKeyPath, _ := tls_helpers.GenerateCertAndKey(routingAPICAFileName, routingAPICAPrivateKey)
 
 	routingAPIArgs, err = routingtestrunner.NewRoutingAPIArgs(
 		routingAPIIP,
@@ -194,7 +193,7 @@ defaults
 	)
 	Expect(err).NotTo(HaveOccurred())
 
-	routingAPIClientCertPath, routingAPIClientPrivateKeyPath, _ = testhelpers.GenerateCertAndKey(routingAPICAFileName, routingAPICAPrivateKey)
+	routingAPIClientCertPath, routingAPIClientPrivateKeyPath, _ = tls_helpers.GenerateCertAndKey(routingAPICAFileName, routingAPICAPrivateKey)
 
 	tlsConfig, err := tlsconfig.Build(
 		tlsconfig.WithInternalServiceDefaults(),

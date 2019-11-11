@@ -62,7 +62,7 @@ var _ = Describe("Main", func() {
 			"spULZVNRxq7veq/fzwIDAQAB\\n" +
 			"-----END PUBLIC KEY-----"
 
-		data := fmt.Sprintf("{\"alg\":\"rsa\", \"value\":\"%s\"}", publicKey)
+		data := fmt.Sprintf(`{"alg":"rsa", "value":"%s"}`, publicKey)
 		server.RouteToHandler("GET", "/token_key",
 			ghttp.CombineHandlers(
 				ghttp.VerifyRequest("GET", "/token_key"),

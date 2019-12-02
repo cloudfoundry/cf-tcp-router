@@ -4,7 +4,7 @@ set -e -u -x
 
 go install -v github.com/onsi/ginkgo/ginkgo
 
-
+export GODEBUG="tls13=0,$GODEBUG"
 
 # if db ca cert is not set or set to ""
 set +xu

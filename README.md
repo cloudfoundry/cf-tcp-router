@@ -9,4 +9,8 @@ Subscribes to SSE events from
 configuration for configuring tcp routes.
 
 This component is packaged as part of
-[routing-release](https://github.com/cloudfoundry/routing-release) BOSH release
+[cloudfoundry/routing-release](https://github.com/cloudfoundry/routing-release) BOSH release
+
+## Reporting issues and requesting features
+
+Please report all issues and feature requests in [cloudfoundry/routing-release](https://github.com/cloudfoundry/routing-release).

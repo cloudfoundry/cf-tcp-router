@@ -8,7 +8,7 @@ import (
 	"code.cloudfoundry.org/cf-tcp-router/models"
 	"code.cloudfoundry.org/clock"
 	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/routing-api"
+	routing_api "code.cloudfoundry.org/routing-api"
 	apimodels "code.cloudfoundry.org/routing-api/models"
 	uaaclient "code.cloudfoundry.org/uaa-go-client"
 )
@@ -67,11 +67,14 @@ func (u *updater) Sync() {
 	logger := u.logger.Session("bulk-sync")
 	logger.Debug("starting")
 
+	tableChanged := false
 	defer func() {
 		u.lock.Lock()
 		u.applyCachedEvents(logger)
-		u.configurer.Configure(*u.routingTable)
-		logger.Debug("applied-fetched-routes-to-routing-table", lager.Data{"size": u.routingTable.Size()})
+		if tableChanged || len(u.cachedEvents) > 0 {
+			_ = u.configurer.Configure(*u.routingTable)
+			logger.Debug("applied-fetched-routes-to-routing-table", lager.Data{"size": u.routingTable.Size()})
+		}
 		u.syncing = false
 		u.cachedEvents = nil
 		u.lock.Unlock()
@@ -107,13 +110,20 @@ func (u *updater) Sync() {
 		}
 	}
 	logger.Debug("fetched-tcp-routes", lager.Data{"num-routes": len(tcpRouteMappings)})
+
 	if err == nil {
-		// Create a new map and populate using tcp route mappings we got from routing api
-		u.routingTable.Entries = make(map[models.RoutingKey]models.RoutingTableEntry)
+		freshRoutingTable := models.NewRoutingTable(logger)
+
 		for _, routeMapping := range tcpRouteMappings {
 			routingKey, backendServerInfo := u.toRoutingTableEntry(logger, routeMapping)
 			logger.Debug("creating-routing-table-entry", lager.Data{"key": routingKey, "value": backendServerInfo})
-			u.routingTable.UpsertBackendServerKey(routingKey, backendServerInfo)
+			tableChanged = u.routingTable.UpsertBackendServerKey(routingKey, backendServerInfo) || tableChanged
+			freshRoutingTable.UpsertBackendServerKey(routingKey, backendServerInfo)
+		}
+
+		if freshRoutingTable.Size() != u.routingTable.Size() {
+			tableChanged = true
+			u.routingTable.Entries = freshRoutingTable.Entries
 		}
 	}
 }

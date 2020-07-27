@@ -9,7 +9,7 @@ import (
 	"code.cloudfoundry.org/cf-tcp-router/routing_table"
 	"code.cloudfoundry.org/cf-tcp-router/testutil"
 	"code.cloudfoundry.org/clock/fakeclock"
-	"code.cloudfoundry.org/routing-api"
+	routing_api "code.cloudfoundry.org/routing-api"
 	"code.cloudfoundry.org/routing-api/fake_routing_api"
 	apimodels "code.cloudfoundry.org/routing-api/models"
 	routing_api_models "code.cloudfoundry.org/routing-api/models"
@@ -394,6 +394,7 @@ var _ = Describe("Updater", func() {
 			})
 
 			It("updates the routing table with that data", func() {
+				Expect(routingTable.Size()).To(Equal(0))
 				go invokeSync(doneChannel)
 				Eventually(doneChannel).Should(BeClosed())
 
@@ -414,6 +415,90 @@ var _ = Describe("Updater", func() {
 					},
 				)
 				verifyRoutingTableEntry(models.RoutingKey{Port: externalPort2}, expectedRoutingTableEntry2)
+				Expect(fakeConfigurer.ConfigureCallCount()).To(Equal(1))
+			})
+
+			Context("when there are no changes to the routing table", func() {
+				BeforeEach(func() {
+					expectedRoutingTableEntry1 := models.NewRoutingTableEntry(
+						[]models.BackendServerInfo{
+							{Address: "some-ip-1", Port: 61000, ModificationTag: modificationTag, TTL: ttl},
+							{Address: "some-ip-2", Port: 61001, ModificationTag: modificationTag, TTL: ttl},
+						},
+					)
+					routingTable.Set(models.RoutingKey{Port: externalPort1}, expectedRoutingTableEntry1)
+
+					expectedRoutingTableEntry2 := models.NewRoutingTableEntry(
+						[]models.BackendServerInfo{
+							{Address: "some-ip-3", Port: 60000, ModificationTag: modificationTag, TTL: ttl},
+							{Address: "some-ip-4", Port: 60000, ModificationTag: modificationTag, TTL: ttl},
+						},
+					)
+					routingTable.Set(models.RoutingKey{Port: externalPort2}, expectedRoutingTableEntry2)
+				})
+
+				It("does not call the configurer", func() {
+					Expect(routingTable.Size()).To(Equal(2))
+					go invokeSync(doneChannel)
+					Eventually(doneChannel).Should(BeClosed())
+
+					Expect(fakeUaaClient.FetchTokenCallCount()).To(Equal(1))
+					Expect(fakeRoutingApiClient.TcpRouteMappingsCallCount()).To(Equal(1))
+					Expect(routingTable.Size()).To(Equal(2))
+					Expect(fakeConfigurer.ConfigureCallCount()).To(Equal(0))
+				})
+			})
+
+			Context("when things have been deleted from the table", func() {
+				BeforeEach(func() {
+					tcpMappings = []apimodels.TcpRouteMapping{
+						apimodels.NewTcpRouteMappingWithModificationTag(
+							routerGroupGuid,
+							externalPort1,
+							"some-ip-1",
+							61000,
+							ttl,
+							modificationTag,
+						),
+						apimodels.NewTcpRouteMappingWithModificationTag(
+							routerGroupGuid,
+							externalPort1,
+							"some-ip-2",
+							61001,
+							ttl,
+							modificationTag,
+						),
+					}
+
+					fakeRoutingApiClient.TcpRouteMappingsReturns(tcpMappings, nil)
+
+					expectedRoutingTableEntry1 := models.NewRoutingTableEntry(
+						[]models.BackendServerInfo{
+							{Address: "some-ip-1", Port: 61000, ModificationTag: modificationTag, TTL: ttl},
+							{Address: "some-ip-2", Port: 61001, ModificationTag: modificationTag, TTL: ttl},
+						},
+					)
+					routingTable.Set(models.RoutingKey{Port: externalPort1}, expectedRoutingTableEntry1)
+
+					expectedRoutingTableEntry2 := models.NewRoutingTableEntry(
+						[]models.BackendServerInfo{
+							{Address: "some-ip-3", Port: 60000, ModificationTag: modificationTag, TTL: ttl},
+							{Address: "some-ip-4", Port: 60000, ModificationTag: modificationTag, TTL: ttl},
+						},
+					)
+					routingTable.Set(models.RoutingKey{Port: externalPort2}, expectedRoutingTableEntry2)
+				})
+
+				It("calls the configurer", func() {
+					Expect(routingTable.Size()).To(Equal(2))
+					go invokeSync(doneChannel)
+					Eventually(doneChannel).Should(BeClosed())
+
+					Expect(fakeUaaClient.FetchTokenCallCount()).To(Equal(1))
+					Expect(fakeRoutingApiClient.TcpRouteMappingsCallCount()).To(Equal(1))
+					Expect(fakeConfigurer.ConfigureCallCount()).To(Equal(1))
+					Expect(routingTable.Size()).To(Equal(1))
+				})
 			})
 
 			Context("when events are received", func() {
@@ -432,7 +517,56 @@ var _ = Describe("Updater", func() {
 					}
 				})
 
+				Context("but there are no changes in the bulk sync", func() {
+					BeforeEach(func() {
+						syncChannel = make(chan struct{})
+						tmpSyncChannel := syncChannel
+						tcpMappings := make([]apimodels.TcpRouteMapping, 0)
+						fakeRoutingApiClient.TcpRouteMappingsStub = func() ([]apimodels.TcpRouteMapping, error) {
+							select {
+							case <-tmpSyncChannel:
+								return tcpMappings, nil
+							}
+						}
+					})
+					It("still applies the cached event", func() {
+						go invokeSync(doneChannel)
+						Eventually(updater.Syncing).Should(BeTrue())
+						tcpEvent = routing_api.TcpEvent{
+							TcpRouteMapping: apimodels.NewTcpRouteMappingWithModificationTag(
+								routerGroupGuid,
+								externalPort1,
+								"some-ip-2",
+								61001,
+								0,
+								modificationTag,
+							),
+							Action: "Upsert",
+						}
+						_ = updater.HandleEvent(tcpEvent)
+						Eventually(logger).Should(gbytes.Say("caching-event"))
+
+						close(syncChannel)
+						Eventually(updater.Syncing).Should(BeFalse())
+						Eventually(doneChannel).Should(BeClosed())
+						Eventually(logger).Should(gbytes.Say("applied-cached-events"))
+
+						Expect(fakeUaaClient.FetchTokenCallCount()).To(Equal(1))
+						Expect(fakeRoutingApiClient.TcpRouteMappingsCallCount()).To(Equal(1))
+						Expect(fakeConfigurer.ConfigureCallCount()).To(Equal(1))
+
+						Expect(routingTable.Size()).To(Equal(1))
+						expectedRoutingTableEntry1 := models.NewRoutingTableEntry(
+							[]models.BackendServerInfo{
+								models.BackendServerInfo{Address: "some-ip-2", Port: 61001, ModificationTag: modificationTag, TTL: 0},
+							},
+						)
+						verifyRoutingTableEntry(models.RoutingKey{Port: externalPort1}, expectedRoutingTableEntry1)
+					})
+				})
+
 				It("caches events and then applies the events after it completes syncing", func() {
+					Expect(routingTable.Size()).To(Equal(0))
 					go invokeSync(doneChannel)
 					Eventually(updater.Syncing).Should(BeTrue())
 					tcpEvent = routing_api.TcpEvent{
@@ -456,6 +590,7 @@ var _ = Describe("Updater", func() {
 
 					Expect(fakeUaaClient.FetchTokenCallCount()).To(Equal(1))
 					Expect(fakeRoutingApiClient.TcpRouteMappingsCallCount()).To(Equal(1))
+					Expect(fakeConfigurer.ConfigureCallCount()).To(Equal(1))
 
 					Expect(routingTable.Size()).To(Equal(2))
 					expectedRoutingTableEntry1 := models.NewRoutingTableEntry(

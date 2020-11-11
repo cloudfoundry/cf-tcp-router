@@ -19,6 +19,7 @@ const (
 
 type Configurer struct {
 	logger             lager.Logger
+	configMarshaller   ConfigMarshaller
 	baseConfigFilePath string
 	configFilePath     string
 	configFileLock     *sync.Mutex
@@ -26,7 +27,7 @@ type Configurer struct {
 	scriptRunner       ScriptRunner
 }
 
-func NewHaProxyConfigurer(logger lager.Logger, baseConfigFilePath string, configFilePath string, monitor monitor.Monitor, scriptRunner ScriptRunner) (*Configurer, error) {
+func NewHaProxyConfigurer(logger lager.Logger, configMarshaller ConfigMarshaller, baseConfigFilePath string, configFilePath string, monitor monitor.Monitor, scriptRunner ScriptRunner) (*Configurer, error) {
 	if !utils.FileExists(baseConfigFilePath) {
 		return nil, fmt.Errorf("%s: [%s]", ErrRouterConfigFileNotFound, baseConfigFilePath)
 	}
@@ -35,6 +36,7 @@ func NewHaProxyConfigurer(logger lager.Logger, baseConfigFilePath string, config
 	}
 	return &Configurer{
 		logger:             logger,
+		configMarshaller:   configMarshaller,
 		baseConfigFilePath: baseConfigFilePath,
 		configFilePath:     configFilePath,
 		configFileLock:     new(sync.Mutex),
@@ -65,16 +67,14 @@ func (h *Configurer) Configure(routingTable models.RoutingTable) error {
 		return err
 	}
 
-	for key, entry := range routingTable.Entries {
-		cfgContent, err = h.getListenConfiguration(key, entry)
-		if err != nil {
-			continue
-		}
-		_, err = buff.Write(cfgContent)
-		if err != nil {
-			h.logger.Error("failed-writing-to-buffer", err)
-			return err
-		}
+	haproxyConf := models.NewHAProxyConfig(routingTable, h.logger)
+	marshalledConf := h.configMarshaller.Marshal(haproxyConf)
+
+	_, err = buff.Write([]byte(marshalledConf))
+	if err != nil {
+		h.logger.Error("failed-marshalling-routing-table", err)
+
+		return err
 	}
 
 	h.logger.Info("writing-config", lager.Data{"num-bytes": buff.Len()})
@@ -94,29 +94,6 @@ func (h *Configurer) Configure(routingTable models.RoutingTable) error {
 		h.monitor.StartWatching()
 	}
 	return nil
-}
-
-func (h *Configurer) getListenConfiguration(key models.RoutingKey, entry models.RoutingTableEntry) ([]byte, error) {
-	var buff bytes.Buffer
-	_, err := buff.WriteString("\n")
-	if err != nil {
-		h.logger.Error("failed-writing-to-buffer", err)
-		return nil, err
-	}
-
-	var listenCfgStr string
-	listenCfgStr, err = RoutingTableEntryToHaProxyConfig(key, entry)
-	if err != nil {
-		h.logger.Error("failed-marshaling-routing-table-entry", err)
-		return nil, err
-	}
-
-	_, err = buff.WriteString(listenCfgStr)
-	if err != nil {
-		h.logger.Error("failed-writing-to-buffer", err)
-		return nil, err
-	}
-	return buff.Bytes(), nil
 }
 
 func (h *Configurer) createConfigBackup() error {

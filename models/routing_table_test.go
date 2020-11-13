@@ -1,3 +1,6 @@
+// TODO: Add test verifying that the "has the table been modified?" logic considers
+// the new SNI routing fields
+
 package models_test
 
 import (

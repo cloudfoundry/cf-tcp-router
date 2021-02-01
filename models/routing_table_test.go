@@ -1,6 +1,7 @@
 package models_test
 
 import (
+	"code.cloudfoundry.org/lager"
 	"time"
 
 	"code.cloudfoundry.org/cf-tcp-router/models"
@@ -18,10 +19,11 @@ var _ = Describe("RoutingTable", func() {
 		backendServerKey models.BackendServerKey
 		routingTable     models.RoutingTable
 		modificationTag  routing_api_models.ModificationTag
-		logger           = lagertest.NewTestLogger("routing-table-test")
+		logger           lager.Logger
 	)
 
 	BeforeEach(func() {
+		logger = lagertest.NewTestLogger("routing-table-test")
 		routingTable = models.NewRoutingTable(logger)
 		modificationTag = routing_api_models.ModificationTag{Guid: "abc", Index: 1}
 	})
@@ -164,93 +166,281 @@ var _ = Describe("RoutingTable", func() {
 
 	Describe("UpsertBackendServerKey", func() {
 		var (
-			routingKey models.RoutingKey
+			existingRoutingKey        models.RoutingKey
+			existingBackendServerInfo models.BackendServerInfo
+			existingRoutingTableEntry models.RoutingTableEntry
 		)
 
 		BeforeEach(func() {
-			routingKey = models.RoutingKey{Port: 12}
-			routingTable = models.NewRoutingTable(logger)
-			modificationTag = routing_api_models.ModificationTag{Guid: "abc", Index: 5}
+			existingRoutingKey = models.RoutingKey{Port: 80}
+			existingBackendServerInfo = models.BackendServerInfo{
+				Address:         "host-1.internal",
+				Port:            8080,
+				ModificationTag: routing_api_models.ModificationTag{Guid: "11111111-1111-1111-1111-111111111111", Index: 2},
+				TTL:             60,
+			}
+			existingRoutingTableEntry = models.NewRoutingTableEntry([]models.BackendServerInfo{existingBackendServerInfo})
 		})
 
-		Context("when the routing key does not exist", func() {
-			var (
-				routingTableEntry models.RoutingTableEntry
-				backendServerInfo models.BackendServerInfo
-			)
+		Context("when the routing key does not exist in the table", func() {
+			Context("when the table has no existing entries", func() {
+				It("adds the new entry and indicates the config needs to be reloaded", func() {
+					reloadConfig := routingTable.UpsertBackendServerKey(existingRoutingKey, existingBackendServerInfo)
 
-			BeforeEach(func() {
-				backendServerInfo = createBackendServerInfo("some-ip", 1234, modificationTag)
-				routingTableEntry = models.NewRoutingTableEntry([]models.BackendServerInfo{backendServerInfo})
+					Expect(reloadConfig).To(BeTrue())
+					Expect(logger).To(gbytes.Say("routing-key-not-found"))
+
+					Expect(routingTable.Size()).To(Equal(1))
+					testutil.RoutingTableEntryMatches(routingTable.Get(existingRoutingKey), existingRoutingTableEntry)
+				})
 			})
 
-			It("inserts the routing key with its backends", func() {
-				updated := routingTable.UpsertBackendServerKey(routingKey, backendServerInfo)
-				Expect(updated).To(BeTrue())
-				Expect(routingTable.Size()).To(Equal(1))
-				testutil.RoutingTableEntryMatches(routingTable.Get(routingKey), routingTableEntry)
+			Context("when the table has existing entries", func() {
+				BeforeEach(func() {
+					routingTable.Entries = map[models.RoutingKey]models.RoutingTableEntry{
+						existingRoutingKey: existingRoutingTableEntry,
+					}
+				})
+
+				Context("and the new routing key port does not exist", func() {
+					It("adds the new entry and indicates the config needs to be reloaded", func() {
+						newRoutingKey := models.RoutingKey{Port: 90}
+						reloadConfig := routingTable.UpsertBackendServerKey(newRoutingKey, existingBackendServerInfo)
+
+						Expect(reloadConfig).To(BeTrue())
+						Expect(logger).To(gbytes.Say("routing-key-not-found"))
+
+						Expect(routingTable.Size()).To(Equal(2))
+						testutil.RoutingTableEntryMatches(routingTable.Entries[existingRoutingKey], existingRoutingTableEntry)
+						testutil.RoutingTableEntryMatches(routingTable.Entries[newRoutingKey], existingRoutingTableEntry)
+					})
+				})
+
+				Context("and the new routing key SNI hostname does not exist", func() {
+					It("adds the new entry and indicates the config needs to be reloaded", func() {
+						newRoutingKey := models.RoutingKey{Port: 80, SniHostname: "host-2.example.com"}
+						reloadConfig := routingTable.UpsertBackendServerKey(newRoutingKey, existingBackendServerInfo)
+
+						Expect(reloadConfig).To(BeTrue())
+						Expect(logger).To(gbytes.Say("routing-key-not-found"))
+
+						Expect(routingTable.Size()).To(Equal(2))
+						testutil.RoutingTableEntryMatches(routingTable.Entries[existingRoutingKey], existingRoutingTableEntry)
+						testutil.RoutingTableEntryMatches(routingTable.Entries[newRoutingKey], existingRoutingTableEntry)
+					})
+				})
 			})
 		})
 
-		Context("when the routing key does exist", func() {
-			var backendServerInfo models.BackendServerInfo
+		Context("when the routing key already exists in the table", func() {
+			var oldBackendServerDetails models.BackendServerDetails
 
 			BeforeEach(func() {
-				backendServerInfo = createBackendServerInfo("some-ip", 1234, modificationTag)
-				existingRoutingTableEntry := models.NewRoutingTableEntry([]models.BackendServerInfo{backendServerInfo})
-				updated := routingTable.Set(routingKey, existingRoutingTableEntry)
-				Expect(updated).To(BeTrue())
+				routingTable.Entries = map[models.RoutingKey]models.RoutingTableEntry{
+					existingRoutingKey: existingRoutingTableEntry,
+				}
+				oldBackendServerDetails = existingRoutingTableEntry.Backends[models.BackendServerKey{
+					Address: existingBackendServerInfo.Address,
+					Port:    existingBackendServerInfo.Port,
+				}]
 			})
 
-			Context("when current entry is succeeded by new entry", func() {
-				BeforeEach(func() {
-					modificationTag.Increment()
+			validateBackendServersUpdated := func(newBackendServerInfo models.BackendServerInfo, shouldBeNewer bool) {
+				actualBackendServerDetails := routingTable.
+					Entries[existingRoutingKey].
+					Backends[models.BackendServerKey{
+					Address: newBackendServerInfo.Address,
+					Port:    newBackendServerInfo.Port,
+				}]
+
+				if shouldBeNewer {
+					Expect(actualBackendServerDetails.UpdatedTime.After(oldBackendServerDetails.UpdatedTime)).To(BeTrue())
+				} else {
+					Expect(actualBackendServerDetails.UpdatedTime).To(Equal(oldBackendServerDetails.UpdatedTime))
+				}
+			}
+
+			Context("when that key's backends do not match", func() {
+				Context("because the backend hostname does not match", func() {
+					It("adds the new entry and indicates the config needs to be reloaded", func() {
+						newBackendServerInfo := models.BackendServerInfo{
+							Address:         "host-2.internal",
+							Port:            existingBackendServerInfo.Port,
+							ModificationTag: routing_api_models.ModificationTag{Guid: "22222222-2222-2222-2222-222222222222", Index: 1},
+						}
+
+						reloadConfig := routingTable.UpsertBackendServerKey(existingRoutingKey, newBackendServerInfo)
+
+						Expect(reloadConfig).To(BeTrue())
+						Expect(logger).To(gbytes.Say("applying-change-to-table"))
+						Expect(routingTable.Size()).To(Equal(1))
+
+						validateBackendServersUpdated(newBackendServerInfo, true)
+						testutil.RoutingTableEntryMatches(
+							routingTable.Entries[existingRoutingKey],
+							models.RoutingTableEntry{
+								Backends: map[models.BackendServerKey]models.BackendServerDetails{
+									{
+										Address: existingBackendServerInfo.Address,
+										Port:    existingBackendServerInfo.Port,
+									}: {
+										ModificationTag: existingBackendServerInfo.ModificationTag,
+										TTL:             existingBackendServerInfo.TTL,
+									},
+									{
+										Address: newBackendServerInfo.Address,
+										Port:    newBackendServerInfo.Port,
+									}: {
+										ModificationTag: newBackendServerInfo.ModificationTag,
+									},
+								},
+							},
+						)
+					})
 				})
 
-				It("updates the routing entry", func() {
-					sameBackendServerInfo := createBackendServerInfo("some-ip", 1234, modificationTag)
-					expectedRoutingTableEntry := models.NewRoutingTableEntry([]models.BackendServerInfo{sameBackendServerInfo})
-					routingTable.UpsertBackendServerKey(routingKey, sameBackendServerInfo)
-					testutil.RoutingTableEntryMatches(routingTable.Get(routingKey), expectedRoutingTableEntry)
-					Expect(logger).To(gbytes.Say("applying-change-to-table"))
-				})
+				Context("because the backend port does not match", func() {
+					It("adds the new entry and indicates the config needs to be reloaded", func() {
+						newBackendServerInfo := models.BackendServerInfo{
+							Address: existingBackendServerInfo.Address,
+							Port:    9090,
+						}
 
-				It("does not update routing configuration", func() {
-					sameBackendServerInfo := createBackendServerInfo("some-ip", 1234, modificationTag)
-					updated := routingTable.UpsertBackendServerKey(routingKey, sameBackendServerInfo)
-					Expect(updated).To(BeFalse())
+						reloadConfig := routingTable.UpsertBackendServerKey(existingRoutingKey, newBackendServerInfo)
+
+						Expect(reloadConfig).To(BeTrue())
+						Expect(logger).To(gbytes.Say("applying-change-to-table"))
+						Expect(routingTable.Size()).To(Equal(1))
+
+						validateBackendServersUpdated(newBackendServerInfo, true)
+						testutil.RoutingTableEntryMatches(
+							routingTable.Entries[existingRoutingKey],
+							models.RoutingTableEntry{
+								Backends: map[models.BackendServerKey]models.BackendServerDetails{
+									{
+										Address: existingBackendServerInfo.Address,
+										Port:    existingBackendServerInfo.Port,
+									}: {
+										ModificationTag: existingBackendServerInfo.ModificationTag,
+										TTL:             existingBackendServerInfo.TTL,
+									},
+									{
+										Address: newBackendServerInfo.Address,
+										Port:    newBackendServerInfo.Port,
+									}: {
+										ModificationTag: newBackendServerInfo.ModificationTag,
+									},
+								},
+							},
+						)
+					})
 				})
 			})
 
-			Context("and a new backend is provided", func() {
-				It("updates the routing entry's backends", func() {
-					anotherModificationTag := routing_api_models.ModificationTag{Guid: "def", Index: 0}
-					differentBackendServerInfo := createBackendServerInfo("some-other-ip", 1234, anotherModificationTag)
-					expectedRoutingTableEntry := models.NewRoutingTableEntry([]models.BackendServerInfo{backendServerInfo, differentBackendServerInfo})
-					updated := routingTable.UpsertBackendServerKey(routingKey, differentBackendServerInfo)
-					Expect(updated).To(BeTrue())
-					testutil.RoutingTableEntryMatches(routingTable.Get(routingKey), expectedRoutingTableEntry)
-					actualDetails := routingTable.Get(routingKey).Backends[models.BackendServerKey{Address: "some-other-ip", Port: 1234}]
-					expectedDetails := expectedRoutingTableEntry.Backends[models.BackendServerKey{Address: "some-other-ip", Port: 1234}]
-					Expect(actualDetails.UpdatedTime.After(expectedDetails.UpdatedTime)).To(BeTrue())
+			Context("when that key's backends do match", func() {
+				Context("and the current routing table has a more recent record of the backend", func() {
+					It("does not update the existing backend and indicates config does not need to be reloaded", func() {
+						newBackendServerInfo := models.BackendServerInfo{
+							Address: existingBackendServerInfo.Address,
+							Port:    existingBackendServerInfo.Port,
+							TTL:     99,
+							ModificationTag: routing_api_models.ModificationTag{
+								Guid:  existingBackendServerInfo.ModificationTag.Guid,
+								Index: existingBackendServerInfo.ModificationTag.Index - 1, // Earlier than existing backend server
+							},
+						}
+						reloadConfig := routingTable.UpsertBackendServerKey(existingRoutingKey, newBackendServerInfo)
+
+						Expect(reloadConfig).To(BeFalse())
+						Expect(logger).To(gbytes.Say("skipping-stale-event"))
+						Expect(routingTable.Size()).To(Equal(1))
+
+						validateBackendServersUpdated(newBackendServerInfo, false)
+						testutil.RoutingTableEntryMatches(
+							routingTable.Entries[existingRoutingKey],
+							models.RoutingTableEntry{
+								Backends: map[models.BackendServerKey]models.BackendServerDetails{
+									{
+										Address: existingBackendServerInfo.Address,
+										Port:    existingBackendServerInfo.Port,
+									}: {
+										ModificationTag: existingBackendServerInfo.ModificationTag,
+										TTL:             existingBackendServerInfo.TTL,
+									},
+								},
+							},
+						)
+					})
 				})
-			})
 
-			Context("when current entry is fresher than incoming entry", func() {
+				Context("and the current routing table has the same record of the backend", func() {
+					It("does not add the new entry and indicates the config does not need to be reloaded", func() {
+						newBackendServerInfo := models.BackendServerInfo{
+							Address: existingBackendServerInfo.Address,
+							Port:    existingBackendServerInfo.Port,
+							TTL:     99,
+							ModificationTag: routing_api_models.ModificationTag{
+								Guid:  existingBackendServerInfo.ModificationTag.Guid,
+								Index: existingBackendServerInfo.ModificationTag.Index, // Identical to existing backend
+							},
+						}
+						reloadConfig := routingTable.UpsertBackendServerKey(existingRoutingKey, newBackendServerInfo)
 
-				var existingRoutingTableEntry models.RoutingTableEntry
+						Expect(reloadConfig).To(BeFalse())
+						Expect(logger).To(gbytes.Say("skipping-stale-event"))
+						Expect(routingTable.Size()).To(Equal(1))
 
-				BeforeEach(func() {
-					existingRoutingTableEntry = models.NewRoutingTableEntry([]models.BackendServerInfo{createBackendServerInfo("some-ip", 1234, modificationTag)})
-					modificationTag.Index--
+						validateBackendServersUpdated(newBackendServerInfo, false)
+						testutil.RoutingTableEntryMatches(
+							routingTable.Entries[existingRoutingKey],
+							models.RoutingTableEntry{
+								Backends: map[models.BackendServerKey]models.BackendServerDetails{
+									{
+										Address: existingBackendServerInfo.Address,
+										Port:    existingBackendServerInfo.Port,
+									}: {
+										ModificationTag: existingBackendServerInfo.ModificationTag,
+										TTL:             existingBackendServerInfo.TTL,
+									},
+								},
+							},
+						)
+					})
 				})
 
-				It("should not update routing table", func() {
-					newBackendServerInfo := createBackendServerInfo("some-ip", 1234, modificationTag)
-					updated := routingTable.UpsertBackendServerKey(routingKey, newBackendServerInfo)
-					Expect(updated).To(BeFalse())
-					Expect(logger).To(gbytes.Say("skipping-stale-event"))
-					testutil.RoutingTableEntryMatches(routingTable.Get(routingKey), existingRoutingTableEntry)
+				Context("and the current routing table has an older record of the backend", func() {
+					It("adds the new entry and indicates the config does not need to be reloaded", func() {
+						newBackendServerInfo := models.BackendServerInfo{
+							Address: existingBackendServerInfo.Address,
+							Port:    existingBackendServerInfo.Port,
+							TTL:     99,
+							ModificationTag: routing_api_models.ModificationTag{
+								Guid:  existingBackendServerInfo.ModificationTag.Guid,
+								Index: existingBackendServerInfo.ModificationTag.Index + 1, // Newer than existing backend
+							},
+						}
+						reloadConfig := routingTable.UpsertBackendServerKey(existingRoutingKey, newBackendServerInfo)
+
+						Expect(reloadConfig).To(BeFalse())
+						Expect(logger).To(gbytes.Say("applying-change-to-table"))
+						Expect(routingTable.Size()).To(Equal(1))
+
+						validateBackendServersUpdated(newBackendServerInfo, true)
+						testutil.RoutingTableEntryMatches(
+							routingTable.Entries[existingRoutingKey],
+							models.RoutingTableEntry{
+								Backends: map[models.BackendServerKey]models.BackendServerDetails{
+									{
+										Address: newBackendServerInfo.Address,
+										Port:    newBackendServerInfo.Port,
+									}: {
+										ModificationTag: newBackendServerInfo.ModificationTag,
+										TTL:             newBackendServerInfo.TTL,
+									},
+								},
+							},
+						)
+					})
 				})
 			})
 		})
@@ -264,20 +454,74 @@ var _ = Describe("RoutingTable", func() {
 			backendServerInfo2        models.BackendServerInfo
 		)
 		BeforeEach(func() {
-			routingKey = models.RoutingKey{Port: 12}
-			backendServerInfo1 = createBackendServerInfo("some-ip", 1234, modificationTag)
+			routingKey = models.RoutingKey{Port: 12, SniHostname: "host-1.example.com"}
+			backendServerInfo1 = models.BackendServerInfo{Address: "some-ip", Port: 1234, ModificationTag: modificationTag}
 		})
 
-		Context("when the routing key does not exist", func() {
+		Context("when no routing keys exist", func() {
 			It("it does not causes any changes or errors", func() {
 				updated := routingTable.DeleteBackendServerKey(routingKey, backendServerInfo1)
 				Expect(updated).To(BeFalse())
 			})
 		})
 
+		Context("when other routing keys exist", func() {
+			var (
+				survivingKey               models.RoutingKey
+				survivingRoutingTableEntry models.RoutingTableEntry
+			)
+			Context("when a non-SNI routing key shares the same port as the deleted one", func() {
+				BeforeEach(func() {
+					survivingKey = models.RoutingKey{Port: 12, SniHostname: ""}
+					survivingRoutingTableEntry = models.NewRoutingTableEntry([]models.BackendServerInfo{backendServerInfo1})
+					routingTable.Entries[survivingKey] = survivingRoutingTableEntry
+				})
+
+				It("retains the non-SNI route", func() {
+					updated := routingTable.DeleteBackendServerKey(routingKey, backendServerInfo1)
+					Expect(updated).To(BeFalse())
+
+					Expect(len(routingTable.Entries)).To(Equal(1))
+					testutil.RoutingTableEntryMatches(routingTable.Entries[survivingKey], survivingRoutingTableEntry)
+				})
+			})
+
+			Context("when another SNI routing key shares the same port as the deleted one", func() {
+				BeforeEach(func() {
+					survivingKey = models.RoutingKey{Port: 12, SniHostname: "other-host.example.com"}
+					survivingRoutingTableEntry = models.NewRoutingTableEntry([]models.BackendServerInfo{backendServerInfo1})
+					routingTable.Entries[survivingKey] = survivingRoutingTableEntry
+				})
+
+				It("retains the other SNI route", func() {
+					updated := routingTable.DeleteBackendServerKey(routingKey, backendServerInfo1)
+					Expect(updated).To(BeFalse())
+
+					Expect(len(routingTable.Entries)).To(Equal(1))
+					testutil.RoutingTableEntryMatches(routingTable.Entries[survivingKey], survivingRoutingTableEntry)
+				})
+			})
+
+			Context("when another SNI routing key shares the same hostname as the deleted one", func() {
+				BeforeEach(func() {
+					survivingKey = models.RoutingKey{Port: 34, SniHostname: "host.example.com"}
+					survivingRoutingTableEntry = models.NewRoutingTableEntry([]models.BackendServerInfo{backendServerInfo1})
+					routingTable.Entries[survivingKey] = survivingRoutingTableEntry
+				})
+
+				It("retains the other SNI route", func() {
+					updated := routingTable.DeleteBackendServerKey(routingKey, backendServerInfo1)
+					Expect(updated).To(BeFalse())
+
+					Expect(len(routingTable.Entries)).To(Equal(1))
+					testutil.RoutingTableEntryMatches(routingTable.Entries[survivingKey], survivingRoutingTableEntry)
+				})
+			})
+		})
+
 		Context("when the routing key does exist", func() {
 			BeforeEach(func() {
-				backendServerInfo2 = createBackendServerInfo("some-other-ip", 1235, modificationTag)
+				backendServerInfo1 = models.BackendServerInfo{Address: "some-other-ip", Port: 1235, ModificationTag: modificationTag}
 				existingRoutingTableEntry = models.NewRoutingTableEntry([]models.BackendServerInfo{backendServerInfo1, backendServerInfo2})
 				updated := routingTable.Set(routingKey, existingRoutingTableEntry)
 				Expect(updated).To(BeTrue())
@@ -285,7 +529,7 @@ var _ = Describe("RoutingTable", func() {
 
 			Context("and the backend does not exist ", func() {
 				It("does not causes any changes or errors", func() {
-					backendServerInfo1 = createBackendServerInfo("some-missing-ip", 1236, modificationTag)
+					backendServerInfo1 = models.BackendServerInfo{Address: "some-missing-ip", Port: 1236, ModificationTag: modificationTag}
 					ok := routingTable.DeleteBackendServerKey(routingKey, backendServerInfo1)
 					Expect(ok).To(BeFalse())
 					Expect(routingTable.Get(routingKey)).Should(Equal(existingRoutingTableEntry))
@@ -494,8 +738,3 @@ var _ = Describe("RoutingTable", func() {
 		})
 	})
 })
-
-func createBackendServerInfo(address string, port uint16, tag routing_api_models.ModificationTag) models.BackendServerInfo {
-	return models.BackendServerInfo{Address: address, Port: port, ModificationTag: tag}
-
-}

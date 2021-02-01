@@ -9,8 +9,11 @@ import (
 	routing_api_models "code.cloudfoundry.org/routing-api/models"
 )
 
+type SniHostname string
+
 type RoutingKey struct {
-	Port uint16
+	Port        uint16
+	SniHostname SniHostname
 }
 
 type BackendServerInfo struct {

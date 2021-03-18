@@ -2,12 +2,8 @@
 
 set -e -u -x
 
-go install -v github.com/onsi/ginkgo/ginkgo
-
-# if db ca cert is not set or set to ""
-set +xu
-if [ -z "$SQL_SERVER_CA_CERT" ] ; then
-	ginkgo -r  -p -failOnPending -randomizeAllSpecs -race "$@"
-else
-	SQL_SERVER_CA_CERT="$SQL_SERVER_CA_CERT"  ginkgo -r  -p -failOnPending -randomizeAllSpecs -race "$@"
+if ! [ -x "$(command -v ginkgo)" ]; then
+    go get -u github.com/onsi/ginkgo/ginkgo
 fi
+
+ginkgo -r  -p -failOnPending -randomizeAllSpecs -race "$@"

@@ -22,15 +22,18 @@ var _ = Describe("ConfigMarshaller", func() {
 		Context("when there is only a non-SNI route", func() {
 			It("includes only the `default_backend` directive", func() {
 				haproxyConf = models.HAProxyConfig{
-					80: {
-						"": {{Address: "default-host.internal", Port: 8080}},
+					BindAddress: "192.0.2.10",
+					Frontends: map[models.HAProxyInboundPort]models.HAProxyFrontend{
+						80: {
+							"": {{Address: "default-host.internal", Port: 8080}},
+						},
 					},
 				}
 
 				Expect(marshaller.Marshal(haproxyConf)).To(Equal(`
 frontend frontend_80
   mode tcp
-  bind :80
+  bind 192.0.2.10:80
   default_backend backend_80
 
 backend backend_80
@@ -43,15 +46,18 @@ backend backend_80
 		Context("when there is only an SNI route", func() {
 			It("includes only the SNI `use_backend` directive", func() {
 				haproxyConf = models.HAProxyConfig{
-					80: {
-						"external-host.example.com": {{Address: "default-host.internal", Port: 8080}},
+					BindAddress: "192.0.2.10",
+					Frontends: map[models.HAProxyInboundPort]models.HAProxyFrontend{
+						80: {
+							"external-host.example.com": {{Address: "default-host.internal", Port: 8080}},
+						},
 					},
 				}
 
 				Expect(marshaller.Marshal(haproxyConf)).To(Equal(`
 frontend frontend_80
   mode tcp
-  bind :80
+  bind 192.0.2.10:80
   tcp-request inspect-delay 5s
   tcp-request content accept if { req.ssl_hello_type gt 0 }
   use_backend backend_80_external-host.example.com if { req.ssl_sni external-host.example.com }
@@ -66,16 +72,19 @@ backend backend_80_external-host.example.com
 		Context("when there is both an SNI route and a non-SNI route", func() {
 			It("includes both types of directives", func() {
 				haproxyConf = models.HAProxyConfig{
-					80: {
-						"":                          {{Address: "default-host.internal", Port: 8080}},
-						"external-host.example.com": {{Address: "sni-host.internal", Port: 9090}},
+					BindAddress: "192.0.2.10",
+					Frontends: map[models.HAProxyInboundPort]models.HAProxyFrontend{
+						80: {
+							"":                          {{Address: "default-host.internal", Port: 8080}},
+							"external-host.example.com": {{Address: "sni-host.internal", Port: 9090}},
+						},
 					},
 				}
 				actual := marshaller.Marshal(haproxyConf)
 				Expect(actual).To(Equal(`
 frontend frontend_80
   mode tcp
-  bind :80
+  bind 192.0.2.10:80
   tcp-request inspect-delay 5s
   tcp-request content accept if { req.ssl_hello_type gt 0 }
   default_backend backend_80
@@ -95,20 +104,23 @@ backend backend_80_external-host.example.com
 		Context("when there are multiple inbound ports", func() {
 			It("sorts the inbound ports", func() {
 				haproxyConf = models.HAProxyConfig{
-					90: {
-						"": {{Address: "host-90.internal", Port: 9090}},
-					},
-					70: {
-						"": {{Address: "host-70.internal", Port: 7070}},
-					},
-					80: {
-						"": {{Address: "host-80.internal", Port: 8080}},
+					BindAddress: "192.0.2.10",
+					Frontends: map[models.HAProxyInboundPort]models.HAProxyFrontend{
+						90: {
+							"": {{Address: "host-90.internal", Port: 9090}},
+						},
+						70: {
+							"": {{Address: "host-70.internal", Port: 7070}},
+						},
+						80: {
+							"": {{Address: "host-80.internal", Port: 8080}},
+						},
 					},
 				}
 				Expect(marshaller.Marshal(haproxyConf)).To(Equal(`
 frontend frontend_70
   mode tcp
-  bind :70
+  bind 192.0.2.10:70
   default_backend backend_70
 
 backend backend_70
@@ -117,7 +129,7 @@ backend backend_70
 
 frontend frontend_80
   mode tcp
-  bind :80
+  bind 192.0.2.10:80
   default_backend backend_80
 
 backend backend_80
@@ -126,7 +138,7 @@ backend backend_80
 
 frontend frontend_90
   mode tcp
-  bind :90
+  bind 192.0.2.10:90
   default_backend backend_90
 
 backend backend_90
@@ -139,17 +151,20 @@ backend backend_90
 		Context("when there are multiple SNI hostnames for an inbound port", func() {
 			It("sorts the SNI hostnames", func() {
 				haproxyConf = models.HAProxyConfig{
-					80: {
-						"host-99.example.com": {{Address: "host-99.internal", Port: 9999}},
-						"":                    {{Address: "default-host.internal", Port: 8080}},
-						"host-1.example.com":  {{Address: "host-1.internal", Port: 1111}},
+					BindAddress: "192.0.2.10",
+					Frontends: map[models.HAProxyInboundPort]models.HAProxyFrontend{
+						80: {
+							"host-99.example.com": {{Address: "host-99.internal", Port: 9999}},
+							"":                    {{Address: "default-host.internal", Port: 8080}},
+							"host-1.example.com":  {{Address: "host-1.internal", Port: 1111}},
+						},
 					},
 				}
 
 				Expect(marshaller.Marshal(haproxyConf)).To(Equal(`
 frontend frontend_80
   mode tcp
-  bind :80
+  bind 192.0.2.10:80
   tcp-request inspect-delay 5s
   tcp-request content accept if { req.ssl_hello_type gt 0 }
   default_backend backend_80
@@ -174,18 +189,21 @@ backend backend_80_host-99.example.com
 		Context("when there are multiple servers for a backend", func() {
 			It("retains the original order of the servers", func() {
 				haproxyConf = models.HAProxyConfig{
-					80: {
-						"": {
-							{Address: "host-88.internal", Port: 8888},
-							{Address: "host-99.internal", Port: 9999},
-							{Address: "host-77.internal", Port: 7777},
+					BindAddress: "192.0.2.10",
+					Frontends: map[models.HAProxyInboundPort]models.HAProxyFrontend{
+						80: {
+							"": {
+								{Address: "host-88.internal", Port: 8888},
+								{Address: "host-99.internal", Port: 9999},
+								{Address: "host-77.internal", Port: 7777},
+							},
 						},
 					},
 				}
 				Expect(marshaller.Marshal(haproxyConf)).To(Equal(`
 frontend frontend_80
   mode tcp
-  bind :80
+  bind 192.0.2.10:80
   default_backend backend_80
 
 backend backend_80

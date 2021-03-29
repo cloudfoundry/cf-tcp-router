@@ -156,7 +156,7 @@ func main() {
 
 	monitor := monitor.New(cfg.HaProxyPidFile, logger)
 
-	routingTable := models.NewRoutingTable(logger)
+	routingTable := models.NewRoutingTable(cfg.BindAddress, logger)
 	reloaderRunner := haproxy.CreateCommandRunner(*haproxyReloader, logger)
 	configurer := configurer.NewConfigurer(
 		logger,
@@ -217,7 +217,7 @@ func main() {
 
 	logger.Debug("creating-routing-api-client", lager.Data{"api-location": routingAPIAddress})
 
-	updater := routing_table.NewUpdater(logger, &routingTable, configurer, routingAPIClient, uaaClient, clock, int(defaultRouteExpiry.Seconds()))
+	updater := routing_table.NewUpdater(logger, &routingTable, configurer, routingAPIClient, uaaClient, clock, int(defaultRouteExpiry.Seconds()), cfg.BindAddress)
 
 	ticker := clock.NewTicker(*staleRouteCheckInterval)
 

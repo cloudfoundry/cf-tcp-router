@@ -1,17 +1,18 @@
 package haproxy_test
 
 import (
+	"fmt"
+	"io/ioutil"
+	"os"
+
 	"code.cloudfoundry.org/cf-tcp-router/configurer/haproxy"
 	"code.cloudfoundry.org/cf-tcp-router/configurer/haproxy/fakes"
 	"code.cloudfoundry.org/cf-tcp-router/models"
 	monitorFakes "code.cloudfoundry.org/cf-tcp-router/monitor/fakes"
 	"code.cloudfoundry.org/cf-tcp-router/testutil"
 	"code.cloudfoundry.org/cf-tcp-router/utils"
-	"fmt"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	"io/ioutil"
-	"os"
 )
 
 var _ = Describe("HaproxyConfigurer", func() {
@@ -78,7 +79,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 
 			BeforeEach(func() {
 				currentConfigTemplateContent = []byte{}
-				routingTable = models.NewRoutingTable(logger)
+				routingTable = models.NewRoutingTable("192.0.2.10", logger)
 
 				generatedHaproxyCfgFile = testutil.RandomFileName("fixtures/haproxy_", ".cfg")
 				haproxyCfgBackupFile = fmt.Sprintf("%s.bak", generatedHaproxyCfgFile)

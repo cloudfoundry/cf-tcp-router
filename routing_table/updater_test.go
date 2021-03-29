@@ -64,10 +64,10 @@ var _ = Describe("Updater", func() {
 			ExpiresIn:   5,
 		}
 		fakeUaaClient.FetchTokenReturns(token, nil)
-		tmpRoutingTable := models.NewRoutingTable(logger)
+		tmpRoutingTable := models.NewRoutingTable("192.0.2.10", logger)
 		routingTable = &tmpRoutingTable
 		fakeClock = fakeclock.NewFakeClock(time.Now())
-		updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeUaaClient, fakeClock, defaultTTL)
+		updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeUaaClient, fakeClock, defaultTTL, "192.0.2.10")
 	})
 
 	Describe("HandleEvent", func() {
@@ -90,7 +90,7 @@ var _ = Describe("Updater", func() {
 			)
 			Expect(routingTable.Set(existingRoutingKey2, existingRoutingTableEntry2)).To(BeTrue())
 
-			updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeUaaClient, fakeClock, defaultTTL)
+			updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeUaaClient, fakeClock, defaultTTL, "192.0.2.10")
 		})
 
 		Context("when Upsert event is received", func() {
@@ -737,7 +737,7 @@ var _ = Describe("Updater", func() {
 			updated = routingTable.Set(routingKey2, routingTableEntry)
 			Expect(updated).To(BeTrue())
 
-			updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeUaaClient, fakeClock, defaultTTL)
+			updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeUaaClient, fakeClock, defaultTTL, "192.0.2.10")
 		})
 
 		Context("when none of the routes are stale", func() {
@@ -765,7 +765,7 @@ var _ = Describe("Updater", func() {
 		Context("when some routes are stale", func() {
 			BeforeEach(func() {
 				fakeClock.IncrementBySeconds(65)
-				updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeUaaClient, fakeClock, 40)
+				updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeUaaClient, fakeClock, 40, "192.0.2.10")
 			})
 
 			It("prunes those routes", func() {

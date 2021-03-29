@@ -167,7 +167,7 @@ var _ = Describe("Main", func() {
 
 		It("syncs with routing api", func() {
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("applied-fetched-routes-to-routing-table"))
-			expectedConfigEntry := "\nfrontend frontend_5222\n  mode tcp\n  bind :5222\n"
+			expectedConfigEntry := "\nfrontend frontend_5222\n  mode tcp\n  bind 0.0.0.0:5222\n"
 			serverConfigEntry := "server server_some-ip-1_61000 some-ip-1:61000"
 			verifyHaProxyConfigContent(haproxyConfigFile, expectedConfigEntry, true)
 			verifyHaProxyConfigContent(haproxyConfigFile, serverConfigEntry, true)
@@ -180,7 +180,7 @@ var _ = Describe("Main", func() {
 			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("handle-event.finished"))
-			expectedConfigEntry := "\nfrontend frontend_5222\n  mode tcp\n  bind :5222\n"
+			expectedConfigEntry := "\nfrontend frontend_5222\n  mode tcp\n  bind 0.0.0.0:5222\n"
 			verifyHaProxyConfigContent(haproxyConfigFile, expectedConfigEntry, true)
 			oldServerConfigEntry := "server server_some-ip-1_61000 some-ip-1:61000"
 			verifyHaProxyConfigContent(haproxyConfigFile, oldServerConfigEntry, true)
@@ -195,7 +195,7 @@ var _ = Describe("Main", func() {
 			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("handle-event.finished"))
-			expectedConfigEntry := "\nfrontend frontend_5222\n  mode tcp\n  bind :5222\n"
+			expectedConfigEntry := "\nfrontend frontend_5222\n  mode tcp\n  bind 0.0.0.0:5222\n"
 			verifyHaProxyConfigContent(haproxyConfigFile, expectedConfigEntry, true)
 			oldServerConfigEntry := "server server_some-ip-1_61000 some-ip-1:61000"
 			verifyHaProxyConfigContent(haproxyConfigFile, oldServerConfigEntry, true)
@@ -289,7 +289,7 @@ var _ = Describe("Main", func() {
 			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("handle-event.finished"))
-			expectedConfigEntry := "\nfrontend frontend_5222\n  mode tcp\n  bind :5222\n"
+			expectedConfigEntry := "\nfrontend frontend_5222\n  mode tcp\n  bind 0.0.0.0:5222\n"
 			verifyHaProxyConfigContent(haproxyConfigFile, expectedConfigEntry, true)
 			newServerConfigEntry := "server server_some-ip-3_61000 some-ip-3:61000"
 			verifyHaProxyConfigContent(haproxyConfigFile, newServerConfigEntry, true)

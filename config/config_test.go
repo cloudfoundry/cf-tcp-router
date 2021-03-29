@@ -48,6 +48,7 @@ var _ = Describe("Config", func() {
 			It("return error", func() {
 				_, err := config.New("fixtures/malformed_config.yml")
 				Expect(err).To(HaveOccurred())
+				Expect(err).ToNot(MatchError("haproxy_pid_file is required"))
 			})
 		})
 	})
@@ -55,7 +56,7 @@ var _ = Describe("Config", func() {
 	Context("when haproxy pid file is missing", func() {
 		It("return error", func() {
 			_, err := config.New("fixtures/no_haproxy.yml")
-			Expect(err).To(HaveOccurred())
+			Expect(err).To(MatchError("haproxy_pid_file is required"))
 		})
 	})
 

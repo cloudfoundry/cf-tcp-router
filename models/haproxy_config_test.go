@@ -1,6 +1,7 @@
 package models_test
 
 import (
+	"code.cloudfoundry.org/cf-tcp-router/models"
 	. "code.cloudfoundry.org/cf-tcp-router/models"
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagertest"
@@ -17,7 +18,7 @@ var _ = Describe("HAProxyConfig", func() {
 
 		BeforeEach(func() {
 			logger = lagertest.NewTestLogger("haproxy-config-test")
-			routingTable = NewRoutingTable(logger)
+			routingTable = NewRoutingTable("192.0.2.10", logger)
 		})
 
 		Context("when a frontend is invalid", func() {
@@ -31,11 +32,13 @@ var _ = Describe("HAProxyConfig", func() {
 				It("retains only valid frontends", func() {
 					routingTable.Entries[RoutingKey{Port: 0}] = validRoutingTableEntry
 					routingTable.Entries[RoutingKey{Port: 80}] = validRoutingTableEntry
-
 					Expect(NewHAProxyConfig(routingTable, logger)).To(Equal(HAProxyConfig{
-						80: {
-							"": {
-								{Address: "valid-host.internal", Port: 1111},
+						BindAddress: "192.0.2.10",
+						Frontends: map[models.HAProxyInboundPort]models.HAProxyFrontend{
+							80: {
+								"": {
+									{Address: "valid-host.internal", Port: 1111},
+								},
 							},
 						},
 					}))
@@ -49,12 +52,14 @@ var _ = Describe("HAProxyConfig", func() {
 					routingTable.Entries[RoutingKey{Port: 100, SniHostname: "ünvalid-host.example.com"}] = validRoutingTableEntry
 
 					Expect(NewHAProxyConfig(routingTable, logger)).To(Equal(HAProxyConfig{
-						80: {
-							"valid-host.example.com": {
-								{Address: "valid-host.internal", Port: 1111},
+						BindAddress: "192.0.2.10",
+						Frontends: map[models.HAProxyInboundPort]models.HAProxyFrontend{
+							80: {
+								"valid-host.example.com": {
+									{Address: "valid-host.internal", Port: 1111},
+								},
 							},
-						},
-					}))
+						}}))
 				})
 			})
 
@@ -66,12 +71,14 @@ var _ = Describe("HAProxyConfig", func() {
 					}
 
 					Expect(NewHAProxyConfig(routingTable, logger)).To(Equal(HAProxyConfig{
-						80: {
-							"": {
-								{Address: "valid-host.internal", Port: 1111},
+						BindAddress: "192.0.2.10",
+						Frontends: map[models.HAProxyInboundPort]models.HAProxyFrontend{
+							80: {
+								"": {
+									{Address: "valid-host.internal", Port: 1111},
+								},
 							},
-						},
-					}))
+						}}))
 				})
 			})
 
@@ -86,12 +93,14 @@ var _ = Describe("HAProxyConfig", func() {
 						}
 
 						Expect(NewHAProxyConfig(routingTable, logger)).To(Equal(HAProxyConfig{
-							80: {
-								"": {
-									{Address: "valid-host.internal", Port: 1111},
+							BindAddress: "192.0.2.10",
+							Frontends: map[models.HAProxyInboundPort]models.HAProxyFrontend{
+								80: {
+									"": {
+										{Address: "valid-host.internal", Port: 1111},
+									},
 								},
-							},
-						}))
+							}}))
 					})
 				})
 
@@ -105,12 +114,14 @@ var _ = Describe("HAProxyConfig", func() {
 						}
 
 						Expect(NewHAProxyConfig(routingTable, logger)).To(Equal(HAProxyConfig{
-							80: {
-								"": {
-									{Address: "valid-host-1.example.com", Port: 1111},
+							BindAddress: "192.0.2.10",
+							Frontends: map[models.HAProxyInboundPort]models.HAProxyFrontend{
+								80: {
+									"": {
+										{Address: "valid-host-1.example.com", Port: 1111},
+									},
 								},
-							},
-						}))
+							}}))
 					})
 				})
 			})
@@ -140,25 +151,27 @@ var _ = Describe("HAProxyConfig", func() {
 				}
 
 				Expect(NewHAProxyConfig(routingTable, logger)).To(Equal(HAProxyConfig{
-					80: {
-						"": {
-							{Address: "valid-host-1.internal", Port: 1111},
-							{Address: "valid-host-1.internal", Port: 2222},
+					BindAddress: "192.0.2.10",
+					Frontends: map[models.HAProxyInboundPort]models.HAProxyFrontend{
+						80: {
+							"": {
+								{Address: "valid-host-1.internal", Port: 1111},
+								{Address: "valid-host-1.internal", Port: 2222},
+							},
 						},
-					},
-					90: {
-						"": {
-							{Address: "valid-host-2.internal", Port: 3333},
-							{Address: "valid-host-2.internal", Port: 4444},
+						90: {
+							"": {
+								{Address: "valid-host-2.internal", Port: 3333},
+								{Address: "valid-host-2.internal", Port: 4444},
+							},
+							"valid-host.example.com": {
+								{Address: "valid-host-3.internal", Port: 5555},
+								{Address: "valid-host-3.internal", Port: 6666},
+								{Address: "valid-host-4.internal", Port: 7777},
+								{Address: "valid-host-4.internal", Port: 8888},
+							},
 						},
-						"valid-host.example.com": {
-							{Address: "valid-host-3.internal", Port: 5555},
-							{Address: "valid-host-3.internal", Port: 6666},
-							{Address: "valid-host-4.internal", Port: 7777},
-							{Address: "valid-host-4.internal", Port: 8888},
-						},
-					},
-				}))
+					}}))
 			})
 		})
 	})

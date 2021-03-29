@@ -1,10 +1,11 @@
 package haproxy
 
 import (
-	"code.cloudfoundry.org/cf-tcp-router/models"
 	"fmt"
 	"sort"
 	"strings"
+
+	"code.cloudfoundry.org/cf-tcp-router/models"
 )
 
 //go:generate counterfeiter -o fakes/fake_config_marshaller.go . ConfigMarshaller
@@ -23,21 +24,21 @@ func (cm configMarshaller) Marshal(conf models.HAProxyConfig) string {
 	sortedPorts := sortedHAProxyInboundPorts(conf)
 	for inboundPortIdx := range sortedPorts {
 		port := sortedPorts[inboundPortIdx]
-		frontend := conf[port]
+		frontend := conf.Frontends[port]
 
-		output.WriteString(cm.marshalHAProxyFrontend(port, frontend))
+		output.WriteString(cm.marshalHAProxyFrontend(conf.BindAddress, port, frontend))
 	}
 	return output.String()
 }
 
-func (cm configMarshaller) marshalHAProxyFrontend(port models.HAProxyInboundPort, frontend models.HAProxyFrontend) string {
+func (cm configMarshaller) marshalHAProxyFrontend(bindAddress string, port models.HAProxyInboundPort, frontend models.HAProxyFrontend) string {
 	var (
 		frontendStanza strings.Builder
 		backendStanzas strings.Builder
 	)
 	frontendStanza.WriteString(fmt.Sprintf("\nfrontend frontend_%d", port))
 	frontendStanza.WriteString("\n  mode tcp")
-	frontendStanza.WriteString(fmt.Sprintf("\n  bind :%d", port))
+	frontendStanza.WriteString(fmt.Sprintf("\n  bind %s:%d", bindAddress, port))
 
 	if frontend.ContainsSNIRoutes() {
 		frontendStanza.WriteString("\n  tcp-request inspect-delay 5s")
@@ -81,9 +82,9 @@ func (cm configMarshaller) marshalHAProxyBackend(backendName string, backend mod
 }
 
 func sortedHAProxyInboundPorts(conf models.HAProxyConfig) []models.HAProxyInboundPort {
-	keys := make([]models.HAProxyInboundPort, len(conf))
+	keys := make([]models.HAProxyInboundPort, len(conf.Frontends))
 	i := 0
-	for k := range conf {
+	for k := range conf.Frontends {
 		keys[i] = k
 		i++
 	}

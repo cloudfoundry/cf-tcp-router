@@ -1,29 +1,21 @@
 package models
 
 import (
+	"code.cloudfoundry.org/lager"
 	"fmt"
 	"regexp"
 	"sort"
 	"strings"
-
-	"code.cloudfoundry.org/lager"
 )
 
-type HAProxyConfig struct {
-	BindAddress string
-	Frontends   map[HAProxyInboundPort]HAProxyFrontend
-}
-
+type HAProxyConfig map[HAProxyInboundPort]HAProxyFrontend
 type HAProxyFrontend map[SniHostname]HAProxyBackend
 type HAProxyBackend []HAProxyServer
 type HAProxyServer BackendServerKey
 type HAProxyInboundPort uint16
 
 func NewHAProxyConfig(routingTable RoutingTable, logger lager.Logger) HAProxyConfig {
-	conf := HAProxyConfig{
-		Frontends:   make(map[HAProxyInboundPort]HAProxyFrontend),
-		BindAddress: routingTable.BindAddress,
-	}
+	conf := HAProxyConfig{}
 
 	for routingKey := range routingTable.Entries {
 		if routingKey.Port == 0 {
@@ -66,10 +58,10 @@ func NewHAProxyConfig(routingTable RoutingTable, logger lager.Logger) HAProxyCon
 			return backends[i].Address < backends[j].Address
 		})
 
-		frontend, frontendExists := conf.Frontends[HAProxyInboundPort(routingKey.Port)]
+		frontend, frontendExists := conf[HAProxyInboundPort(routingKey.Port)]
 		if !frontendExists {
 			frontend = HAProxyFrontend{}
-			conf.Frontends[HAProxyInboundPort(routingKey.Port)] = frontend
+			conf[HAProxyInboundPort(routingKey.Port)] = frontend
 		}
 
 		frontend[routingKey.SniHostname] = backends

@@ -250,7 +250,6 @@ func getRouterGroupGuid(routingApiClient routing_api.Client) string {
 
 func generateTCPRouterConfigFile(oauthServerPort int, uaaCACertsPath string, routingApiAuthDisabled bool) string {
 	tcpRouterConfig := config.Config{
-		BindAddress: "0.0.0.0",
 		OAuth: config.OAuthConfig{
 			TokenEndpoint:     "127.0.0.1",
 			SkipSSLValidation: false,

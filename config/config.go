@@ -27,7 +27,6 @@ type OAuthConfig struct {
 }
 
 type Config struct {
-	BindAddress       string           `yaml:"bind_address"`
 	OAuth             OAuthConfig      `yaml:"oauth"`
 	RoutingAPI        RoutingAPIConfig `yaml:"routing_api"`
 	HaProxyPidFile    string           `yaml:"haproxy_pid_file"`
@@ -51,10 +50,8 @@ func (c *Config) initConfigFromFile(path string) error {
 		return e
 	}
 
-	err := yaml.Unmarshal(b, &c)
-	if err != nil {
-		return err
-	}
+	yaml.Unmarshal(b, &c)
+
 	if c.HaProxyPidFile == "" {
 		return errors.New("haproxy_pid_file is required")
 	}

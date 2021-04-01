@@ -1,9 +1,8 @@
 package models_test
 
 import (
-	"time"
-
 	"code.cloudfoundry.org/lager"
+	"time"
 
 	"code.cloudfoundry.org/cf-tcp-router/models"
 	"code.cloudfoundry.org/cf-tcp-router/testutil"
@@ -25,14 +24,8 @@ var _ = Describe("RoutingTable", func() {
 
 	BeforeEach(func() {
 		logger = lagertest.NewTestLogger("routing-table-test")
-		routingTable = models.NewRoutingTable("192.0.2.10", logger)
+		routingTable = models.NewRoutingTable(logger)
 		modificationTag = routing_api_models.ModificationTag{Guid: "abc", Index: 1}
-	})
-
-	Describe("Constructor", func() {
-		It("has a external ip address to serve on", func() {
-			Expect(routingTable.BindAddress).To(Equal("192.0.2.10"))
-		})
 	})
 
 	Describe("Set", func() {

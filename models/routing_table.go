@@ -39,9 +39,8 @@ type RoutingTableEntry struct {
 }
 
 type RoutingTable struct {
-	BindAddress string
-	Entries     map[RoutingKey]RoutingTableEntry
-	logger      lager.Logger
+	Entries map[RoutingKey]RoutingTableEntry
+	logger  lager.Logger
 }
 
 func NewRoutingTableEntry(backends []BackendServerInfo) RoutingTableEntry {
@@ -57,11 +56,10 @@ func NewRoutingTableEntry(backends []BackendServerInfo) RoutingTableEntry {
 	return routingTableEntry
 }
 
-func NewRoutingTable(bindAddress string, logger lager.Logger) RoutingTable {
+func NewRoutingTable(logger lager.Logger) RoutingTable {
 	return RoutingTable{
-		BindAddress: bindAddress,
-		Entries:     make(map[RoutingKey]RoutingTableEntry),
-		logger:      logger.Session("routing-table"),
+		Entries: make(map[RoutingKey]RoutingTableEntry),
+		logger:  logger.Session("routing-table"),
 	}
 }
 

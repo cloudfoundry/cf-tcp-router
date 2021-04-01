@@ -32,11 +32,10 @@ type updater struct {
 	lock             *sync.Mutex
 	klock            clock.Clock
 	defaultTTL       int
-	bindAddress      string
 }
 
 func NewUpdater(logger lager.Logger, routingTable *models.RoutingTable, configurer configurer.RouterConfigurer,
-	routingAPIClient routing_api.Client, uaaClient uaaclient.Client, klock clock.Clock, defaultTTL int, bindAddress string) Updater {
+	routingAPIClient routing_api.Client, uaaClient uaaclient.Client, klock clock.Clock, defaultTTL int) Updater {
 	return &updater{
 		logger:           logger,
 		routingTable:     routingTable,
@@ -48,7 +47,6 @@ func NewUpdater(logger lager.Logger, routingTable *models.RoutingTable, configur
 		cachedEvents:     nil,
 		klock:            klock,
 		defaultTTL:       defaultTTL,
-		bindAddress:      bindAddress,
 	}
 }
 
@@ -114,7 +112,7 @@ func (u *updater) Sync() {
 	logger.Debug("fetched-tcp-routes", lager.Data{"num-routes": len(tcpRouteMappings)})
 
 	if err == nil {
-		freshRoutingTable := models.NewRoutingTable(u.bindAddress, logger)
+		freshRoutingTable := models.NewRoutingTable(logger)
 
 		for _, routeMapping := range tcpRouteMappings {
 			routingKey, backendServerInfo := u.toRoutingTableEntry(logger, routeMapping)

@@ -2,6 +2,7 @@ package testrunner
 
 import (
 	"os/exec"
+	"strconv"
 	"time"
 
 	"github.com/tedsuo/ifrit/ginkgomon"
@@ -12,6 +13,7 @@ type Args struct {
 	BaseLoadBalancerConfigFilePath string
 	LoadBalancerConfigFilePath     string
 	ConfigFilePath                 string
+	RoutingGroupCheckExit          bool
 }
 
 func (args Args) ArgSlice() []string {
@@ -23,6 +25,7 @@ func (args Args) ArgSlice() []string {
 		"-tokenFetchRetryInterval", "1s",
 		"-staleRouteCheckInterval", "5s",
 		"-logLevel=debug",
+		"-routingGroupCheckExit=" + strconv.FormatBool(args.RoutingGroupCheckExit),
 	}
 }
 

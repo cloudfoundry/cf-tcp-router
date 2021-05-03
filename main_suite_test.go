@@ -248,8 +248,9 @@ func getRouterGroupGuid(routingApiClient routing_api.Client) string {
 	return routerGroups[0].Guid
 }
 
-func generateTCPRouterConfigFile(oauthServerPort int, uaaCACertsPath string, routingApiAuthDisabled bool) string {
+func generateTCPRouterConfigFile(oauthServerPort int, uaaCACertsPath string, routingApiAuthDisabled bool, reserved_routing_ports ...int) string {
 	tcpRouterConfig := config.Config{
+		ReservedSystemComponentPorts: reserved_routing_ports,
 		OAuth: config.OAuthConfig{
 			TokenEndpoint:     "127.0.0.1",
 			SkipSSLValidation: false,

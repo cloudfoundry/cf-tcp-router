@@ -27,10 +27,11 @@ type OAuthConfig struct {
 }
 
 type Config struct {
-	OAuth             OAuthConfig      `yaml:"oauth"`
-	RoutingAPI        RoutingAPIConfig `yaml:"routing_api"`
-	HaProxyPidFile    string           `yaml:"haproxy_pid_file"`
-	IsolationSegments []string         `yaml:"isolation_segments"`
+	OAuth                        OAuthConfig      `yaml:"oauth"`
+	RoutingAPI                   RoutingAPIConfig `yaml:"routing_api"`
+	HaProxyPidFile               string           `yaml:"haproxy_pid_file"`
+	IsolationSegments            []string         `yaml:"isolation_segments"`
+	ReservedSystemComponentPorts []int            `yaml:"reserved_system_component_ports"`
 }
 
 func New(path string) (*Config, error) {

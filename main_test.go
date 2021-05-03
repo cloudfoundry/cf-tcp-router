@@ -144,7 +144,7 @@ var _ = Describe("Main", func() {
 			server = routingApiServer(logger)
 			routerGroupGuid = getRouterGroupGuid(routingApiClient)
 			oauthServerPort := getServerPort(oauthServer.URL())
-			configFile := generateTCPRouterConfigFile(oauthServerPort, uaaCAPath, false)
+			configFile := generateTCPRouterConfigFile(oauthServerPort, uaaCAPath, false, 1020)
 			tcpRouterArgs := testrunner.Args{
 				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
 				LoadBalancerConfigFilePath:     haproxyConfigFile,
@@ -206,6 +206,62 @@ var _ = Describe("Main", func() {
 			verifyHaProxyConfigContent(haproxyConfigFile, newServerConfigEntry, false)
 		})
 
+		It("Confirms when there are no conflicting ports", func() {
+			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("router-group-port-checker-success"))
+		})
+	})
+
+	Context("when systemComponentPorts conflict", func() {
+		BeforeEach(func() {
+			oauthServer = oAuthServer(logger, uaaServCert)
+			server = routingApiServer(logger)
+			routerGroupGuid = getRouterGroupGuid(routingApiClient)
+			oauthServerPort := getServerPort(oauthServer.URL())
+			configFile := generateTCPRouterConfigFile(oauthServerPort, uaaCAPath, false, 1040)
+			tcpRouterArgs := testrunner.Args{
+				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
+				LoadBalancerConfigFilePath:     haproxyConfigFile,
+				ConfigFilePath:                 configFile,
+				RoutingGroupCheckExit:          true,
+			}
+
+			var err error
+			allOutput := logger.Buffer()
+			runner := testrunner.New(tcpRouterPath, tcpRouterArgs)
+			session, err = gexec.Start(runner.Command, allOutput, allOutput)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("Confirms when routing groups don't allow conflicting ports and exits", func() {
+			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("The reserved ports for router group \\'default-tcp\\' contains the following reserved system component port\\(s\\): \\'1040\\'. Please update your router group accordingly."))
+			Eventually(session.Exited).Should(BeClosed())
+		})
+	})
+
+	Context("when systemComponentPorts conflict, but no fail flag is used", func() {
+		BeforeEach(func() {
+			oauthServer = oAuthServer(logger, uaaServCert)
+			server = routingApiServer(logger)
+			routerGroupGuid = getRouterGroupGuid(routingApiClient)
+			oauthServerPort := getServerPort(oauthServer.URL())
+			configFile := generateTCPRouterConfigFile(oauthServerPort, uaaCAPath, false, 1040)
+			tcpRouterArgs := testrunner.Args{
+				BaseLoadBalancerConfigFilePath: haproxyBaseConfigFile,
+				LoadBalancerConfigFilePath:     haproxyConfigFile,
+				ConfigFilePath:                 configFile,
+			}
+
+			var err error
+			allOutput := logger.Buffer()
+			runner := testrunner.New(tcpRouterPath, tcpRouterArgs)
+			session, err = gexec.Start(runner.Command, allOutput, allOutput)
+			Expect(err).ToNot(HaveOccurred())
+		})
+
+		It("Confirms when routing groups don't allow conflicting ports, but doesn't exit", func() {
+			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("The reserved ports for router group \\'default-tcp\\' contains the following reserved system component port\\(s\\): \\'1040\\'. Please update your router group accordingly."))
+			Eventually(session.Exited).ShouldNot(BeClosed())
+		})
 	})
 
 	Context("Oauth server is down", func() {
@@ -278,6 +334,7 @@ var _ = Describe("Main", func() {
 		})
 
 		It("keeps trying to connect and doesn't blow up", func() {
+			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("router-group-port-checker-error"))
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Subscribing-to-routing-api-event-stream"))
 			Consistently(session.Exited).ShouldNot(BeClosed())
 			Consistently(session.Out, 5*time.Second).ShouldNot(gbytes.Say("Successfully-subscribed-to-routing-api-event-stream"))

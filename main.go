@@ -17,6 +17,7 @@ import (
 	"code.cloudfoundry.org/cf-tcp-router/metrics_reporter/haproxy_client"
 	"code.cloudfoundry.org/cf-tcp-router/models"
 	"code.cloudfoundry.org/cf-tcp-router/monitor"
+	"code.cloudfoundry.org/cf-tcp-router/router_group_port_checker"
 	"code.cloudfoundry.org/cf-tcp-router/routing_table"
 	"code.cloudfoundry.org/cf-tcp-router/syncer"
 	"code.cloudfoundry.org/cf-tcp-router/watcher"
@@ -73,6 +74,12 @@ var configFile = flag.String(
 	"config",
 	"/var/vcap/jobs/tcp_router/config/tcp_router.yml",
 	"The Router configurer yml config.",
+)
+
+var routingGroupCheckExit = flag.Bool(
+	"routingGroupCheckExit",
+	false,
+	"Whether to exit if routing groups have conflicting ports",
 )
 
 var haproxyReloader = flag.String(
@@ -216,6 +223,8 @@ func main() {
 	routingAPIClient = routing_api.NewClientWithTLSConfig(routingAPIAddress, tlsConfig)
 
 	logger.Debug("creating-routing-api-client", lager.Data{"api-location": routingAPIAddress})
+	portChecker := router_group_port_checker.NewPortChecker(routingAPIClient, uaaClient)
+	checkPorts(logger, portChecker, cfg)
 
 	updater := routing_table.NewUpdater(logger, &routingTable, configurer, routingAPIClient, uaaClient, clock, int(defaultRouteExpiry.Seconds()))
 
@@ -257,6 +266,23 @@ func main() {
 	}
 
 	logger.Info("exited")
+}
+
+func checkPorts(logger lager.Logger, portChecker router_group_port_checker.PortChecker, config *config.Config) {
+	shouldExit, err := portChecker.Check(config.ReservedSystemComponentPorts)
+	if err != nil {
+		if shouldExit && *routingGroupCheckExit {
+			logger.Error("router-group-port-checker-failure: Exiting now. ", err)
+			os.Exit(1)
+		} else if shouldExit && (*routingGroupCheckExit == false) {
+			logger.Error("router-group-port-checker-failure: WARNING! In the future this will cause tcp_router to not start.", err)
+		} else {
+			// this would occur if routing-api or uaa were unreachable
+			logger.Error("router-group-port-checker-error:", err)
+		}
+	} else {
+		logger.Info("router-group-port-checker-success: No conflicting router group ports.")
+	}
 }
 
 func startRoutePruner(ticker clock.Ticker, updater routing_table.Updater) {

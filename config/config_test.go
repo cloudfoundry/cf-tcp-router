@@ -28,8 +28,9 @@ var _ = Describe("Config", func() {
 					ClientPrivateKeyPath:  "/b/private_key",
 					CACertificatePath:     "/c/ca_cert",
 				},
-				HaProxyPidFile:    "/path/to/pid/file",
-				IsolationSegments: []string{"foo-iso-seg"},
+				HaProxyPidFile:               "/path/to/pid/file",
+				IsolationSegments:            []string{"foo-iso-seg"},
+				ReservedSystemComponentPorts: []int{8080, 8081},
 			}
 			cfg, err := config.New("fixtures/valid_config.yml")
 			Expect(err).NotTo(HaveOccurred())

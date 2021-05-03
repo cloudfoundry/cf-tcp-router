@@ -16,3 +16,4 @@ routing_api:
 
 haproxy_pid_file: /path/to/pid/file
 isolation_segments: ["foo-iso-seg"]
+reserved_system_component_ports: [8080, 8081]

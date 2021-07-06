@@ -2,8 +2,17 @@
 
 set -e -u -x
 
-if ! [ -x "$(command -v ginkgo)" ]; then
-    go get -u github.com/onsi/ginkgo/ginkgo
+if [ "${RELEASE_DIR:-}" = "" ]; then
+  echo "RELEASE_DIR empty or not set."
+  exit 1
 fi
 
-ginkgo -r  -p -failOnPending -randomizeAllSpecs -race "$@"
+echo "RELEASE_DIR=$RELEASE_DIR"
+
+export BIN_DIR="$RELEASE_DIR/bin"
+
+pushd $RELEASE_DIR/src/code.cloudfoundry.org
+ go build -o "$BIN_DIR/ginkgo" github.com/onsi/ginkgo/ginkgo
+popd
+
+$BIN_DIR/ginkgo -r  -p -failOnPending -randomizeAllSpecs -race "$@"

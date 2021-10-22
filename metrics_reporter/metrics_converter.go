@@ -23,9 +23,11 @@ func Convert(proxyStats haproxy_client.HaproxyStats) *MetricsReport {
 		totalQueueTimeMs             uint64
 		totalConnectTimeMs           uint64
 		proxyStatsMap                map[models.RoutingKey]ProxyStats
+		routeErrorMap                map[string]uint64
 	)
 
 	proxyStatsMap = map[models.RoutingKey]ProxyStats{}
+	routeErrorMap = map[string]uint64{}
 
 	length := uint64(len(proxyStats))
 
@@ -35,7 +37,9 @@ func Convert(proxyStats haproxy_client.HaproxyStats) *MetricsReport {
 		totalConnectTimeMs += proxyStat.AverageConnectTimeMs
 		totalQueueTimeMs += proxyStat.AverageQueueTimeMs
 
+		routeErrorMap[proxyStat.ProxyName] = proxyStat.ErrorConnecting
 		populateProxyStats(proxyStat, proxyStatsMap)
+
 	}
 	averageQueueTimeMs = totalQueueTimeMs / length
 	averageConnectTimeMs = totalConnectTimeMs / length
@@ -46,6 +50,7 @@ func Convert(proxyStats haproxy_client.HaproxyStats) *MetricsReport {
 		AverageQueueTimeMs:           averageQueueTimeMs,
 		AverageConnectTimeMs:         averageConnectTimeMs,
 		ProxyMetrics:                 proxyStatsMap,
+		RouteErrorMap:                routeErrorMap,
 	}
 }
 

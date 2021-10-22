@@ -37,7 +37,7 @@ func Convert(proxyStats haproxy_client.HaproxyStats) *MetricsReport {
 		totalConnectTimeMs += proxyStat.AverageConnectTimeMs
 		totalQueueTimeMs += proxyStat.AverageQueueTimeMs
 
-		routeErrorMap[proxyStat.ProxyName] = proxyStat.ErrorConnecting
+		routeErrorMap[proxyStat.ProxyName] += proxyStat.ErrorConnecting
 		populateProxyStats(proxyStat, proxyStatsMap)
 
 	}

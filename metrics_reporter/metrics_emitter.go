@@ -8,6 +8,8 @@ var (
 
 	connectionTime  = ProxyDurationMs("ConnectionTime")
 	currentSessions = ProxyValue("CurrentSessions")
+
+	proxyErrors = ProxyValue("ProxyConnectionErrors")
 )
 
 type MetricsEmitter interface {
@@ -29,6 +31,9 @@ func (e *metricsEmitter) Emit(r *MetricsReport) {
 		for k, v := range r.ProxyMetrics {
 			connectionTime.Send(k.String(), v.ConnectionTime)
 			currentSessions.Send(k.String(), v.CurrentSessions)
+		}
+		for k, v := range r.RouteErrorMap {
+			proxyErrors.Send(k, v)
 		}
 	}
 }

@@ -15,6 +15,11 @@ type MetricsReport struct {
 	AverageQueueTimeMs           uint64
 	AverageConnectTimeMs         uint64
 	ProxyMetrics                 map[models.RoutingKey]ProxyStats
+	RouteErrorMap                map[string]uint64
+}
+
+type RouteErrorReport struct {
+	RouteErrors map[models.RoutingKey]uint64
 }
 
 type ProxyStats struct {

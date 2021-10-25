@@ -31,7 +31,7 @@ var _ = Describe("MetricsEmitter", func() {
 			BeforeEach(func() {
 				metricsReport = metrics_reporter.MetricsReport{
 					TotalCurrentQueuedRequests:   10,
-					TotalBackendConnectionErrors: 1,
+					TotalBackendConnectionErrors: 3,
 					AverageQueueTimeMs:           100,
 					AverageConnectTimeMs:         1000,
 					ProxyMetrics: map[models.RoutingKey]metrics_reporter.ProxyStats{
@@ -43,6 +43,10 @@ var _ = Describe("MetricsEmitter", func() {
 							ConnectionTime:  100,
 							CurrentSessions: 500,
 						},
+					},
+					RouteErrorMap: map[string]uint64{
+						"proxy1": 1,
+						"proxy2": 2,
 					},
 				}
 			})
@@ -60,7 +64,7 @@ var _ = Describe("MetricsEmitter", func() {
 			It("emits TotalBackendConnectionErrors", func() {
 				Eventually(func() fake.Metric {
 					return sender.GetValue("TotalBackendConnectionErrors")
-				}).Should(Equal(fake.Metric{Value: float64(1), Unit: "Metric"}))
+				}).Should(Equal(fake.Metric{Value: float64(3), Unit: "Metric"}))
 			})
 
 			It("emits AverageQueueTimeMs", func() {
@@ -92,6 +96,15 @@ var _ = Describe("MetricsEmitter", func() {
 					return sender.GetValue("8000.CurrentSessions")
 				}).Should(Equal(fake.Metric{Value: float64(500), Unit: "Metric"}))
 			})
+
+			It("emits Errors metrics for each proxy", func() {
+				Eventually(func() fake.Metric {
+					return sender.GetValue("proxy1.ProxyConnectionErrors")
+				}).Should(Equal(fake.Metric{Value: float64(1), Unit: "Metric"}))
+				Eventually(func() fake.Metric {
+					return sender.GetValue("proxy2.ProxyConnectionErrors")
+				}).Should(Equal(fake.Metric{Value: float64(2), Unit: "Metric"}))
+			})
 		})
 
 		Context("when nil MetricsReport is passed", func() {
@@ -108,6 +121,9 @@ var _ = Describe("MetricsEmitter", func() {
 				}).Should(Equal(fake.Metric{}))
 				Consistently(func() fake.Metric {
 					return sender.GetValue("AverageConnectTimeMs")
+				}).Should(Equal(fake.Metric{}))
+				Consistently(func() fake.Metric {
+					return sender.GetValue("proxy2.ProxyConnectionErrors")
 				}).Should(Equal(fake.Metric{}))
 			})
 		})

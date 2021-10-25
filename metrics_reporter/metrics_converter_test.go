@@ -34,24 +34,32 @@ var _ = Describe("Metrics Converter", func() {
 						CurrentSessions:      15,
 						AverageSessionTimeMs: 9,
 					},
+					{ProxyName: "fake_pxname2_9001",
+						CurrentQueued:        20,
+						ErrorConnecting:      20,
+						AverageQueueTimeMs:   0,
+						AverageConnectTimeMs: 40,
+						CurrentSessions:      15,
+						AverageSessionTimeMs: 9,
+					},
 				}
 				metrics = metrics_reporter.Convert(stats)
 			})
 
 			It("aggregates CurrentQueued", func() {
-				Expect(metrics.TotalCurrentQueuedRequests).To(Equal(uint64(30)))
+				Expect(metrics.TotalCurrentQueuedRequests).To(Equal(uint64(50)))
 			})
 
 			It("aggregates BackendErrors", func() {
-				Expect(metrics.TotalBackendConnectionErrors).To(Equal(uint64(40)))
+				Expect(metrics.TotalBackendConnectionErrors).To(Equal(uint64(60)))
 			})
 
 			It("aggregates AverageQueueTime", func() {
-				Expect(metrics.AverageQueueTimeMs).To(Equal(uint64(15)))
+				Expect(metrics.AverageQueueTimeMs).To(Equal(uint64(10)))
 			})
 
 			It("aggregates AverageConnectTime", func() {
-				Expect(metrics.AverageConnectTimeMs).To(Equal(uint64(32)))
+				Expect(metrics.AverageConnectTimeMs).To(Equal(uint64(35)))
 			})
 
 			It("gets stats per proxy", func() {
@@ -62,11 +70,16 @@ var _ = Describe("Metrics Converter", func() {
 				}
 				expectedProxyKey2 := models.RoutingKey{Port: 9001}
 				expectedProxyStats2 := metrics_reporter.ProxyStats{
-					ConnectionTime:  40,
-					CurrentSessions: 15,
+					ConnectionTime:  80,
+					CurrentSessions: 30,
 				}
 				Expect(metrics.ProxyMetrics).Should(HaveKeyWithValue(expectedProxyKey1, expectedProxyStats1))
 				Expect(metrics.ProxyMetrics).Should(HaveKeyWithValue(expectedProxyKey2, expectedProxyStats2))
+			})
+
+			It("get error connection stats per proxy", func() {
+				Expect(metrics.RouteErrorMap).Should(HaveKeyWithValue("fake_pxname1_9000", uint64(20)))
+				Expect(metrics.RouteErrorMap).Should(HaveKeyWithValue("fake_pxname2_9001", uint64(40)))
 			})
 		})
 
@@ -91,6 +104,15 @@ var _ = Describe("Metrics Converter", func() {
 						CurrentSessions:      15,
 						AverageSessionTimeMs: 9,
 					},
+					{
+						ProxyName:            "fake_pxname2_9000",
+						CurrentQueued:        20,
+						ErrorConnecting:      20,
+						AverageQueueTimeMs:   0,
+						AverageConnectTimeMs: 40,
+						CurrentSessions:      15,
+						AverageSessionTimeMs: 9,
+					},
 				}
 				metrics = metrics_reporter.Convert(stats)
 			})
@@ -98,8 +120,8 @@ var _ = Describe("Metrics Converter", func() {
 			It("aggregates current session per proxy", func() {
 				expectedProxyKey1 := models.RoutingKey{Port: 9000}
 				expectedProxyStats1 := metrics_reporter.ProxyStats{
-					ConnectionTime:  65,
-					CurrentSessions: 30,
+					ConnectionTime:  105,
+					CurrentSessions: 45,
 				}
 
 				Expect(metrics.ProxyMetrics).Should(HaveKeyWithValue(expectedProxyKey1, expectedProxyStats1))

@@ -28,6 +28,17 @@ var _ = Describe("CommandRunner", func() {
 				Expect(err).ToNot(HaveOccurred())
 				Expect(logger).Should(gbytes.Say("hello test"))
 			})
+			It("logs a useful message", func() {
+				cmdRunner.Run()
+				logs := logger.(*lagertest.TestLogger).Logs()
+				Expect(len(logs)).To(Equal(1))
+				Expect(logs[0].Message).To(Equal("script-runner-test.running-script"))
+				Expect(logs[0].Data).To(Equal(lager.Data{
+					"command": "fixtures/testscript",
+					"output":  "hello test\n",
+					"error":   nil,
+				}))
+			})
 		})
 
 		Context("when the underlying script does not exist", func() {

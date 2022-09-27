@@ -84,11 +84,11 @@ func (h *Configurer) Configure(routingTable models.RoutingTable) error {
 	}
 
 	if h.scriptRunner != nil {
-		h.logger.Info("running-script")
+		h.logger.Info("reloading-haproxy")
 
 		err = h.scriptRunner.Run()
 		if err != nil {
-			h.logger.Error("failed-to-run-script", err)
+			h.logger.Error("failed-to-reload-haproxy", err)
 			return err
 		}
 		h.monitor.StartWatching()

@@ -2,31 +2,32 @@ package router_group_port_checker_test
 
 import (
 	"errors"
+	"time"
 
 	"code.cloudfoundry.org/routing-api/fake_routing_api"
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+	"golang.org/x/oauth2"
 
 	"code.cloudfoundry.org/cf-tcp-router/router_group_port_checker"
 	"code.cloudfoundry.org/routing-api/models"
-	testUaaClient "code.cloudfoundry.org/uaa-go-client/fakes"
-	"code.cloudfoundry.org/uaa-go-client/schema"
+	test_uaa_client "code.cloudfoundry.org/routing-api/uaaclient/fakes"
 )
 
 var _ = Describe("RouterGroupPortChecker", func() {
 	var (
 		fakeRoutingApiClient       *fake_routing_api.FakeClient
-		fakeUaaClient              *testUaaClient.FakeClient
-		token                      *schema.Token
+		fakeTokenFetcher           *test_uaa_client.FakeTokenFetcher
+		token                      *oauth2.Token
 		routerGroup1, routerGroup2 models.RouterGroup
 	)
 	BeforeEach(func() {
 
 		fakeRoutingApiClient = new(fake_routing_api.FakeClient)
-		fakeUaaClient = &testUaaClient.FakeClient{}
-		token = &schema.Token{
+		fakeTokenFetcher = &test_uaa_client.FakeTokenFetcher{}
+		token = &oauth2.Token{
 			AccessToken: "access_token",
-			ExpiresIn:   5,
+			Expiry:      time.Now().Add(5 * time.Second),
 		}
 		routerGroup1 = models.RouterGroup{
 			Name:            "router-group-1",
@@ -41,9 +42,9 @@ var _ = Describe("RouterGroupPortChecker", func() {
 
 	})
 	It("doesn't return an error when there is no overlaps and should not exit", func() {
-		fakeUaaClient.FetchTokenReturns(token, nil)
+		fakeTokenFetcher.FetchTokenReturns(token, nil)
 		fakeRoutingApiClient.RouterGroupsReturns([]models.RouterGroup{routerGroup1}, nil)
-		checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeUaaClient)
+		checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeTokenFetcher)
 		shouldExit, err := checker.Check([]int{2048})
 
 		Expect(fakeRoutingApiClient.SetTokenArgsForCall(0)).To(Equal(token.AccessToken))
@@ -52,9 +53,9 @@ var _ = Describe("RouterGroupPortChecker", func() {
 	})
 
 	It("Returns an error when there is an overlap and should exit", func() {
-		fakeUaaClient.FetchTokenReturns(token, nil)
+		fakeTokenFetcher.FetchTokenReturns(token, nil)
 		fakeRoutingApiClient.RouterGroupsReturns([]models.RouterGroup{routerGroup1}, nil)
-		checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeUaaClient)
+		checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeTokenFetcher)
 		shouldExit, err := checker.Check([]int{1026})
 
 		Expect(fakeRoutingApiClient.SetTokenArgsForCall(0)).To(Equal(token.AccessToken))
@@ -65,9 +66,9 @@ var _ = Describe("RouterGroupPortChecker", func() {
 	})
 
 	It("Returns multiple errors when there is multiple overlaps and should exit", func() {
-		fakeUaaClient.FetchTokenReturns(token, nil)
+		fakeTokenFetcher.FetchTokenReturns(token, nil)
 		fakeRoutingApiClient.RouterGroupsReturns([]models.RouterGroup{routerGroup1, routerGroup2}, nil)
-		checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeUaaClient)
+		checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeTokenFetcher)
 		shouldExit, err := checker.Check([]int{1026, 1027, 2001, 2002})
 
 		Expect(fakeRoutingApiClient.SetTokenArgsForCall(0)).To(Equal(token.AccessToken))
@@ -82,21 +83,21 @@ var _ = Describe("RouterGroupPortChecker", func() {
 	Context("when routing api requires retries", func() {
 		Context("but eventually works", func() {
 			BeforeEach(func() {
-				fakeUaaClient.FetchTokenReturns(token, nil)
+				fakeTokenFetcher.FetchTokenReturns(token, nil)
 				fakeRoutingApiClient.RouterGroupsReturnsOnCall(0, []models.RouterGroup{}, errors.New("oh no!"))
 				fakeRoutingApiClient.RouterGroupsReturnsOnCall(1, []models.RouterGroup{}, errors.New("oh no!"))
 				fakeRoutingApiClient.RouterGroupsReturnsOnCall(2, []models.RouterGroup{routerGroup1}, nil)
 			})
 
 			It("doesn't error when there is no overlap and should not exit", func() {
-				checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeUaaClient)
+				checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeTokenFetcher)
 				shouldExit, err := checker.Check([]int{2048})
 				Expect(err).To(BeNil())
 				Expect(shouldExit).To(BeFalse())
 			})
 
 			It("returns an error when there is an overlap and should exit", func() {
-				checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeUaaClient)
+				checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeTokenFetcher)
 				shouldExit, err := checker.Check([]int{1026})
 				msg := "The reserved ports for router group 'router-group-1' contains the following reserved system component port(s): '1026'. Please update your router group accordingly."
 				Expect(err).To(MatchError(msg))
@@ -106,12 +107,12 @@ var _ = Describe("RouterGroupPortChecker", func() {
 
 		Context("and always fails", func() {
 			BeforeEach(func() {
-				fakeUaaClient.FetchTokenReturns(token, nil)
+				fakeTokenFetcher.FetchTokenReturns(token, nil)
 				fakeRoutingApiClient.RouterGroupsReturns([]models.RouterGroup{}, errors.New("oh no!"))
 			})
 
 			It("returns an error and should not exit", func() {
-				checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeUaaClient)
+				checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeTokenFetcher)
 				shouldExit, err := checker.Check([]int{})
 				Expect(err).To(MatchError("error-fetching-routing-groups: \"oh no!\""))
 				Expect(shouldExit).To(BeFalse())
@@ -122,21 +123,21 @@ var _ = Describe("RouterGroupPortChecker", func() {
 	Context("when fetch token requires retries", func() {
 		Context("but eventually works", func() {
 			BeforeEach(func() {
-				fakeUaaClient.FetchTokenReturnsOnCall(0, nil, errors.New("oh no!"))
-				fakeUaaClient.FetchTokenReturnsOnCall(1, nil, errors.New("oh no!"))
-				fakeUaaClient.FetchTokenReturnsOnCall(2, token, nil)
+				fakeTokenFetcher.FetchTokenReturnsOnCall(0, nil, errors.New("oh no!"))
+				fakeTokenFetcher.FetchTokenReturnsOnCall(1, nil, errors.New("oh no!"))
+				fakeTokenFetcher.FetchTokenReturnsOnCall(2, token, nil)
 				fakeRoutingApiClient.RouterGroupsReturns([]models.RouterGroup{routerGroup1}, nil)
 			})
 
 			It("doesn't error when there is no overlap and should not exit", func() {
-				checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeUaaClient)
+				checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeTokenFetcher)
 				shouldExit, err := checker.Check([]int{2048})
 				Expect(err).To(BeNil())
 				Expect(shouldExit).To(BeFalse())
 			})
 
 			It("returns an error when there is an overlap and should exit", func() {
-				checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeUaaClient)
+				checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeTokenFetcher)
 				shouldExit, err := checker.Check([]int{1026})
 				msg := "The reserved ports for router group 'router-group-1' contains the following reserved system component port(s): '1026'. Please update your router group accordingly."
 				Expect(err).To(MatchError(msg))
@@ -145,10 +146,10 @@ var _ = Describe("RouterGroupPortChecker", func() {
 		})
 		Context("and always fails", func() {
 			BeforeEach(func() {
-				fakeUaaClient.FetchTokenReturns(nil, errors.New("oh no!"))
+				fakeTokenFetcher.FetchTokenReturns(nil, errors.New("oh no!"))
 			})
 			It("returns an error and should not exit", func() {
-				checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeUaaClient)
+				checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeTokenFetcher)
 				shouldExit, err := checker.Check([]int{})
 				Expect(err).To(MatchError("error-fetching-uaa-token: \"oh no!\""))
 				Expect(shouldExit).To(BeFalse())

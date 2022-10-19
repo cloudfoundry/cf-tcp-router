@@ -71,6 +71,7 @@ var _ = Describe("Main", func() {
 
 		server.RouteToHandler("POST", "/oauth/token",
 			func(w http.ResponseWriter, req *http.Request) {
+				w.Header().Add("Content-Type", "application/json")
 				jsonBytes := []byte(`{"access_token":"some-token", "expires_in":10}`)
 				w.Write(jsonBytes)
 			},
@@ -310,7 +311,7 @@ var _ = Describe("Main", func() {
 			})
 
 			It("does not call oauth server to get auth token and starts SSE connection with routing api", func() {
-				Eventually(session.Out, 5*time.Second).Should(gbytes.Say("creating-noop-uaa-client"))
+				Eventually(session.Out, 5*time.Second).Should(gbytes.Say("using-noop-token-fetcher"))
 				Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Successfully-subscribed-to-routing-api-event-stream"))
 			})
 		})

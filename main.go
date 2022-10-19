@@ -26,9 +26,8 @@ import (
 	"code.cloudfoundry.org/lager"
 	"code.cloudfoundry.org/lager/lagerflags"
 	routing_api "code.cloudfoundry.org/routing-api"
+	"code.cloudfoundry.org/routing-api/uaaclient"
 	"code.cloudfoundry.org/tlsconfig"
-	uaaclient "code.cloudfoundry.org/uaa-go-client"
-	uaaconfig "code.cloudfoundry.org/uaa-go-client/config"
 	"github.com/cloudfoundry/dropsonde"
 	"github.com/tedsuo/ifrit"
 	"github.com/tedsuo/ifrit/grouper"
@@ -198,10 +197,22 @@ func main() {
 		os.Exit(1)
 	}
 
-	uaaClient := newUaaClient(logger, cfg, clock)
+	uaaConfig := uaaclient.Config{
+		Port:              cfg.OAuth.Port,
+		SkipSSLValidation: cfg.OAuth.SkipSSLValidation,
+		ClientName:        cfg.OAuth.ClientName,
+		ClientSecret:      cfg.OAuth.ClientSecret,
+		CACerts:           cfg.OAuth.CACerts,
+		TokenEndpoint:     cfg.OAuth.TokenEndpoint,
+	}
+
+	uaaTokenFetcher, err := uaaclient.NewTokenFetcher(cfg.RoutingAPI.AuthDisabled, uaaConfig, clock, uint(*tokenFetchMaxRetries), *tokenFetchRetryInterval, int64(*tokenFetchExpirationBufferTime), logger)
+	if err != nil {
+		logger.Fatal("initialize-token-fetcher", err)
+	}
 
 	// Check UAA connectivity
-	_, err = uaaClient.FetchKey()
+	_, err = uaaTokenFetcher.FetchKey()
 	if err != nil {
 		logger.Error("failed-connecting-to-uaa", err)
 		os.Exit(1)
@@ -223,10 +234,10 @@ func main() {
 	routingAPIClient = routing_api.NewClientWithTLSConfig(routingAPIAddress, tlsConfig)
 
 	logger.Debug("creating-routing-api-client", lager.Data{"api-location": routingAPIAddress})
-	portChecker := router_group_port_checker.NewPortChecker(routingAPIClient, uaaClient)
+	portChecker := router_group_port_checker.NewPortChecker(routingAPIClient, uaaTokenFetcher)
 	checkPorts(logger, portChecker, cfg)
 
-	updater := routing_table.NewUpdater(logger, &routingTable, configurer, routingAPIClient, uaaClient, clock, int(defaultRouteExpiry.Seconds()))
+	updater := routing_table.NewUpdater(logger, &routingTable, configurer, routingAPIClient, uaaTokenFetcher, clock, int(defaultRouteExpiry.Seconds()))
 
 	ticker := clock.NewTicker(*staleRouteCheckInterval)
 
@@ -234,7 +245,7 @@ func main() {
 
 	syncChannel := make(chan struct{})
 	syncRunner := syncer.New(clock, *syncInterval, syncChannel, logger)
-	watcher := watcher.New(routingAPIClient, updater, uaaClient, *subscriptionRetryInterval, syncChannel, logger)
+	watcher := watcher.New(routingAPIClient, updater, uaaTokenFetcher, *subscriptionRetryInterval, syncChannel, logger)
 
 	haproxyClient := haproxy_client.NewClient(logger, *tcpLoadBalancerStatsUnixSocket, statsConnectionTimeout)
 	metricsEmitter := metrics_reporter.NewMetricsEmitter()
@@ -292,38 +303,6 @@ func startRoutePruner(ticker clock.Ticker, updater routing_table.Updater) {
 			updater.PruneStaleRoutes()
 		}
 	}
-}
-
-func newUaaClient(logger lager.Logger, c *config.Config, klok clock.Clock) uaaclient.Client {
-	if c.RoutingAPI.AuthDisabled {
-		logger.Debug("creating-noop-uaa-client")
-		client := uaaclient.NewNoOpUaaClient()
-		return client
-	}
-	logger.Debug("creating-uaa-client")
-
-	if c.OAuth.Port == -1 {
-		logger.Fatal("tls-not-enabled", errors.New("TcpRouter requires to communicate with UAA over TLS"), lager.Data{"token-endpoint": c.OAuth.TokenEndpoint, "port": c.OAuth.Port})
-	}
-
-	tokenURL := fmt.Sprintf("https://%s:%d", c.OAuth.TokenEndpoint, c.OAuth.Port)
-
-	cfg := &uaaconfig.Config{
-		UaaEndpoint:           tokenURL,
-		SkipVerification:      c.OAuth.SkipSSLValidation,
-		ClientName:            c.OAuth.ClientName,
-		ClientSecret:          c.OAuth.ClientSecret,
-		MaxNumberOfRetries:    uint32(*tokenFetchMaxRetries),
-		RetryInterval:         *tokenFetchRetryInterval,
-		ExpirationBufferInSec: int64(*tokenFetchExpirationBufferTime),
-		CACerts:               c.OAuth.CACerts,
-	}
-
-	uaaClient, err := uaaclient.NewClient(logger, cfg, klok)
-	if err != nil {
-		logger.Fatal("initialize-token-fetcher-error", err)
-	}
-	return uaaClient
 }
 
 func initializeDropsonde(logger lager.Logger) {

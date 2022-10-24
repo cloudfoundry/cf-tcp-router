@@ -1,6 +1,7 @@
 package routing_table
 
 import (
+	"context"
 	"errors"
 	"sync"
 
@@ -10,7 +11,7 @@ import (
 	"code.cloudfoundry.org/lager"
 	routing_api "code.cloudfoundry.org/routing-api"
 	apimodels "code.cloudfoundry.org/routing-api/models"
-	uaaclient "code.cloudfoundry.org/uaa-go-client"
+	"code.cloudfoundry.org/routing-api/uaaclient"
 )
 
 //go:generate counterfeiter -o fakes/fake_updater.go . Updater
@@ -27,7 +28,7 @@ type updater struct {
 	configurer       configurer.RouterConfigurer
 	syncing          bool
 	routingAPIClient routing_api.Client
-	uaaClient        uaaclient.Client
+	uaaTokenFetcher  uaaclient.TokenFetcher
 	cachedEvents     []routing_api.TcpEvent
 	lock             *sync.Mutex
 	klock            clock.Clock
@@ -35,7 +36,7 @@ type updater struct {
 }
 
 func NewUpdater(logger lager.Logger, routingTable *models.RoutingTable, configurer configurer.RouterConfigurer,
-	routingAPIClient routing_api.Client, uaaClient uaaclient.Client, klock clock.Clock, defaultTTL int) Updater {
+	routingAPIClient routing_api.Client, uaaTokenFetcher uaaclient.TokenFetcher, klock clock.Clock, defaultTTL int) Updater {
 	return &updater{
 		logger:           logger,
 		routingTable:     routingTable,
@@ -43,7 +44,7 @@ func NewUpdater(logger lager.Logger, routingTable *models.RoutingTable, configur
 		lock:             new(sync.Mutex),
 		syncing:          false,
 		routingAPIClient: routingAPIClient,
-		uaaClient:        uaaClient,
+		uaaTokenFetcher:  uaaTokenFetcher,
 		cachedEvents:     nil,
 		klock:            klock,
 		defaultTTL:       defaultTTL,
@@ -90,7 +91,7 @@ func (u *updater) Sync() {
 	var err error
 	var tcpRouteMappings []apimodels.TcpRouteMapping
 	for count := 0; count < 2; count++ {
-		token, tokenErr := u.uaaClient.FetchToken(!useCachedToken)
+		token, tokenErr := u.uaaTokenFetcher.FetchToken(context.Background(), !useCachedToken)
 		if tokenErr != nil {
 			logger.Error("error-fetching-token", tokenErr)
 			return

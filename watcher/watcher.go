@@ -1,6 +1,7 @@
 package watcher
 
 import (
+	"context"
 	"os"
 	"sync/atomic"
 	"time"
@@ -8,13 +9,13 @@ import (
 	"code.cloudfoundry.org/cf-tcp-router/routing_table"
 	"code.cloudfoundry.org/lager"
 	routing_api "code.cloudfoundry.org/routing-api"
-	uaaclient "code.cloudfoundry.org/uaa-go-client"
+	"code.cloudfoundry.org/routing-api/uaaclient"
 )
 
 type Watcher struct {
 	routingAPIClient          routing_api.Client
 	updater                   routing_table.Updater
-	uaaClient                 uaaclient.Client
+	uaaTokenFetcher           uaaclient.TokenFetcher
 	subscriptionRetryInterval int
 	syncChannel               chan struct{}
 	logger                    lager.Logger
@@ -23,7 +24,7 @@ type Watcher struct {
 func New(
 	routingAPIClient routing_api.Client,
 	updater routing_table.Updater,
-	uaaClient uaaclient.Client,
+	uaaTokenFetcher uaaclient.TokenFetcher,
 	subscriptionRetryInterval int,
 	syncChannel chan struct{},
 	logger lager.Logger,
@@ -31,7 +32,7 @@ func New(
 	return &Watcher{
 		routingAPIClient:          routingAPIClient,
 		updater:                   updater,
-		uaaClient:                 uaaClient,
+		uaaTokenFetcher:           uaaTokenFetcher,
 		subscriptionRetryInterval: subscriptionRetryInterval,
 		syncChannel:               syncChannel,
 		logger:                    logger.Session("watcher"),
@@ -54,7 +55,7 @@ func (watcher *Watcher) Run(signals <-chan os.Signal, ready chan<- struct{}) err
 			if atomic.LoadInt32(&stopEventSource) == 1 {
 				return
 			}
-			token, err := watcher.uaaClient.FetchToken(!canUseCachedToken)
+			token, err := watcher.uaaTokenFetcher.FetchToken(context.Background(), !canUseCachedToken)
 			if err != nil {
 				watcher.logger.Error("error-fetching-token", err)
 				time.Sleep(time.Duration(watcher.subscriptionRetryInterval) * time.Second)

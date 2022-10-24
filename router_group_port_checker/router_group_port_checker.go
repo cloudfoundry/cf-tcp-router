@@ -1,25 +1,27 @@
 package router_group_port_checker
 
 import (
-	routing_api "code.cloudfoundry.org/routing-api"
-	"code.cloudfoundry.org/routing-api/models"
-	uaaclient "code.cloudfoundry.org/uaa-go-client"
-	"code.cloudfoundry.org/uaa-go-client/schema"
+	"context"
 	"errors"
 	"fmt"
 	"strconv"
 	"strings"
+
+	routing_api "code.cloudfoundry.org/routing-api"
+	"code.cloudfoundry.org/routing-api/models"
+	"code.cloudfoundry.org/routing-api/uaaclient"
+	"golang.org/x/oauth2"
 )
 
 type PortChecker struct {
 	routingAPIClient routing_api.Client
-	uaaClient        uaaclient.Client
+	uaaTokenFetcher  uaaclient.TokenFetcher
 }
 
-func NewPortChecker(routingAPIClient routing_api.Client, uaaClient uaaclient.Client) PortChecker {
+func NewPortChecker(routingAPIClient routing_api.Client, uaaTokenFetcher uaaclient.TokenFetcher) PortChecker {
 	return PortChecker{
 		routingAPIClient: routingAPIClient,
-		uaaClient:        uaaClient,
+		uaaTokenFetcher:  uaaTokenFetcher,
 	}
 }
 
@@ -42,8 +44,8 @@ func (pc *PortChecker) getRouterGroups() ([]models.RouterGroup, error) {
 	numRetries := 3
 
 	for i := 0; i < numRetries; i++ {
-		var token *schema.Token
-		token, err = pc.uaaClient.FetchToken(false)
+		var token *oauth2.Token
+		token, err = pc.uaaTokenFetcher.FetchToken(context.Background(), false)
 		if err != nil {
 			continue
 		}

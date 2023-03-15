@@ -607,6 +607,112 @@ var _ = Describe("Updater", func() {
 					)
 					verifyRoutingTableEntry(models.RoutingKey{Port: externalPort2}, expectedRoutingTableEntry2)
 				})
+				Context("when cached events come in during sync", func() {
+					var originalEntries map[models.RoutingKey]models.RoutingTableEntry
+					BeforeEach(func() {
+						// Prepopulate routing table
+						originalEntries = map[models.RoutingKey]models.RoutingTableEntry{
+							{Port: 2222, SniHostname: ""}: {
+								Backends: map[models.BackendServerKey]models.BackendServerDetails{
+									{Address: "some-ip-1", Port: 61000}: {
+										ModificationTag: routing_api_models.ModificationTag{Guid: "guid-1", Index: 0},
+										TTL:             60,
+									},
+									{Address: "some-ip-2", Port: 61001}: {
+										ModificationTag: routing_api_models.ModificationTag{Guid: "guid-1", Index: 0},
+										TTL:             60,
+									},
+								},
+							},
+							{Port: 2223, SniHostname: ""}: {
+								Backends: map[models.BackendServerKey]models.BackendServerDetails{
+									{Address: "some-ip-3", Port: 60000}: {
+										ModificationTag: routing_api_models.ModificationTag{Guid: "guid-1", Index: 0},
+										TTL:             60,
+									},
+									{Address: "some-ip-4", Port: 60000}: {
+										ModificationTag: routing_api_models.ModificationTag{Guid: "guid-1", Index: 0},
+										TTL:             60,
+									},
+								},
+							},
+						}
+						routingTable.Entries = map[models.RoutingKey]models.RoutingTableEntry{}
+						for k, v := range originalEntries {
+							routingTable.Entries[k] = v
+						}
+					})
+					Context("and the events don't constitute substantive changes", func() {
+						It("does not reload haproxy", func() {
+							// ensure the change hasn't made it to the table
+							targetBackend := routingTable.Entries[models.RoutingKey{Port: externalPort1}].Backends[models.BackendServerKey{Address: "some-ip-22", Port: 61001}]
+							Expect(targetBackend.ModificationTag.Index).To(Equal(uint32(0)))
+
+							// start syncing
+							go invokeSync(doneChannel)
+							Eventually(updater.Syncing).Should(BeTrue())
+							// submit an event while syncing
+							newModificationTag := modificationTag
+							newModificationTag.Increment()
+							tcpEvent = routing_api.TcpEvent{
+								TcpRouteMapping: apimodels.NewTcpRouteMappingWithModificationTag(
+									routerGroupGuid,
+									externalPort1,
+									"some-ip-1",
+									61000,
+									22,
+									routing_api_models.ModificationTag{Guid: "guid-1", Index: 1},
+								),
+								Action: "Upsert",
+							}
+							updater.HandleEvent(tcpEvent)
+							Eventually(logger).Should(gbytes.Say("caching-event"))
+
+							close(syncChannel)
+							Eventually(updater.Syncing).Should(BeFalse())
+							Eventually(doneChannel).Should(BeClosed())
+
+							targetBackend = routingTable.Entries[models.RoutingKey{Port: externalPort1}].Backends[models.BackendServerKey{Address: "some-ip-1", Port: 61000}]
+							Expect(targetBackend.ModificationTag.Index).To(Equal(uint32(1))) // ensure the routing table took the change
+							Expect(fakeConfigurer.ConfigureCallCount()).To(Equal(0))         // ensure it didn't reload haproxy
+						})
+					})
+					Context("and the events modify more than just modification tags", func() {
+						It("reloads haproxy", func() {
+							// ensure the change hasn't made it to the table
+							targetBackend := routingTable.Entries[models.RoutingKey{Port: externalPort1}].Backends[models.BackendServerKey{Address: "some-ip-22", Port: 61001}]
+							Expect(targetBackend).To(Equal(models.BackendServerDetails{}))
+
+							// start syncing
+							newModificationTag := modificationTag
+							newModificationTag.Increment()
+							go invokeSync(doneChannel)
+							Eventually(updater.Syncing).Should(BeTrue())
+							// submit an event while syncing
+							tcpEvent = routing_api.TcpEvent{
+								TcpRouteMapping: apimodels.NewTcpRouteMappingWithModificationTag(
+									routerGroupGuid,
+									externalPort1,
+									"some-ip-22",
+									61001,
+									22,
+									newModificationTag,
+								),
+								Action: "Upsert",
+							}
+							updater.HandleEvent(tcpEvent)
+							Eventually(logger).Should(gbytes.Say("caching-event"))
+
+							close(syncChannel)
+							Eventually(updater.Syncing).Should(BeFalse())
+							Eventually(doneChannel).Should(BeClosed())
+
+							targetBackend = routingTable.Entries[models.RoutingKey{Port: externalPort1}].Backends[models.BackendServerKey{Address: "some-ip-22", Port: 61001}]
+							Expect(targetBackend.ModificationTag.Index).To(Equal(uint32(1))) // ensure the routing table took the change
+							Expect(fakeConfigurer.ConfigureCallCount()).To(Equal(1))         // ensure it did reload haproxy
+						})
+					})
+				})
 			})
 		})
 

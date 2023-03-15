@@ -1,8 +1,9 @@
 package models_test
 
 import (
-	"code.cloudfoundry.org/lager"
 	"time"
+
+	"code.cloudfoundry.org/lager"
 
 	"code.cloudfoundry.org/cf-tcp-router/models"
 	"code.cloudfoundry.org/cf-tcp-router/testutil"
@@ -714,7 +715,7 @@ var _ = Describe("RoutingTable", func() {
 		})
 
 		JustBeforeEach(func() {
-			routingTableEntry.PruneBackends(defaultTTL)
+			routingTableEntry.PruneBackends(defaultTTL, logger)
 		})
 
 		Context("when it has expired backends", func() {

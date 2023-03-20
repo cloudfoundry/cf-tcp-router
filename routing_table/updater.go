@@ -71,8 +71,10 @@ func (u *updater) Sync() {
 	tableChanged := false
 	defer func() {
 		u.lock.Lock()
-		u.applyCachedEvents(logger)
-		if tableChanged || len(u.cachedEvents) > 0 {
+		if u.applyCachedEvents(logger) {
+			tableChanged = true
+		}
+		if tableChanged {
 			_ = u.configurer.Configure(*u.routingTable)
 			logger.Debug("applied-fetched-routes-to-routing-table", lager.Data{"size": u.routingTable.Size()})
 		}
@@ -113,28 +115,37 @@ func (u *updater) Sync() {
 	logger.Debug("fetched-tcp-routes", lager.Data{"num-routes": len(tcpRouteMappings)})
 
 	if err == nil {
-		freshRoutingTable := models.NewRoutingTable(logger)
+		freshRoutingTable := models.NewRoutingTableWithSession(logger, "fresh-routing-table")
 
 		for _, routeMapping := range tcpRouteMappings {
 			routingKey, backendServerInfo := u.toRoutingTableEntry(logger, routeMapping)
 			logger.Debug("creating-routing-table-entry", lager.Data{"key": routingKey, "value": backendServerInfo})
-			tableChanged = u.routingTable.UpsertBackendServerKey(routingKey, backendServerInfo) || tableChanged
+			if u.routingTable.UpsertBackendServerKey(routingKey, backendServerInfo) {
+				tableChanged = true
+				logger.Debug("change-detected-for-endpoint", lager.Data{"key": routingKey, "value": backendServerInfo})
+			}
 			freshRoutingTable.UpsertBackendServerKey(routingKey, backendServerInfo)
 		}
 
 		if freshRoutingTable.Size() != u.routingTable.Size() {
 			tableChanged = true
+			logger.Debug("routing-table-size-discrepency", lager.Data{"old-table-entries": u.routingTable.Size(), "new-table-entries": freshRoutingTable.Size()})
 			u.routingTable.Entries = freshRoutingTable.Entries
 		}
 	}
 }
 
-func (u *updater) applyCachedEvents(logger lager.Logger) {
+func (u *updater) applyCachedEvents(logger lager.Logger) bool {
 	logger.Debug("applying-cached-events", lager.Data{"cache_size": len(u.cachedEvents)})
 	defer logger.Debug("applied-cached-events")
+	tableChanged := false
 	for _, e := range u.cachedEvents {
-		u.handleEvent(logger, e)
+		changeTriggered, _ := u.handleEvent(logger, e)
+		if changeTriggered {
+			tableChanged = true
+		}
 	}
+	return tableChanged
 }
 
 func (u *updater) Syncing() bool {
@@ -151,12 +162,13 @@ func (u *updater) HandleEvent(event routing_api.TcpEvent) error {
 		u.logger.Debug("caching-events")
 		u.cachedEvents = append(u.cachedEvents, event)
 	} else {
-		return u.handleEvent(u.logger, event)
+		_, err := u.handleEvent(u.logger, event)
+		return err
 	}
 	return nil
 }
 
-func (u *updater) handleEvent(l lager.Logger, event routing_api.TcpEvent) error {
+func (u *updater) handleEvent(l lager.Logger, event routing_api.TcpEvent) (bool, error) {
 	logger := l.Session("handle-event", lager.Data{"event": event})
 	logger.Debug("starting")
 	defer logger.Debug("finished")
@@ -168,7 +180,7 @@ func (u *updater) handleEvent(l lager.Logger, event routing_api.TcpEvent) error 
 		return u.handleDelete(logger, event.TcpRouteMapping)
 	default:
 		logger.Info("unknown-event-action")
-		return errors.New("unknown-event-action:" + action)
+		return false, errors.New("unknown-event-action:" + action)
 	}
 }
 
@@ -199,24 +211,26 @@ func (u *updater) toRoutingTableEntry(logger lager.Logger, routeMapping apimodel
 	return routingKey, backendServerInfo
 }
 
-func (u *updater) handleUpsert(logger lager.Logger, routeMapping apimodels.TcpRouteMapping) error {
+func (u *updater) handleUpsert(logger lager.Logger, routeMapping apimodels.TcpRouteMapping) (bool, error) {
 	routingKey, backendServerInfo := u.toRoutingTableEntry(logger, routeMapping)
 
-	if u.routingTable.UpsertBackendServerKey(routingKey, backendServerInfo) && !u.syncing {
+	tableChanged := u.routingTable.UpsertBackendServerKey(routingKey, backendServerInfo)
+	if tableChanged && !u.syncing {
 		logger.Debug("calling-configurer")
-		return u.configurer.Configure(*u.routingTable)
+		return true, u.configurer.Configure(*u.routingTable)
 	}
 
-	return nil
+	return tableChanged, nil
 }
 
-func (u *updater) handleDelete(logger lager.Logger, routeMapping apimodels.TcpRouteMapping) error {
+func (u *updater) handleDelete(logger lager.Logger, routeMapping apimodels.TcpRouteMapping) (bool, error) {
 	routingKey, backendServerInfo := u.toRoutingTableEntry(logger, routeMapping)
 
-	if u.routingTable.DeleteBackendServerKey(routingKey, backendServerInfo) && !u.syncing {
+	tableChanged := u.routingTable.DeleteBackendServerKey(routingKey, backendServerInfo)
+	if tableChanged && !u.syncing {
 		logger.Debug("calling-configurer")
-		return u.configurer.Configure(*u.routingTable)
+		return true, u.configurer.Configure(*u.routingTable)
 	}
 
-	return nil
+	return tableChanged, nil
 }

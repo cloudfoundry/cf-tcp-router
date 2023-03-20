@@ -62,10 +62,17 @@ func NewRoutingTable(logger lager.Logger) RoutingTable {
 		logger:  logger.Session("routing-table"),
 	}
 }
+func NewRoutingTableWithSession(logger lager.Logger, session string) RoutingTable {
+	return RoutingTable{
+		Entries: make(map[RoutingKey]RoutingTableEntry),
+		logger:  logger.Session(session),
+	}
+}
 
-func (e RoutingTableEntry) PruneBackends(defaultTTL int) {
+func (e RoutingTableEntry) PruneBackends(defaultTTL int, logger lager.Logger) {
 	for backendKey, details := range e.Backends {
 		if details.Expired(defaultTTL) {
+			logger.Debug("pruning-backend", lager.Data{"backend": backendKey, "details": details})
 			delete(e.Backends, backendKey)
 		}
 	}
@@ -107,8 +114,9 @@ func NewBackendServerInfo(key BackendServerKey, detail BackendServerDetails) Bac
 
 func (table RoutingTable) PruneEntries(defaultTTL int) {
 	for routeKey, entry := range table.Entries {
-		entry.PruneBackends(defaultTTL)
+		entry.PruneBackends(defaultTTL, table.logger)
 		if len(entry.Backends) == 0 {
+			table.logger.Debug("deleting-route-with-no-backends", lager.Data{"key": routeKey})
 			delete(table.Entries, routeKey)
 		}
 	}

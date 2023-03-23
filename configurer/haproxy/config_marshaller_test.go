@@ -3,7 +3,7 @@ package haproxy_test
 import (
 	"code.cloudfoundry.org/cf-tcp-router/configurer/haproxy"
 	"code.cloudfoundry.org/cf-tcp-router/models"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

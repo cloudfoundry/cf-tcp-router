@@ -9,7 +9,7 @@ import (
 	"code.cloudfoundry.org/cf-tcp-router/metrics_reporter/haproxy_client"
 	haproxy_fakes "code.cloudfoundry.org/cf-tcp-router/metrics_reporter/haproxy_client/fakes"
 	"code.cloudfoundry.org/clock/fakeclock"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/tedsuo/ifrit"
 )

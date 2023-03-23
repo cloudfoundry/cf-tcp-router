@@ -4,7 +4,7 @@ import (
 	"code.cloudfoundry.org/cf-tcp-router/metrics_reporter"
 	"code.cloudfoundry.org/cf-tcp-router/metrics_reporter/haproxy_client"
 	"code.cloudfoundry.org/cf-tcp-router/models"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

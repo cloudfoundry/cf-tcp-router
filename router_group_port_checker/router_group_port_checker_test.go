@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/routing-api/fake_routing_api"
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"golang.org/x/oauth2"
 

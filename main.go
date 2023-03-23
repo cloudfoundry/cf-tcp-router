@@ -175,7 +175,7 @@ func main() {
 
 	// Reap child processes to prevent zombies when running in a container (BPM)
 	go func() {
-		signalChannel := make(chan os.Signal)
+		signalChannel := make(chan os.Signal, 1)
 		signal.Notify(signalChannel, syscall.SIGCHLD)
 		for {
 			select {
@@ -252,15 +252,15 @@ func main() {
 	metricsReporter := metrics_reporter.NewMetricsReporter(clock, haproxyClient, metricsEmitter, *statsCollectionInterval)
 
 	members := grouper.Members{
-		{"watcher", watcher},
-		{"syncer", syncRunner},
-		{"metricsReporter", metricsReporter},
-		{"monitor", monitor},
+		{Name: "watcher", Runner: watcher},
+		{Name: "syncer", Runner: syncRunner},
+		{Name: "metricsReporter", Runner: metricsReporter},
+		{Name: "monitor", Runner: monitor},
 	}
 
 	if dbgAddr := debugserver.DebugAddress(flag.CommandLine); dbgAddr != "" {
 		members = append(grouper.Members{
-			{"debug-server", debugserver.Runner(dbgAddr, reconfigurableSink)},
+			{Name: "debug-server", Runner: debugserver.Runner(dbgAddr, reconfigurableSink)},
 		}, members...)
 	}
 

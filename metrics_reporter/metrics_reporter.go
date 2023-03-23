@@ -55,7 +55,6 @@ func (r *MetricsReporter) Run(signals <-chan os.Signal, ready chan<- struct{}) e
 			return nil
 		}
 	}
-	return nil
 }
 
 func (r *MetricsReporter) emitStats() {

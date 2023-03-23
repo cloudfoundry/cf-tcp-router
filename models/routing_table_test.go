@@ -10,7 +10,7 @@ import (
 	"code.cloudfoundry.org/lager/lagertest"
 	routing_api_models "code.cloudfoundry.org/routing-api/models"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 )

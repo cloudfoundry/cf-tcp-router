@@ -6,7 +6,7 @@ import (
 	"code.cloudfoundry.org/cf-tcp-router/configurer"
 	"code.cloudfoundry.org/cf-tcp-router/configurer/haproxy"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 

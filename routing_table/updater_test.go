@@ -16,7 +16,7 @@ import (
 	test_uaa_client "code.cloudfoundry.org/routing-api/uaaclient/fakes"
 	"golang.org/x/oauth2"
 
-	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gbytes"
 )

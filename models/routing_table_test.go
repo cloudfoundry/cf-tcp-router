@@ -3,11 +3,11 @@ package models_test
 import (
 	"time"
 
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 
 	"code.cloudfoundry.org/cf-tcp-router/models"
 	"code.cloudfoundry.org/cf-tcp-router/testutil"
-	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/lager/v3/lagertest"
 	routing_api_models "code.cloudfoundry.org/routing-api/models"
 
 	. "github.com/onsi/ginkgo/v2"

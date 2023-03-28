@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/cf-tcp-router/testrunner"
-	"code.cloudfoundry.org/lager"
-	"code.cloudfoundry.org/lager/lagertest"
+	"code.cloudfoundry.org/lager/v3"
+	"code.cloudfoundry.org/lager/v3/lagertest"
 	routingtestrunner "code.cloudfoundry.org/routing-api/cmd/routing-api/testrunner"
 	"code.cloudfoundry.org/routing-api/models"
 	"github.com/onsi/gomega/gbytes"

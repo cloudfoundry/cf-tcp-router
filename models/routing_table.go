@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"time"
 
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 	routing_api_models "code.cloudfoundry.org/routing-api/models"
 )
 

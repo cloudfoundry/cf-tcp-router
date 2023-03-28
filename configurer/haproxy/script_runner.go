@@ -3,7 +3,7 @@ package haproxy
 import (
 	"os/exec"
 
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 )
 
 //go:generate counterfeiter -o fakes/fake_script_runner.go . ScriptRunner

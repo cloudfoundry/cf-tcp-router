@@ -10,7 +10,7 @@ import (
 	"code.cloudfoundry.org/cf-tcp-router/models"
 	"code.cloudfoundry.org/cf-tcp-router/monitor"
 	"code.cloudfoundry.org/cf-tcp-router/utils"
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 )
 
 const (

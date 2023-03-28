@@ -8,7 +8,7 @@ import (
 	"code.cloudfoundry.org/cf-tcp-router/configurer"
 	"code.cloudfoundry.org/cf-tcp-router/models"
 	"code.cloudfoundry.org/clock"
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 	routing_api "code.cloudfoundry.org/routing-api"
 	apimodels "code.cloudfoundry.org/routing-api/models"
 	"code.cloudfoundry.org/routing-api/uaaclient"

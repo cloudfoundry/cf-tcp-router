@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"code.cloudfoundry.org/cf-tcp-router/routing_table"
-	"code.cloudfoundry.org/lager"
+	"code.cloudfoundry.org/lager/v3"
 	routing_api "code.cloudfoundry.org/routing-api"
 	"code.cloudfoundry.org/routing-api/uaaclient"
 )

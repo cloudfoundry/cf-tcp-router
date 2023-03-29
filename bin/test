@@ -15,4 +15,4 @@ pushd $RELEASE_DIR/src/code.cloudfoundry.org
  go build -o "$BIN_DIR/ginkgo" github.com/onsi/ginkgo/v2/ginkgo
 popd
 
-$BIN_DIR/ginkgo -r  -p -failOnPending -randomizeAllSpecs -race "$@"
+$BIN_DIR/ginkgo -r  -p -fail-on-pending -randomize-all -race "$@"

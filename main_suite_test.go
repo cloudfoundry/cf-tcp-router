@@ -227,7 +227,14 @@ var _ = SynchronizedAfterSuite(func() {
 
 func setupLocket() {
 	locketRunner := testrunner.NewLocketRunner(locketBinPath, func(c *locket_config.LocketConfig) {
-		c.DatabaseConnectionString = "root:password@/" + locketDbConfig.Schema
+		switch os.Getenv("DB") {
+		case "postgres":
+			c.DatabaseConnectionString = "user=postgres password= host=localhost dbname=" + locketDbConfig.Schema
+			c.DatabaseDriver = "postgres"
+		default:
+			c.DatabaseConnectionString = "root:password@/" + locketDbConfig.Schema
+			c.DatabaseDriver = "mysql"
+		}
 		c.ListenAddress = fmt.Sprintf("localhost:%d", locketPort)
 	})
 	locketProcess = ginkgomon.Invoke(locketRunner)

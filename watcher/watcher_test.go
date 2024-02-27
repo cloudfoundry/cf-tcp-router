@@ -144,11 +144,9 @@ var _ = Describe("Watcher", func() {
 			routingApiErrChannel = make(chan error)
 
 			routingApiClient.SubscribeToTcpEventsStub = func() (routing_api.TcpEventSource, error) {
-				select {
-				case err := <-routingApiErrChannel:
-					if err != nil {
-						return nil, err
-					}
+				err := <-routingApiErrChannel
+				if err != nil {
+					return nil, err
 				}
 				return eventSource, nil
 			}

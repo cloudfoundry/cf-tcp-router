@@ -60,7 +60,7 @@ func populateProxyStats(proxyStat haproxy_client.HaproxyStat, proxyStatsMap map[
 		if _, ok := proxyStatsMap[key]; !ok {
 			proxyStatsMap[key] = ProxyStats{}
 		}
-		v, _ := proxyStatsMap[key]
+		v := proxyStatsMap[key]
 		v.ConnectionTime += proxyStat.AverageConnectTimeMs
 		v.CurrentSessions += proxyStat.CurrentSessions
 		proxyStatsMap[key] = v

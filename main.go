@@ -285,7 +285,7 @@ func checkPorts(logger lager.Logger, portChecker router_group_port_checker.PortC
 		if shouldExit && *routingGroupCheckExit {
 			logger.Error("router-group-port-checker-failure: Exiting now. ", err)
 			os.Exit(1)
-		} else if shouldExit && (*routingGroupCheckExit == false) {
+		} else if shouldExit && !*routingGroupCheckExit {
 			logger.Error("router-group-port-checker-failure: WARNING! In the future this will cause tcp_router to not start.", err)
 		} else {
 			// this would occur if routing-api or uaa were unreachable

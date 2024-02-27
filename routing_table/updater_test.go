@@ -12,7 +12,6 @@ import (
 	routing_api "code.cloudfoundry.org/routing-api"
 	"code.cloudfoundry.org/routing-api/fake_routing_api"
 	apimodels "code.cloudfoundry.org/routing-api/models"
-	routing_api_models "code.cloudfoundry.org/routing-api/models"
 	test_uaa_client "code.cloudfoundry.org/routing-api/uaaclient/fakes"
 	"golang.org/x/oauth2"
 
@@ -43,7 +42,7 @@ var _ = Describe("Updater", func() {
 		fakeTokenFetcher           *test_uaa_client.FakeTokenFetcher
 		tcpEvent                   routing_api.TcpEvent
 		ttl                        int
-		modificationTag            routing_api_models.ModificationTag
+		modificationTag            apimodels.ModificationTag
 		fakeClock                  *fakeclock.FakeClock
 	)
 
@@ -55,7 +54,7 @@ var _ = Describe("Updater", func() {
 
 	BeforeEach(func() {
 		ttl = 60
-		modificationTag = routing_api_models.ModificationTag{Guid: "guid-1", Index: 0}
+		modificationTag = apimodels.ModificationTag{Guid: "guid-1", Index: 0}
 		fakeConfigurer = new(fakes.FakeRouterConfigurer)
 		fakeRoutingApiClient = new(fake_routing_api.FakeClient)
 		fakeTokenFetcher = &test_uaa_client.FakeTokenFetcher{}
@@ -125,11 +124,11 @@ var _ = Describe("Updater", func() {
 
 			Context("when entry does exist", func() {
 				var (
-					newModificationTag routing_api_models.ModificationTag
+					newModificationTag apimodels.ModificationTag
 					newTTL             int
 				)
 				BeforeEach(func() {
-					newModificationTag = routing_api_models.ModificationTag{Guid: "guid-1", Index: 1}
+					newModificationTag = apimodels.ModificationTag{Guid: "guid-1", Index: 1}
 					newTTL = 100
 				})
 
@@ -209,10 +208,10 @@ var _ = Describe("Updater", func() {
 
 		Context("when Delete event is received", func() {
 			var (
-				newModificationTag routing_api_models.ModificationTag
+				newModificationTag apimodels.ModificationTag
 			)
 			BeforeEach(func() {
-				newModificationTag = routing_api_models.ModificationTag{Guid: "guid-1", Index: 1}
+				newModificationTag = apimodels.ModificationTag{Guid: "guid-1", Index: 1}
 			})
 
 			Context("when entry does not exist", func() {
@@ -615,11 +614,11 @@ var _ = Describe("Updater", func() {
 							{Port: 2222, SniHostname: ""}: {
 								Backends: map[models.BackendServerKey]models.BackendServerDetails{
 									{Address: "some-ip-1", Port: 61000}: {
-										ModificationTag: routing_api_models.ModificationTag{Guid: "guid-1", Index: 0},
+										ModificationTag: apimodels.ModificationTag{Guid: "guid-1", Index: 0},
 										TTL:             60,
 									},
 									{Address: "some-ip-2", Port: 61001}: {
-										ModificationTag: routing_api_models.ModificationTag{Guid: "guid-1", Index: 0},
+										ModificationTag: apimodels.ModificationTag{Guid: "guid-1", Index: 0},
 										TTL:             60,
 									},
 								},
@@ -627,11 +626,11 @@ var _ = Describe("Updater", func() {
 							{Port: 2223, SniHostname: ""}: {
 								Backends: map[models.BackendServerKey]models.BackendServerDetails{
 									{Address: "some-ip-3", Port: 60000}: {
-										ModificationTag: routing_api_models.ModificationTag{Guid: "guid-1", Index: 0},
+										ModificationTag: apimodels.ModificationTag{Guid: "guid-1", Index: 0},
 										TTL:             60,
 									},
 									{Address: "some-ip-4", Port: 60000}: {
-										ModificationTag: routing_api_models.ModificationTag{Guid: "guid-1", Index: 0},
+										ModificationTag: apimodels.ModificationTag{Guid: "guid-1", Index: 0},
 										TTL:             60,
 									},
 								},
@@ -661,7 +660,7 @@ var _ = Describe("Updater", func() {
 									"some-ip-1",
 									61000,
 									22,
-									routing_api_models.ModificationTag{Guid: "guid-1", Index: 1},
+									apimodels.ModificationTag{Guid: "guid-1", Index: 1},
 								),
 								Action: "Upsert",
 							}

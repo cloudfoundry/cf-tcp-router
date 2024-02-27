@@ -178,11 +178,9 @@ func main() {
 		signalChannel := make(chan os.Signal, 1)
 		signal.Notify(signalChannel, syscall.SIGCHLD)
 		for {
-			select {
-			case sig := <-signalChannel:
-				if sig == syscall.SIGCHLD {
-					syscall.Wait4(-1, nil, syscall.WNOHANG, nil)
-				}
+			sig := <-signalChannel
+			if sig == syscall.SIGCHLD {
+				syscall.Wait4(-1, nil, syscall.WNOHANG, nil)
 			}
 		}
 	}()
@@ -298,10 +296,8 @@ func checkPorts(logger lager.Logger, portChecker router_group_port_checker.PortC
 
 func startRoutePruner(ticker clock.Ticker, updater routing_table.Updater) {
 	for {
-		select {
-		case <-ticker.C():
-			updater.PruneStaleRoutes()
-		}
+		<-ticker.C()
+		updater.PruneStaleRoutes()
 	}
 }
 

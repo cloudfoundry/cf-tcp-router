@@ -509,10 +509,8 @@ var _ = Describe("Updater", func() {
 					syncChannel = make(chan struct{})
 					tmpSyncChannel := syncChannel
 					fakeRoutingApiClient.TcpRouteMappingsStub = func() ([]apimodels.TcpRouteMapping, error) {
-						select {
-						case <-tmpSyncChannel:
-							return tcpMappings, nil
-						}
+						<-tmpSyncChannel
+						return tcpMappings, nil
 					}
 				})
 
@@ -522,10 +520,8 @@ var _ = Describe("Updater", func() {
 						tmpSyncChannel := syncChannel
 						tcpMappings := make([]apimodels.TcpRouteMapping, 0)
 						fakeRoutingApiClient.TcpRouteMappingsStub = func() ([]apimodels.TcpRouteMapping, error) {
-							select {
-							case <-tmpSyncChannel:
-								return tcpMappings, nil
-							}
+							<-tmpSyncChannel
+							return tcpMappings, nil
 						}
 					})
 					It("still applies the cached event", func() {

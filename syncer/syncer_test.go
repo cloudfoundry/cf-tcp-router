@@ -91,11 +91,9 @@ var _ = Describe("Syncer", func() {
 			readyChannel = make(chan struct{})
 			go func() {
 				close(readyChannel)
-				select {
-				case <-syncChannel:
-					logger.Debug("received-sync")
-					watchChannel <- struct{}{}
-				}
+				<-syncChannel
+				logger.Debug("received-sync")
+				watchChannel <- struct{}{}
 
 			}()
 		})

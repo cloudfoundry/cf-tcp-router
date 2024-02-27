@@ -17,7 +17,7 @@ func GetExternalIP() string {
 	for _, addr := range addrs {
 		ip, _, _ := net.ParseCIDR(addr.String())
 		if ipv4 := ip.To4(); ipv4 != nil {
-			if ipv4.IsLoopback() == false {
+			if !ipv4.IsLoopback() {
 				externalIP = ipv4.String()
 				break
 			}

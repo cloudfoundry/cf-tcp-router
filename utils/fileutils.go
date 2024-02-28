@@ -38,6 +38,6 @@ func FileExists(fileName string) bool {
 	if err == nil {
 		return true
 	}
-	var result bool = os.IsExist(err)
+	result := os.IsExist(err)
 	return result
 }

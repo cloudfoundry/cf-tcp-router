@@ -129,7 +129,7 @@ func (table RoutingTable) serverKeyDetailsFromInfo(info BackendServerInfo) (Back
 // Returns true if routing configuration should be modified, false if it should not.
 func (table RoutingTable) Set(key RoutingKey, newEntry RoutingTableEntry) bool {
 	existingEntry, ok := table.Entries[key]
-	if ok == true && reflect.DeepEqual(existingEntry, newEntry) {
+	if ok && reflect.DeepEqual(existingEntry, newEntry) {
 		return false
 	}
 	table.Entries[key] = newEntry

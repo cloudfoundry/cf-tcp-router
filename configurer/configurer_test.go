@@ -12,9 +12,6 @@ import (
 
 var _ = Describe("Configurer", func() {
 
-	const (
-		startPort = 62000
-	)
 	Describe("NewConfigurer", func() {
 		Context("when 'haproxy' tcp load balancer is passed", func() {
 			It("should return haproxy configurer", func() {

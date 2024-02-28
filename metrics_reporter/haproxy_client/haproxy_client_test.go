@@ -46,6 +46,7 @@ var _ = Describe("HaproxyClient", func() {
 
 		buf := make([]byte, 512)
 		_, err = fd.Read(buf)
+		Expect(err).NotTo(HaveOccurred())
 		Expect(string(buf)).To(ContainSubstring("show stat"))
 
 		_, err = fd.Write(data)

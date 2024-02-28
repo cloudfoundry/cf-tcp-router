@@ -201,6 +201,7 @@ defaults
 	).Client(
 		tlsconfig.WithAuthorityFromFile(routingAPICAFileName),
 	)
+	Expect(err).NotTo(HaveOccurred())
 	routingApiClient = routing_api.NewClientWithTLSConfig(routingAPIAddress, tlsConfig)
 
 	setupLongRunningProcess()

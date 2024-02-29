@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"encoding/pem"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
@@ -89,7 +88,7 @@ var _ = Describe("Main", func() {
 
 	verifyHaProxyConfigContent := func(haproxyFileName, expectedContent string, present bool) {
 		Eventually(func() bool {
-			data, err := ioutil.ReadFile(haproxyFileName)
+			data, err := os.ReadFile(haproxyFileName)
 			Expect(err).ShouldNot(HaveOccurred())
 			return strings.Contains(string(data), expectedContent)
 		}, 6, 1).Should(Equal(present))
@@ -108,7 +107,7 @@ var _ = Describe("Main", func() {
 		uaaCACert, uaaCAPrivKey, err := createCA()
 		Expect(err).ToNot(HaveOccurred())
 
-		f, err := ioutil.TempFile("", "routing-api-uaa-ca")
+		f, err := os.CreateTemp("", "routing-api-uaa-ca")
 		Expect(err).ToNot(HaveOccurred())
 
 		uaaCAPath = f.Name()

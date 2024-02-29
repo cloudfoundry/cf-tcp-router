@@ -1,10 +1,11 @@
 package haproxy
 
 import (
-	"code.cloudfoundry.org/cf-tcp-router/models"
 	"fmt"
 	"sort"
 	"strings"
+
+	"code.cloudfoundry.org/cf-tcp-router/models"
 )
 
 //go:generate counterfeiter -o fakes/fake_config_marshaller.go . ConfigMarshaller

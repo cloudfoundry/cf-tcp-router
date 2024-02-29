@@ -2,7 +2,6 @@ package monitor_test
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 
@@ -33,7 +32,7 @@ var _ = Describe("Monitor", func() {
 		Expect(err).ToNot(HaveOccurred())
 		pid := catCmd.Process.Pid
 
-		file, err := ioutil.TempFile(os.TempDir(), "test-pid-file")
+		file, err := os.CreateTemp(os.TempDir(), "test-pid-file")
 		Expect(err).ToNot(HaveOccurred())
 		_, err = file.WriteString(fmt.Sprintf("%d", pid))
 		Expect(err).ToNot(HaveOccurred())
@@ -93,7 +92,7 @@ var _ = Describe("Monitor", func() {
 		JustBeforeEach(func() {
 			testMonitor.StopWatching()
 
-			err := ioutil.WriteFile(pidFile, []byte(""), 0644)
+			err := os.WriteFile(pidFile, []byte(""), 0644)
 			Expect(err).ToNot(HaveOccurred())
 		})
 
@@ -105,7 +104,7 @@ var _ = Describe("Monitor", func() {
 		Context("when the process reloads", func() {
 			JustBeforeEach(func() {
 				pid := catCmd.Process.Pid
-				err := ioutil.WriteFile(pidFile, []byte(fmt.Sprintf("%d", pid)), 0644)
+				err := os.WriteFile(pidFile, []byte(fmt.Sprintf("%d", pid)), 0644)
 				Expect(err).ToNot(HaveOccurred())
 
 				testMonitor.StartWatching()
@@ -115,7 +114,7 @@ var _ = Describe("Monitor", func() {
 				waitChan := process.Wait()
 				Consistently(waitChan, "3s").ShouldNot(Receive())
 
-				err := ioutil.WriteFile(pidFile, []byte(""), 0644)
+				err := os.WriteFile(pidFile, []byte(""), 0644)
 				Expect(err).ToNot(HaveOccurred())
 
 				Eventually(waitChan, "2s").Should(Receive())
@@ -125,7 +124,7 @@ var _ = Describe("Monitor", func() {
 
 	Context("when there are no haproxy PIDs", func() {
 		BeforeEach(func() {
-			err := ioutil.WriteFile(pidFile, []byte(""), 0644)
+			err := os.WriteFile(pidFile, []byte(""), 0644)
 			Expect(err).ToNot(HaveOccurred())
 		})
 

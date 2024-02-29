@@ -1,12 +1,11 @@
 package utils
 
 import (
-	"io/ioutil"
 	"os"
 )
 
 func CopyFile(src, dest string) error {
-	data, err := ioutil.ReadFile(src)
+	data, err := os.ReadFile(src)
 	if err != nil {
 		return err
 	}

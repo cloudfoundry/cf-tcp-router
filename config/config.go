@@ -2,7 +2,7 @@ package config
 
 import (
 	"errors"
-	"io/ioutil"
+	"os"
 
 	yaml "gopkg.in/yaml.v2"
 )
@@ -46,7 +46,7 @@ func New(path string) (*Config, error) {
 func (c *Config) initConfigFromFile(path string) error {
 	var e error
 
-	b, e := ioutil.ReadFile(path)
+	b, e := os.ReadFile(path)
 	if e != nil {
 		return e
 	}

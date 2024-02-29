@@ -1,17 +1,17 @@
 package haproxy_test
 
 import (
+	"fmt"
+	"os"
+
 	"code.cloudfoundry.org/cf-tcp-router/configurer/haproxy"
 	"code.cloudfoundry.org/cf-tcp-router/configurer/haproxy/fakes"
 	"code.cloudfoundry.org/cf-tcp-router/models"
 	monitorFakes "code.cloudfoundry.org/cf-tcp-router/monitor/fakes"
 	"code.cloudfoundry.org/cf-tcp-router/testutil"
 	"code.cloudfoundry.org/cf-tcp-router/utils"
-	"fmt"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"io/ioutil"
-	"os"
 )
 
 var _ = Describe("HaproxyConfigurer", func() {
@@ -84,7 +84,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 				haproxyCfgBackupFile = fmt.Sprintf("%s.bak", generatedHaproxyCfgFile)
 				_ = utils.CopyFile(haproxyConfigTemplate, generatedHaproxyCfgFile)
 
-				originalConfigTemplateContent, err = ioutil.ReadFile(generatedHaproxyCfgFile)
+				originalConfigTemplateContent, err = os.ReadFile(generatedHaproxyCfgFile)
 				Expect(err).ShouldNot(HaveOccurred())
 
 				fakeMarshaller = new(fakes.FakeConfigMarshaller)
@@ -111,7 +111,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 					err = haproxyConfigurer.Configure(routingTable)
 					Expect(err).ToNot(HaveOccurred())
 
-					currentConfigTemplateContent, err = ioutil.ReadFile(generatedHaproxyCfgFile)
+					currentConfigTemplateContent, err = os.ReadFile(generatedHaproxyCfgFile)
 					Expect(err).ToNot(HaveOccurred())
 
 					expected := string(originalConfigTemplateContent) + marshallerContent
@@ -131,7 +131,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 					err = haproxyConfigurer.Configure(routingTable)
 					Expect(err).ToNot(HaveOccurred())
 
-					currentConfigTemplateContent, err = ioutil.ReadFile(generatedHaproxyCfgFile)
+					currentConfigTemplateContent, err = os.ReadFile(generatedHaproxyCfgFile)
 					Expect(err).ToNot(HaveOccurred())
 
 					// File contains only the most recent copy of marshallerContent

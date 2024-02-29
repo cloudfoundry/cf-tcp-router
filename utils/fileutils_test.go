@@ -1,7 +1,6 @@
 package utils_test
 
 import (
-	"io/ioutil"
 	"os"
 
 	"code.cloudfoundry.org/cf-tcp-router/testutil"
@@ -33,7 +32,7 @@ var _ = Describe("Fileutils", func() {
 				It("writes to destination file", func() {
 					err := utils.WriteToFile([]byte(fileContent), fileName)
 					Expect(err).ShouldNot(HaveOccurred())
-					actualContent, err := ioutil.ReadFile(fileName)
+					actualContent, err := os.ReadFile(fileName)
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(string(actualContent)).To(Equal(fileContent))
 				})
@@ -43,7 +42,7 @@ var _ = Describe("Fileutils", func() {
 				It("create an empty file", func() {
 					err := utils.WriteToFile(nil, fileName)
 					Expect(err).ShouldNot(HaveOccurred())
-					actualContent, err := ioutil.ReadFile(fileName)
+					actualContent, err := os.ReadFile(fileName)
 					Expect(err).ShouldNot(HaveOccurred())
 					Expect(actualContent).Should(HaveLen(0))
 				})
@@ -81,10 +80,10 @@ var _ = Describe("Fileutils", func() {
 					err := utils.CopyFile(srcFileName, fileName)
 					Expect(err).ShouldNot(HaveOccurred())
 
-					expectedContent, err := ioutil.ReadFile(srcFileName)
+					expectedContent, err := os.ReadFile(srcFileName)
 					Expect(err).ShouldNot(HaveOccurred())
 
-					actualContent, err := ioutil.ReadFile(fileName)
+					actualContent, err := os.ReadFile(fileName)
 					Expect(err).ShouldNot(HaveOccurred())
 
 					Expect(actualContent).To(Equal(expectedContent))

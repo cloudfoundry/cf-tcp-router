@@ -2,7 +2,6 @@ package monitor
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
@@ -69,7 +68,7 @@ func (m *monitor) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 }
 
 func watchPID(pidFile string, logger lager.Logger) error {
-	fileBytes, err := ioutil.ReadFile(pidFile)
+	fileBytes, err := os.ReadFile(pidFile)
 	if err != nil {
 		logger.Error("exiting", fmt.Errorf("Cannot read file %s", pidFile))
 		return err

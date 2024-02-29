@@ -1,7 +1,6 @@
 package haproxy_client_test
 
 import (
-	"io/ioutil"
 	"net"
 	"os"
 	"path"
@@ -73,7 +72,7 @@ var _ = Describe("HaproxyClient", func() {
 		Context("when haproxy provides statistics", func() {
 			BeforeEach(func() {
 				readyChannel := make(chan struct{})
-				csvPayload, err := ioutil.ReadFile("fixtures/testdata.csv")
+				csvPayload, err := os.ReadFile("fixtures/testdata.csv")
 				Expect(err).NotTo(HaveOccurred())
 
 				go setupUnixSocketServer(csvPayload, haproxyUnixSocket, readyChannel)
@@ -139,7 +138,7 @@ var _ = Describe("HaproxyClient", func() {
 		Context("when haproxy returns invalid csv", func() {
 			BeforeEach(func() {
 				readyChannel := make(chan struct{})
-				csvPayload, err := ioutil.ReadFile("fixtures/invalid.csv")
+				csvPayload, err := os.ReadFile("fixtures/invalid.csv")
 				Expect(err).NotTo(HaveOccurred())
 
 				go setupUnixSocketServer(csvPayload, haproxyUnixSocket, readyChannel)

@@ -1,11 +1,12 @@
 package models
 
 import (
-	"code.cloudfoundry.org/lager/v3"
 	"fmt"
 	"regexp"
 	"sort"
 	"strings"
+
+	"code.cloudfoundry.org/lager/v3"
 )
 
 type HAProxyConfig map[HAProxyInboundPort]HAProxyFrontend

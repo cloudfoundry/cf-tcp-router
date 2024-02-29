@@ -3,7 +3,6 @@ package haproxy
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"sync"
 
@@ -55,7 +54,7 @@ func (h *Configurer) Configure(routingTable models.RoutingTable) error {
 		return err
 	}
 
-	cfgContent, err := ioutil.ReadFile(h.baseConfigFilePath)
+	cfgContent, err := os.ReadFile(h.baseConfigFilePath)
 	if err != nil {
 		h.logger.Error("failed-reading-base-config-file", err, lager.Data{"base-config-file": h.baseConfigFilePath})
 		return err
@@ -98,7 +97,7 @@ func (h *Configurer) Configure(routingTable models.RoutingTable) error {
 
 func (h *Configurer) createConfigBackup() error {
 	h.logger.Debug("reading-config-file", lager.Data{"config-file": h.configFilePath})
-	cfgContent, err := ioutil.ReadFile(h.configFilePath)
+	cfgContent, err := os.ReadFile(h.configFilePath)
 	if err != nil {
 		h.logger.Error("failed-reading-base-config-file", err, lager.Data{"config-file": h.configFilePath})
 		return err

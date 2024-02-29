@@ -4,7 +4,6 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path"
@@ -125,7 +124,7 @@ func setupLongRunningProcess() {
 	Expect(err).ToNot(HaveOccurred())
 	pid := catCmd.Process.Pid
 
-	file, err := ioutil.TempFile(os.TempDir(), "test-pid-file")
+	file, err := os.CreateTemp(os.TempDir(), "test-pid-file")
 	Expect(err).ToNot(HaveOccurred())
 	_, err = file.WriteString(fmt.Sprintf("%d", pid))
 	Expect(err).ToNot(HaveOccurred())
@@ -285,7 +284,7 @@ func generateTCPRouterConfigFile(oauthServerPort int, uaaCACertsPath string, rou
 	bs, err := yaml.Marshal(tcpRouterConfig)
 	Expect(err).NotTo(HaveOccurred())
 
-	randomConfigFile, err := ioutil.TempFile("", "tcp_router")
+	randomConfigFile, err := os.CreateTemp("", "tcp_router")
 	Expect(err).ShouldNot(HaveOccurred())
 	// Close file because we write using path instead of file handle
 	randomConfigFile.Close()

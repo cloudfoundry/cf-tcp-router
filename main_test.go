@@ -151,7 +151,7 @@ var _ = Describe("Main", func() {
 				ConfigFilePath:                 configFile,
 			}
 
-			tcpRouteMapping := models.NewTcpRouteMapping(routerGroupGuid, 5222, "some-ip-1", 61000, 120)
+			tcpRouteMapping := models.NewTcpRouteMapping(routerGroupGuid, 5222, "some-ip-1", 61000, 0, "", nil, 120, models.ModificationTag{})
 			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 			Expect(err).ToNot(HaveOccurred())
 
@@ -176,7 +176,7 @@ var _ = Describe("Main", func() {
 		It("starts an SSE connection to the server", func() {
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Subscribing-to-routing-api-event-stream"))
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Successfully-subscribed-to-routing-api-event-stream"))
-			tcpRouteMapping := models.NewTcpRouteMapping(routerGroupGuid, 5222, "some-ip-2", 61000, 120)
+			tcpRouteMapping := models.NewTcpRouteMapping(routerGroupGuid, 5222, "some-ip-2", 61000, 0, "", nil, 120, models.ModificationTag{})
 			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("handle-event.finished"))
@@ -191,7 +191,7 @@ var _ = Describe("Main", func() {
 		It("prunes stale routes", func() {
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Subscribing-to-routing-api-event-stream"))
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Successfully-subscribed-to-routing-api-event-stream"))
-			tcpRouteMapping := models.NewTcpRouteMapping(routerGroupGuid, 5222, "some-ip-3", 61000, 6)
+			tcpRouteMapping := models.NewTcpRouteMapping(routerGroupGuid, 5222, "some-ip-3", 61000, 0, "", nil, 6, models.ModificationTag{})
 			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("handle-event.finished"))
@@ -342,7 +342,7 @@ var _ = Describe("Main", func() {
 			server = routingApiServer(logger)
 			routerGroupGuid = getRouterGroupGuid(routingApiClient)
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Successfully-subscribed-to-routing-api-event-stream"))
-			tcpRouteMapping := models.NewTcpRouteMapping(routerGroupGuid, 5222, "some-ip-3", 61000, 120)
+			tcpRouteMapping := models.NewTcpRouteMapping(routerGroupGuid, 5222, "some-ip-3", 61000, 0, "", nil, 120, models.ModificationTag{})
 			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("handle-event.finished"))

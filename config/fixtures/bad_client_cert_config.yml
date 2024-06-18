@@ -19,4 +19,4 @@ isolation_segments: ["foo-iso-seg"]
 reserved_system_component_ports: [8080, 8081]
 backend_tls:
   ca_cert_path: fixtures/ca.pem
-  client_cert_and_key_path: fixtures/cert_and_key.pem
+  client_cert_and_key_path: fixtures/bad_cert_and_key.pem

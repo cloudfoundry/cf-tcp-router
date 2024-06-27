@@ -107,16 +107,6 @@ func (d BackendServerDetails) Expired(defaultTTL int) bool {
 	return expiryTime.After(d.UpdatedTime)
 }
 
-// WE THINK THIS IS NEVER USED. LET'S CONSIDER DELETING
-// func NewBackendServerInfo(key BackendServerKey, detail BackendServerDetails) BackendServerInfo {
-// 	return BackendServerInfo{
-// 		Address:         key.Address,
-// 		Port:            key.Port,
-// 		ModificationTag: detail.ModificationTag,
-// 		TTL:             detail.TTL,
-// 	}
-// }
-
 func (table RoutingTable) PruneEntries(defaultTTL int) {
 	for routeKey, entry := range table.Entries {
 		entry.PruneBackends(defaultTTL, table.logger)

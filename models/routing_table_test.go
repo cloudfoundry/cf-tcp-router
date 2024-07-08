@@ -271,7 +271,7 @@ var _ = Describe("RoutingTable", func() {
 
 			It("returns a RoutingTableEntry with a TLSPort and InstanceID", func() {
 				Expect(existingRoutingTableEntry.Backends).To(HaveLen(1))
-				for k, _ := range existingRoutingTableEntry.Backends {
+				for k := range existingRoutingTableEntry.Backends {
 					Expect(k.TLSPort).To(Equal((8443)))
 					Expect(k.InstanceID).To(Equal("meow"))
 				}

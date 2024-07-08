@@ -18,4 +18,5 @@ haproxy_pid_file: /path/to/pid/file
 isolation_segments: ["foo-iso-seg"]
 reserved_system_component_ports: [8080, 8081]
 backend_tls:
+  enabled: true
   ca_cert_path: fixtures/bad_ca.pem

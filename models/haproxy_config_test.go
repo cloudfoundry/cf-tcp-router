@@ -147,6 +147,24 @@ var _ = Describe("HAProxyConfig", func() {
 					},
 				}))
 			})
+			Context("and backend port 0", func() {
+				It("creates a valid HAProxyConfig", func() {
+					instanceId := "foo"
+					routingTable.Entries[RoutingKey{Port: 80}] = RoutingTableEntry{
+						Backends: map[BackendServerKey]BackendServerDetails{
+							BackendServerKey{Address: "valid-host-1.example.com", Port: 0, TLSPort: 1443, InstanceID: instanceId}: {},
+						},
+					}
+					Expect(NewHAProxyConfig(routingTable, logger)).To(Equal(HAProxyConfig{
+						80: {
+							"": {
+								{Address: "valid-host-1.example.com", Port: 0, TLSPort: 1443, InstanceID: instanceId},
+							},
+						},
+					}))
+
+				})
+			})
 		})
 
 		Context("when multiple valid frontends exist", func() {

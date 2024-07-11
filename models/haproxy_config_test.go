@@ -6,7 +6,6 @@ import (
 	"code.cloudfoundry.org/lager/v3/lagertest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/onsi/gomega/gbytes"
 )
 
 var _ = Describe("HAProxyConfig", func() {
@@ -114,38 +113,6 @@ var _ = Describe("HAProxyConfig", func() {
 						}))
 					})
 				})
-
-				Context("because backend TLS port is supplied but instance_id is not", func() {
-					It("logs an error", func() {
-						routingTable.Entries[RoutingKey{Port: 81}] = RoutingTableEntry{
-							Backends: map[BackendServerKey]BackendServerDetails{
-								BackendServerKey{Address: "valid-host-1.example.com", Port: 1111, TLSPort: 1443}: {},
-							},
-						}
-
-						Expect(NewHAProxyConfig(routingTable, logger)).To(Equal(HAProxyConfig{}))
-						Eventually(logger).Should(gbytes.Say(`Field: backend_configuration.instance_id. Value: unset.`))
-					})
-				})
-			})
-		})
-
-		Context("when TLS port and instance_id are provided", func() {
-			It("creates a valid HAProxyConfig", func() {
-				instanceId := "foo"
-				routingTable.Entries[RoutingKey{Port: 80}] = RoutingTableEntry{
-					Backends: map[BackendServerKey]BackendServerDetails{
-						BackendServerKey{Address: "valid-host-1.example.com", Port: 1111, TLSPort: 1443, InstanceID: instanceId}: {},
-					},
-				}
-
-				Expect(NewHAProxyConfig(routingTable, logger)).To(Equal(HAProxyConfig{
-					80: {
-						"": {
-							{Address: "valid-host-1.example.com", Port: 1111, TLSPort: 1443, InstanceID: instanceId},
-						},
-					},
-				}))
 			})
 		})
 

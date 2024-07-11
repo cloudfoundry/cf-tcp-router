@@ -1,6 +1,7 @@
 package haproxy_test
 
 import (
+	"code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/lager/v3/lagertest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -9,7 +10,7 @@ import (
 )
 
 var (
-	logger *lagertest.TestLogger
+	logger lager.Logger
 )
 
 func TestHaproxy(t *testing.T) {

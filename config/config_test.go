@@ -10,7 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Config", Serial, func() {
+var _ = Describe("Config", func() {
 	caFile := "fixtures/ca.pem"
 	certAndKeyFile := "fixtures/cert_and_key.pem"
 	mismatchedCertAndKeyFile := "fixtures/mismatched_cert_and_key.pem"
@@ -18,24 +18,18 @@ var _ = Describe("Config", Serial, func() {
 	BeforeEach(func() {
 		// Generate a CA and move it into the correct location for the fixture
 		tmpCAFile, _ := tlshelpers.GenerateCa()
-		caBytes, err := os.ReadFile(tmpCAFile)
-		Expect(err).ToNot(HaveOccurred())
-		f, err := os.OpenFile(caFile, os.O_RDWR|os.O_CREATE, 0644)
-		Expect(err).ToNot(HaveOccurred())
-		_, err = f.Write(caBytes)
-		Expect(err).ToNot(HaveOccurred())
-		err = os.Remove(tmpCAFile)
+		err := os.Rename(tmpCAFile, caFile)
 		Expect(err).ToNot(HaveOccurred())
 
 		// Generate a second trusted CA and add it to the fixture's CA file
 		tmpCAFile2, _ := tlshelpers.GenerateCa()
-		caBytes, err = os.ReadFile(tmpCAFile2)
+		caBytes, err := os.ReadFile(tmpCAFile2)
+		Expect(err).ToNot(HaveOccurred())
+		f, err := os.OpenFile(caFile, os.O_RDWR|os.O_APPEND, 0644)
 		Expect(err).ToNot(HaveOccurred())
 		_, err = f.Write(caBytes)
 		Expect(err).ToNot(HaveOccurred())
 		err = os.Remove(tmpCAFile2)
-		Expect(err).ToNot(HaveOccurred())
-		err = f.Close()
 		Expect(err).ToNot(HaveOccurred())
 
 		// Generate a client cert + key, and move it into the correct location for the fixture

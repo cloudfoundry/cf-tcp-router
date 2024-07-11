@@ -82,8 +82,8 @@ func (cm configMarshaller) marshalHAProxyBackend(backendName string, backend mod
 	output.WriteString("\n  mode tcp")
 
 	for _, server := range backend {
-		if server.TLSPort > 0 && !backendTlsCfg.Enabled {
-			cm.logger.Error("backend-tls-not-enabled", fmt.Errorf("Backend TLS Port was set, but backend_tls has not been enabled for tcp-router"), lager.Data{"backend": backend})
+		if server.TLSPort > 0 && backendTlsCfg.CACertificatePath == "" {
+			cm.logger.Error("route-missing-tls-information", fmt.Errorf("Backend TLS Port was set, but CA file path has not been configured"), lager.Data{"backend": backend})
 			//skip this endpoint, but there may be other backends with tlsport <= 0 that we should still set
 			continue
 		}
@@ -95,7 +95,7 @@ func (cm configMarshaller) marshalHAProxyBackend(backendName string, backend mod
 				output.WriteString(fmt.Sprintf(" crt %s", backendTlsCfg.ClientCertAndKeyPath))
 			}
 		} else {
-			if server.TLSPort == 0 && backendTlsCfg.Enabled {
+			if server.TLSPort == 0 && backendTlsCfg.CACertificatePath != "" {
 				cm.logger.Error("route-missing-tls-information", fmt.Errorf("Backend TLSPort was set to 0. If TLS is intentionally off for this backend, set this to -1 to suppress this message"), lager.Data{"backend": server})
 			}
 			output.WriteString(fmt.Sprintf("\n  server server_%s_%d %s:%d", server.Address, server.Port, server.Address, server.Port))

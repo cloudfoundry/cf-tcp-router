@@ -25,7 +25,6 @@ var _ = Describe("ConfigMarshaller", func() {
 			haproxyConf = models.HAProxyConfig{}
 			marshaller = haproxy.NewConfigMarshaller(logger)
 			backendTlsCfg = config.BackendTLSConfig{
-				Enabled:           false,
 				CACertificatePath: "/fake/path/to/ca.pem",
 			}
 		})
@@ -208,20 +207,16 @@ backend backend_80
 			})
 		})
 
-		Context("when backend_tls is enabled", func() {
-			BeforeEach(func() {
-				backendTlsCfg.Enabled = true
-			})
-			Context("when TLS port is specified", func() {
-				It("configures the backend server to use the TLSPort", func() {
-					haproxyConf = models.HAProxyConfig{
-						80: {
-							"": {
-								{Address: "host-88.internal", Port: 8888, TLSPort: 8443, InstanceID: "host-88-instance-id"},
-							},
+		Context("when a TLSPort and CA cert filepath are provided", func() {
+			It("configures the backend server to use the TLSPort", func() {
+				haproxyConf = models.HAProxyConfig{
+					80: {
+						"": {
+							{Address: "host-88.internal", Port: 8888, TLSPort: 8443, InstanceID: "host-88-instance-id"},
 						},
-					}
-					Expect(marshaller.Marshal(haproxyConf, backendTlsCfg)).To(Equal(`
+					},
+				}
+				Expect(marshaller.Marshal(haproxyConf, backendTlsCfg)).To(Equal(`
 frontend frontend_80
   mode tcp
   bind :80
@@ -231,21 +226,21 @@ backend backend_80
   mode tcp
   server server_host-88.internal_8443 host-88.internal:8443 ssl verify required verifyhost host-88-instance-id ca-file /fake/path/to/ca.pem
 `))
-				})
+			})
 
-				Context("when a client cert is provided", func() {
-					BeforeEach(func() {
-						backendTlsCfg.ClientCertAndKeyPath = "/fake/path/to/client_cert_and_key.pem"
-					})
-					It("configures the backend server to use the TLSPort with mTLS", func() {
-						haproxyConf = models.HAProxyConfig{
-							80: {
-								"": {
-									{Address: "host-88.internal", Port: 8888, TLSPort: 8443, InstanceID: "host-88-instance-id"},
-								},
+			Context("when a client cert is provided", func() {
+				BeforeEach(func() {
+					backendTlsCfg.ClientCertAndKeyPath = "/fake/path/to/client_cert_and_key.pem"
+				})
+				It("configures the backend server to use the TLSPort with mTLS", func() {
+					haproxyConf = models.HAProxyConfig{
+						80: {
+							"": {
+								{Address: "host-88.internal", Port: 8888, TLSPort: 8443, InstanceID: "host-88-instance-id"},
 							},
-						}
-						Expect(marshaller.Marshal(haproxyConf, backendTlsCfg)).To(Equal(`
+						},
+					}
+					Expect(marshaller.Marshal(haproxyConf, backendTlsCfg)).To(Equal(`
 frontend frontend_80
   mode tcp
   bind :80
@@ -256,87 +251,20 @@ backend backend_80
   server server_host-88.internal_8443 host-88.internal:8443 ssl verify required verifyhost host-88-instance-id ca-file /fake/path/to/ca.pem crt /fake/path/to/client_cert_and_key.pem
 `))
 
-					})
-				})
-			})
-			Context("when TLSPort is 0", func() {
-				It("Logs an error indicating that the backend is not being encrypted", func() {
-					haproxyConf = models.HAProxyConfig{
-						80: {
-							"": {
-								{Address: "host-88.internal", Port: 8888, TLSPort: 0, InstanceID: "host-88-instance-id"},
-							},
-						},
-					}
-					marshaller.Marshal(haproxyConf, backendTlsCfg)
-					Expect(logger).To(gbytes.Say("route-missing-tls-information"))
-				})
-				It("uses the non-tls backend port", func() {
-					haproxyConf = models.HAProxyConfig{
-						80: {
-							"": {
-								{Address: "host-88.internal", Port: 8888, TLSPort: 0, InstanceID: "host-88-instance-id"},
-							},
-						},
-					}
-					Expect(marshaller.Marshal(haproxyConf, backendTlsCfg)).To(Equal(`
-frontend frontend_80
-  mode tcp
-  bind :80
-  default_backend backend_80
-
-backend backend_80
-  mode tcp
-  server server_host-88.internal_8888 host-88.internal:8888
-`))
-				})
-			})
-			Context("when TLSPort is -1", func() {
-				It("does not log an error", func() {
-					haproxyConf = models.HAProxyConfig{
-						80: {
-							"": {
-								{Address: "host-88.internal", Port: 8888, TLSPort: -1, InstanceID: "host-88-instance-id"},
-							},
-						},
-					}
-					marshaller.Marshal(haproxyConf, backendTlsCfg)
-					Expect(logger).NotTo(gbytes.Say("route-missing-tls-information"))
-				})
-				It("uses the non-tls backend port", func() {
-					haproxyConf = models.HAProxyConfig{
-						80: {
-							"": {
-								{Address: "host-88.internal", Port: 8888, TLSPort: -1, InstanceID: "host-88-instance-id"},
-							},
-						},
-					}
-					Expect(marshaller.Marshal(haproxyConf, backendTlsCfg)).To(Equal(`
-frontend frontend_80
-  mode tcp
-  bind :80
-  default_backend backend_80
-
-backend backend_80
-  mode tcp
-  server server_host-88.internal_8888 host-88.internal:8888
-`))
-
 				})
 			})
 		})
 
-		Context("when backend_tls is disabled", func() {
-			Context("when a TLSPort is provided", func() {
-				It("loggs an error", func() {
-					haproxyConf = models.HAProxyConfig{
-						80: {
-							"": {
-								{Address: "host-88.internal", Port: 8888, TLSPort: 8443, InstanceID: "host-88-instance-id"},
-							},
+		Context("when a TLSPort is provided but no CA cert filepath is provided", func() {
+			It("configures the backend server to use the TLSPort", func() {
+				haproxyConf = models.HAProxyConfig{
+					80: {
+						"": {
+							{Address: "host-88.internal", Port: 8888, TLSPort: 8443, InstanceID: "host-88-instance-id"},
 						},
-					}
-					Expect(marshaller.Marshal(haproxyConf, config.BackendTLSConfig{Enabled: false})).To(Equal(`
+					},
+				}
+				Expect(marshaller.Marshal(haproxyConf, config.BackendTLSConfig{})).To(Equal(`
 frontend frontend_80
   mode tcp
   bind :80
@@ -345,8 +273,73 @@ frontend frontend_80
 backend backend_80
   mode tcp
 `))
-					Expect(logger).To(gbytes.Say("Backend TLS Port was set, but backend_tls has not been enabled for tcp-router"))
-				})
+				Expect(logger).To(gbytes.Say("Backend TLS Port was set, but CA file path has not been configured"))
+			})
+		})
+
+		Context("when TLSPort is 0", func() {
+			It("Logs an error indicating that the backend is not being encrypted", func() {
+				haproxyConf = models.HAProxyConfig{
+					80: {
+						"": {
+							{Address: "host-88.internal", Port: 8888, TLSPort: 0, InstanceID: "host-88-instance-id"},
+						},
+					},
+				}
+				marshaller.Marshal(haproxyConf, backendTlsCfg)
+				Expect(logger).To(gbytes.Say("route-missing-tls-information"))
+			})
+			It("uses the non-tls backend port", func() {
+				haproxyConf = models.HAProxyConfig{
+					80: {
+						"": {
+							{Address: "host-88.internal", Port: 8888, TLSPort: -1, InstanceID: "host-88-instance-id"},
+						},
+					},
+				}
+				Expect(marshaller.Marshal(haproxyConf, backendTlsCfg)).To(Equal(`
+frontend frontend_80
+  mode tcp
+  bind :80
+  default_backend backend_80
+
+backend backend_80
+  mode tcp
+  server server_host-88.internal_8888 host-88.internal:8888
+`))
+			})
+		})
+		Context("when TLSPort is -1", func() {
+			It("does not log an error", func() {
+				haproxyConf = models.HAProxyConfig{
+					80: {
+						"": {
+							{Address: "host-88.internal", Port: 8888, TLSPort: -1, InstanceID: "host-88-instance-id"},
+						},
+					},
+				}
+				marshaller.Marshal(haproxyConf, backendTlsCfg)
+				Expect(logger).NotTo(gbytes.Say("route-missing-tls-information"))
+			})
+			It("uses the non-tls backend port", func() {
+				haproxyConf = models.HAProxyConfig{
+					80: {
+						"": {
+							{Address: "host-88.internal", Port: 8888, TLSPort: -1, InstanceID: "host-88-instance-id"},
+						},
+					},
+				}
+				Expect(marshaller.Marshal(haproxyConf, backendTlsCfg)).To(Equal(`
+frontend frontend_80
+  mode tcp
+  bind :80
+  default_backend backend_80
+
+backend backend_80
+  mode tcp
+  server server_host-88.internal_8888 host-88.internal:8888
+`))
+
 			})
 		})
 	})

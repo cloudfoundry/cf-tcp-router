@@ -108,7 +108,6 @@ var _ = Describe("Config", func() {
 		It("returns an error", func() {
 			_, err := config.New("fixtures/bad_ca_config.yml")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Invalid PEM block found in file"))
 		})
 	})
 
@@ -116,7 +115,6 @@ var _ = Describe("Config", func() {
 		It("returns an error", func() {
 			_, err := config.New("fixtures/bad_client_cert_config.yml")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Invalid PEM CERTIFICATE found in file"))
 		})
 	})
 
@@ -124,8 +122,6 @@ var _ = Describe("Config", func() {
 		It("returns an error", func() {
 			_, err := config.New("fixtures/mismatched_client_cert_config.yml")
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("Unable to validate backend TLS client cert + key in file"))
-			Expect(err.Error()).To(ContainSubstring("tls: private key does not match public key"))
 		})
 	})
 

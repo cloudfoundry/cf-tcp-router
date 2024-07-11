@@ -74,11 +74,10 @@ func (c *Config) initConfigFromFile(path string) error {
 		if err != nil {
 			return err
 		}
-
-		pemData = []byte(strings.TrimSpace(string(pemData)))
-		if len(pemData) > 0 {
+		for len(pemData) > 0 {
+			pemData = []byte(strings.TrimSpace(string(pemData)))
 			var block *pem.Block
-			block, _ = pem.Decode(pemData)
+			block, pemData = pem.Decode(pemData)
 			if block == nil {
 				return fmt.Errorf("Invalid PEM block found in file %q", c.BackendTLS.CACertificatePath)
 			}

@@ -6,7 +6,6 @@ import (
 	"os"
 	"sync"
 
-	"code.cloudfoundry.org/cf-tcp-router/config"
 	"code.cloudfoundry.org/cf-tcp-router/models"
 	"code.cloudfoundry.org/cf-tcp-router/monitor"
 	"code.cloudfoundry.org/cf-tcp-router/utils"
@@ -15,7 +14,6 @@ import (
 
 const (
 	ErrRouterConfigFileNotFound = "Configuration file not found"
-	ErrRouterCAFileNotFound     = "CA file not found"
 )
 
 type Configurer struct {
@@ -24,33 +22,23 @@ type Configurer struct {
 	baseConfigFilePath string
 	configFilePath     string
 	configFileLock     *sync.Mutex
-	backendTlsCfg      config.BackendTLSConfig
 	monitor            monitor.Monitor
 	scriptRunner       ScriptRunner
 }
 
-func NewHaProxyConfigurer(logger lager.Logger, configMarshaller ConfigMarshaller, baseConfigFilePath string, configFilePath string, monitor monitor.Monitor, scriptRunner ScriptRunner, backendTlsCfg config.BackendTLSConfig) (*Configurer, error) {
+func NewHaProxyConfigurer(logger lager.Logger, configMarshaller ConfigMarshaller, baseConfigFilePath string, configFilePath string, monitor monitor.Monitor, scriptRunner ScriptRunner) (*Configurer, error) {
 	if !utils.FileExists(baseConfigFilePath) {
 		return nil, fmt.Errorf("%s: [%s]", ErrRouterConfigFileNotFound, baseConfigFilePath)
 	}
 	if !utils.FileExists(configFilePath) {
 		return nil, fmt.Errorf("%s: [%s]", ErrRouterConfigFileNotFound, configFilePath)
 	}
-	if backendTlsCfg.CACertificatePath != "" && !utils.FileExists(backendTlsCfg.CACertificatePath) {
-		return nil, fmt.Errorf("%s: [%s]", ErrRouterCAFileNotFound, backendTlsCfg.CACertificatePath)
-	}
-
-	if backendTlsCfg.ClientCertAndKeyPath != "" && !utils.FileExists(backendTlsCfg.ClientCertAndKeyPath) {
-		return nil, fmt.Errorf("%s: [%s]", ErrRouterCAFileNotFound, backendTlsCfg.ClientCertAndKeyPath)
-	}
-
 	return &Configurer{
 		logger:             logger,
 		configMarshaller:   configMarshaller,
 		baseConfigFilePath: baseConfigFilePath,
 		configFilePath:     configFilePath,
 		configFileLock:     new(sync.Mutex),
-		backendTlsCfg:      backendTlsCfg,
 		monitor:            monitor,
 		scriptRunner:       scriptRunner,
 	}, nil
@@ -79,7 +67,7 @@ func (h *Configurer) Configure(routingTable models.RoutingTable) error {
 	}
 
 	haproxyConf := models.NewHAProxyConfig(routingTable, h.logger)
-	marshalledConf := h.configMarshaller.Marshal(haproxyConf, h.backendTlsCfg)
+	marshalledConf := h.configMarshaller.Marshal(haproxyConf)
 
 	_, err = buff.Write([]byte(marshalledConf))
 	if err != nil {

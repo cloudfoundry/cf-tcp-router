@@ -55,26 +55,6 @@ var _ = Describe("RoutingTable", func() {
 				Expect(routingTable.Get(routingKey)).To(Equal(routingTableEntry))
 				Expect(routingTable.Size()).To(Equal(1))
 			})
-
-			Context("when the entry has a TLSPort and InstanceID", func() {
-				BeforeEach(func() {
-					routingKey = models.RoutingKey{Port: 12}
-					backendServerKey = models.BackendServerKey{Address: "some-ip-1", Port: 1234, TLSPort: 61002, InstanceID: "meow-guid"}
-					now = time.Now()
-					backendServerDetails = models.BackendServerDetails{ModificationTag: modificationTag, TTL: 120, UpdatedTime: now}
-					backends := map[models.BackendServerKey]models.BackendServerDetails{
-						backendServerKey: backendServerDetails,
-					}
-					routingTableEntry = models.RoutingTableEntry{Backends: backends}
-				})
-
-				It("adds the entry", func() {
-					ok := routingTable.Set(routingKey, routingTableEntry)
-					Expect(ok).To(BeTrue())
-					Expect(routingTable.Get(routingKey)).To(Equal(routingTableEntry))
-					Expect(routingTable.Size()).To(Equal(1))
-				})
-			})
 		})
 
 		Context("when setting pre-existing routing key", func() {
@@ -85,10 +65,8 @@ var _ = Describe("RoutingTable", func() {
 
 			BeforeEach(func() {
 				newBackendServerKey = models.BackendServerKey{
-					Address:    "some-ip-2",
-					Port:       1234,
-					TLSPort:    5678,
-					InstanceID: "meow-guid",
+					Address: "some-ip-2",
+					Port:    1234,
 				}
 				existingRoutingTableEntry = models.RoutingTableEntry{
 					Backends: map[models.BackendServerKey]models.BackendServerDetails{
@@ -252,29 +230,6 @@ var _ = Describe("RoutingTable", func() {
 						testutil.RoutingTableEntryMatches(routingTable.Entries[newRoutingKey], existingRoutingTableEntry)
 					})
 				})
-			})
-		})
-
-		Context("when the BackendServerInfo contains a TLSPort", func() {
-			BeforeEach(func() {
-				existingRoutingKey = models.RoutingKey{Port: 80}
-				existingBackendServerInfo = models.BackendServerInfo{
-					Address:         "host-1.internal",
-					Port:            8080,
-					TLSPort:         8443,
-					InstanceID:      "meow",
-					ModificationTag: routing_api_models.ModificationTag{Guid: "11111111-1111-1111-1111-111111111111", Index: 2},
-					TTL:             60,
-				}
-				existingRoutingTableEntry = models.NewRoutingTableEntry([]models.BackendServerInfo{existingBackendServerInfo})
-			})
-
-			It("returns a RoutingTableEntry with a TLSPort and InstanceID", func() {
-				Expect(existingRoutingTableEntry.Backends).To(HaveLen(1))
-				for k, _ := range existingRoutingTableEntry.Backends {
-					Expect(k.TLSPort).To(Equal((8443)))
-					Expect(k.InstanceID).To(Equal("meow"))
-				}
 			})
 		})
 

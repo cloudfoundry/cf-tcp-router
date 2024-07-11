@@ -19,17 +19,13 @@ type RoutingKey struct {
 type BackendServerInfo struct {
 	Address         string
 	Port            uint16
-	TLSPort         int
-	InstanceID      string
 	ModificationTag routing_api_models.ModificationTag
 	TTL             int
 }
 
 type BackendServerKey struct {
-	Address    string
-	Port       uint16
-	TLSPort    int
-	InstanceID string
+	Address string
+	Port    uint16
 }
 
 type BackendServerDetails struct {
@@ -52,7 +48,7 @@ func NewRoutingTableEntry(backends []BackendServerInfo) RoutingTableEntry {
 		Backends: make(map[BackendServerKey]BackendServerDetails),
 	}
 	for _, backend := range backends {
-		backendServerKey := BackendServerKey{Address: backend.Address, Port: backend.Port, TLSPort: backend.TLSPort, InstanceID: backend.InstanceID}
+		backendServerKey := BackendServerKey{Address: backend.Address, Port: backend.Port}
 		backendServerDetails := BackendServerDetails{ModificationTag: backend.ModificationTag, TTL: backend.TTL, UpdatedTime: time.Now()}
 
 		routingTableEntry.Backends[backendServerKey] = backendServerDetails
@@ -107,15 +103,14 @@ func (d BackendServerDetails) Expired(defaultTTL int) bool {
 	return expiryTime.After(d.UpdatedTime)
 }
 
-// WE THINK THIS IS NEVER USED. LET'S CONSIDER DELETING
-// func NewBackendServerInfo(key BackendServerKey, detail BackendServerDetails) BackendServerInfo {
-// 	return BackendServerInfo{
-// 		Address:         key.Address,
-// 		Port:            key.Port,
-// 		ModificationTag: detail.ModificationTag,
-// 		TTL:             detail.TTL,
-// 	}
-// }
+func NewBackendServerInfo(key BackendServerKey, detail BackendServerDetails) BackendServerInfo {
+	return BackendServerInfo{
+		Address:         key.Address,
+		Port:            key.Port,
+		ModificationTag: detail.ModificationTag,
+		TTL:             detail.TTL,
+	}
+}
 
 func (table RoutingTable) PruneEntries(defaultTTL int) {
 	for routeKey, entry := range table.Entries {
@@ -128,7 +123,7 @@ func (table RoutingTable) PruneEntries(defaultTTL int) {
 }
 
 func (table RoutingTable) serverKeyDetailsFromInfo(info BackendServerInfo) (BackendServerKey, BackendServerDetails) {
-	return BackendServerKey{Address: info.Address, Port: info.Port, TLSPort: info.TLSPort, InstanceID: info.InstanceID}, BackendServerDetails{ModificationTag: info.ModificationTag, TTL: info.TTL, UpdatedTime: time.Now()}
+	return BackendServerKey{Address: info.Address, Port: info.Port}, BackendServerDetails{ModificationTag: info.ModificationTag, TTL: info.TTL, UpdatedTime: time.Now()}
 }
 
 // Returns true if routing configuration should be modified, false if it should not.

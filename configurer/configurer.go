@@ -3,7 +3,6 @@ package configurer
 import (
 	"errors"
 
-	"code.cloudfoundry.org/cf-tcp-router/config"
 	"code.cloudfoundry.org/cf-tcp-router/configurer/haproxy"
 	"code.cloudfoundry.org/cf-tcp-router/models"
 	"code.cloudfoundry.org/cf-tcp-router/monitor"
@@ -19,18 +18,16 @@ type RouterConfigurer interface {
 	Configure(routingTable models.RoutingTable) error
 }
 
-func NewConfigurer(logger lager.Logger, tcpLoadBalancer string, tcpLoadBalancerBaseCfg string, tcpLoadBalancerCfg string, monitor monitor.Monitor, scriptRunner haproxy.ScriptRunner, backendTlsCfg config.BackendTLSConfig) RouterConfigurer {
+func NewConfigurer(logger lager.Logger, tcpLoadBalancer string, tcpLoadBalancerBaseCfg string, tcpLoadBalancerCfg string, monitor monitor.Monitor, scriptRunner haproxy.ScriptRunner) RouterConfigurer {
 	switch tcpLoadBalancer {
 	case HaProxyConfigurer:
 		routerHostInfo, err := haproxy.NewHaProxyConfigurer(
 			logger,
-			haproxy.NewConfigMarshaller(logger),
+			haproxy.NewConfigMarshaller(),
 			tcpLoadBalancerBaseCfg,
 			tcpLoadBalancerCfg,
 			monitor,
-			scriptRunner,
-			backendTlsCfg,
-		)
+			scriptRunner)
 
 		if err != nil {
 			logger.Fatal("could not create tcp load balancer",

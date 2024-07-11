@@ -79,7 +79,6 @@ var _ = Describe("Config", func() {
 				IsolationSegments:            []string{"foo-iso-seg"},
 				ReservedSystemComponentPorts: []int{8080, 8081},
 				BackendTLS: config.BackendTLSConfig{
-					Enabled:              true,
 					CACertificatePath:    caFile,
 					ClientCertAndKeyPath: certAndKeyFile,
 				},
@@ -105,47 +104,28 @@ var _ = Describe("Config", func() {
 		})
 	})
 
-	Context("When backend_tls is enabled", func() {
-		Context("when the CA path is not a valid CA", func() {
-			It("returns an error", func() {
-				_, err := config.New("fixtures/bad_ca_config.yml")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("Invalid PEM block found in file"))
-			})
-		})
-
-		Context("when the Client Cert/key pair are not valid", func() {
-			It("returns an error", func() {
-				_, err := config.New("fixtures/bad_client_cert_config.yml")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("Invalid PEM CERTIFICATE found in file"))
-			})
-		})
-
-		Context("when the Client Cert/key pair are mismatched", func() {
-			It("returns an error", func() {
-				_, err := config.New("fixtures/mismatched_client_cert_config.yml")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("Unable to validate backend TLS client cert + key in file"))
-				Expect(err.Error()).To(ContainSubstring("tls: private key does not match public key"))
-			})
-		})
-		Context("when CA path is not specified", func() {
-			It("returns an error", func() {
-				_, err := config.New("fixtures/no_ca.yml")
-				Expect(err).To(HaveOccurred())
-				Expect(err.Error()).To(ContainSubstring("Backend TLS was enabled but no CA certificates were specified"))
-			})
+	Context("when the CA path is not a valid CA", func() {
+		It("returns an error", func() {
+			_, err := config.New("fixtures/bad_ca_config.yml")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Invalid PEM block found in file"))
 		})
 	})
 
-	Context("when backend_tls is disabled", func() {
-		It("does not set any of the backend_tls cert/ca values", func() {
-			cfg, err := config.New("fixtures/disabled_tls.yml")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(cfg.BackendTLS).To(Equal(config.BackendTLSConfig{
-				Enabled: false,
-			}))
+	Context("when the Client Cert/key pair are not valid", func() {
+		It("returns an error", func() {
+			_, err := config.New("fixtures/bad_client_cert_config.yml")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Invalid PEM CERTIFICATE found in file"))
+		})
+	})
+
+	Context("when the Client Cert/key pair are mismatched", func() {
+		It("returns an error", func() {
+			_, err := config.New("fixtures/mismatched_client_cert_config.yml")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("Unable to validate backend TLS client cert + key in file"))
+			Expect(err.Error()).To(ContainSubstring("tls: private key does not match public key"))
 		})
 	})
 

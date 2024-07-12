@@ -5,33 +5,37 @@ import (
 	"sort"
 	"strings"
 
+	"code.cloudfoundry.org/cf-tcp-router/config"
 	"code.cloudfoundry.org/cf-tcp-router/models"
+	"code.cloudfoundry.org/lager/v3"
 )
 
 //go:generate counterfeiter -o fakes/fake_config_marshaller.go . ConfigMarshaller
 type ConfigMarshaller interface {
-	Marshal(models.HAProxyConfig) string
+	Marshal(models.HAProxyConfig, config.BackendTLSConfig) string
 }
 
-type configMarshaller struct{}
-
-func NewConfigMarshaller() ConfigMarshaller {
-	return configMarshaller{}
+type configMarshaller struct {
+	logger lager.Logger
 }
 
-func (cm configMarshaller) Marshal(conf models.HAProxyConfig) string {
+func NewConfigMarshaller(l lager.Logger) ConfigMarshaller {
+	return configMarshaller{logger: l}
+}
+
+func (cm configMarshaller) Marshal(conf models.HAProxyConfig, backendTlsCfg config.BackendTLSConfig) string {
 	var output strings.Builder
 	sortedPorts := sortedHAProxyInboundPorts(conf)
 	for inboundPortIdx := range sortedPorts {
 		port := sortedPorts[inboundPortIdx]
 		frontend := conf[port]
 
-		output.WriteString(cm.marshalHAProxyFrontend(port, frontend))
+		output.WriteString(cm.marshalHAProxyFrontend(port, frontend, backendTlsCfg))
 	}
 	return output.String()
 }
 
-func (cm configMarshaller) marshalHAProxyFrontend(port models.HAProxyInboundPort, frontend models.HAProxyFrontend) string {
+func (cm configMarshaller) marshalHAProxyFrontend(port models.HAProxyInboundPort, frontend models.HAProxyFrontend, backendTlsCfg config.BackendTLSConfig) string {
 	var (
 		frontendStanza strings.Builder
 		backendStanzas strings.Builder
@@ -60,7 +64,9 @@ func (cm configMarshaller) marshalHAProxyFrontend(port models.HAProxyInboundPort
 		}
 
 		backend := frontend[hostname]
-		backendStanzas.WriteString(cm.marshalHAProxyBackend(backendCfgName, backend))
+
+		haProxyBackendString := cm.marshalHAProxyBackend(backendCfgName, backend, backendTlsCfg)
+		backendStanzas.WriteString(haProxyBackendString)
 	}
 
 	frontendStanza.WriteString("\n")
@@ -68,13 +74,32 @@ func (cm configMarshaller) marshalHAProxyFrontend(port models.HAProxyInboundPort
 	return frontendStanza.String()
 }
 
-func (cm configMarshaller) marshalHAProxyBackend(backendName string, backend models.HAProxyBackend) string {
+// This might result in malformed lines since we always write the opening stanza, but conditionally write others...
+func (cm configMarshaller) marshalHAProxyBackend(backendName string, backend models.HAProxyBackend, backendTlsCfg config.BackendTLSConfig) string {
 	var output strings.Builder
+
 	output.WriteString(fmt.Sprintf("\nbackend %s", backendName))
 	output.WriteString("\n  mode tcp")
 
 	for _, server := range backend {
-		output.WriteString(fmt.Sprintf("\n  server server_%s_%d %s:%d", server.Address, server.Port, server.Address, server.Port))
+		if server.TLSPort > 0 && !backendTlsCfg.Enabled {
+			cm.logger.Error("backend-tls-not-enabled", fmt.Errorf("Backend TLS Port was set, but backend_tls has not been enabled for tcp-router"), lager.Data{"backend": backend})
+			//skip this endpoint, but there may be other backends with tlsport <= 0 that we should still set
+			continue
+		}
+
+		if server.TLSPort > 0 {
+			output.WriteString(fmt.Sprintf("\n  server server_%s_%d %s:%d ssl verify required verifyhost %s ca-file %s", server.Address, server.TLSPort, server.Address, server.TLSPort, server.InstanceID, backendTlsCfg.CACertificatePath))
+
+			if backendTlsCfg.ClientCertAndKeyPath != "" {
+				output.WriteString(fmt.Sprintf(" crt %s", backendTlsCfg.ClientCertAndKeyPath))
+			}
+		} else {
+			if server.TLSPort == 0 && backendTlsCfg.Enabled {
+				cm.logger.Error("route-missing-tls-information", fmt.Errorf("Backend TLSPort was set to 0. If TLS is intentionally off for this backend, set this to -1 to suppress this message"), lager.Data{"backend": server})
+			}
+			output.WriteString(fmt.Sprintf("\n  server server_%s_%d %s:%d", server.Address, server.Port, server.Address, server.Port))
+		}
 	}
 
 	output.WriteString("\n")

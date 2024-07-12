@@ -205,6 +205,8 @@ func (u *updater) toRoutingTableEntry(logger lager.Logger, routeMapping apimodel
 	backendServerInfo := models.BackendServerInfo{
 		Address:         routeMapping.HostIP,
 		Port:            routeMapping.HostPort,
+		TLSPort:         routeMapping.HostTLSPort,
+		InstanceID:      routeMapping.InstanceId,
 		ModificationTag: routeMapping.ModificationTag,
 		TTL:             ttl,
 	}
@@ -213,7 +215,6 @@ func (u *updater) toRoutingTableEntry(logger lager.Logger, routeMapping apimodel
 
 func (u *updater) handleUpsert(logger lager.Logger, routeMapping apimodels.TcpRouteMapping) (bool, error) {
 	routingKey, backendServerInfo := u.toRoutingTableEntry(logger, routeMapping)
-
 	tableChanged := u.routingTable.UpsertBackendServerKey(routingKey, backendServerInfo)
 	if tableChanged && !u.syncing {
 		logger.Debug("calling-configurer")

@@ -171,6 +171,7 @@ func main() {
 		*tcpLoadBalancerCfg,
 		monitor,
 		reloaderRunner,
+		cfg.BackendTLS,
 	)
 
 	// Reap child processes to prevent zombies when running in a container (BPM)

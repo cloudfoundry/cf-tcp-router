@@ -72,6 +72,10 @@ var _ = Describe("Watcher", func() {
 					"some-ip-1",
 					5222,
 					0,
+					"",
+					nil,
+					0,
+					models.ModificationTag{},
 				),
 				Action: "Upsert",
 			}
@@ -98,6 +102,10 @@ var _ = Describe("Watcher", func() {
 					"some-ip-1",
 					5222,
 					0,
+					"",
+					nil,
+					0,
+					models.ModificationTag{},
 				),
 				Action: "Delete",
 			}

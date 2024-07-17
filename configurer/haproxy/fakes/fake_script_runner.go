@@ -8,9 +8,10 @@ import (
 )
 
 type FakeScriptRunner struct {
-	RunStub        func() error
+	RunStub        func(bool) error
 	runMutex       sync.RWMutex
 	runArgsForCall []struct {
+		arg1 bool
 	}
 	runReturns struct {
 		result1 error
@@ -22,17 +23,18 @@ type FakeScriptRunner struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeScriptRunner) Run() error {
+func (fake *FakeScriptRunner) Run(arg1 bool) error {
 	fake.runMutex.Lock()
 	ret, specificReturn := fake.runReturnsOnCall[len(fake.runArgsForCall)]
 	fake.runArgsForCall = append(fake.runArgsForCall, struct {
-	}{})
+		arg1 bool
+	}{arg1})
 	stub := fake.RunStub
 	fakeReturns := fake.runReturns
-	fake.recordInvocation("Run", []interface{}{})
+	fake.recordInvocation("Run", []interface{}{arg1})
 	fake.runMutex.Unlock()
 	if stub != nil {
-		return stub()
+		return stub(arg1)
 	}
 	if specificReturn {
 		return ret.result1
@@ -46,10 +48,17 @@ func (fake *FakeScriptRunner) RunCallCount() int {
 	return len(fake.runArgsForCall)
 }
 
-func (fake *FakeScriptRunner) RunCalls(stub func() error) {
+func (fake *FakeScriptRunner) RunCalls(stub func(bool) error) {
 	fake.runMutex.Lock()
 	defer fake.runMutex.Unlock()
 	fake.RunStub = stub
+}
+
+func (fake *FakeScriptRunner) RunArgsForCall(i int) bool {
+	fake.runMutex.RLock()
+	defer fake.runMutex.RUnlock()
+	argsForCall := fake.runArgsForCall[i]
+	return argsForCall.arg1
 }
 
 func (fake *FakeScriptRunner) RunReturns(result1 error) {

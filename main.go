@@ -236,7 +236,7 @@ func main() {
 	portChecker := router_group_port_checker.NewPortChecker(routingAPIClient, uaaTokenFetcher)
 	checkPorts(logger, portChecker, cfg)
 
-	updater := routing_table.NewUpdater(logger, &routingTable, configurer, routingAPIClient, uaaTokenFetcher, clock, int(defaultRouteExpiry.Seconds()))
+	updater := routing_table.NewUpdater(logger, &routingTable, configurer, routingAPIClient, uaaTokenFetcher, clock, int(defaultRouteExpiry.Seconds()), cfg.DrainWaitDuration)
 
 	ticker := clock.NewTicker(*staleRouteCheckInterval)
 
@@ -248,13 +248,13 @@ func main() {
 
 	haproxyClient := haproxy_client.NewClient(logger, *tcpLoadBalancerStatsUnixSocket, statsConnectionTimeout)
 	metricsEmitter := metrics_reporter.NewMetricsEmitter()
-	metricsReporter := metrics_reporter.NewMetricsReporter(clock, haproxyClient, metricsEmitter, *statsCollectionInterval)
+	metricsReporter := metrics_reporter.NewMetricsReporter(clock, haproxyClient, metricsEmitter, *statsCollectionInterval, logger)
 
 	members := grouper.Members{
-		{Name: "watcher", Runner: watcher},
 		{Name: "syncer", Runner: syncRunner},
 		{Name: "metricsReporter", Runner: metricsReporter},
 		{Name: "monitor", Runner: monitor},
+		{Name: "watcher", Runner: watcher},
 	}
 
 	if dbgAddr := debugserver.DebugAddress(flag.CommandLine); dbgAddr != "" {
@@ -265,7 +265,8 @@ func main() {
 
 	group := grouper.NewOrdered(os.Interrupt, members)
 
-	process := ifrit.Invoke(sigmon.New(group))
+	process := ifrit.Invoke(sigmon.New(group, syscall.SIGUSR2))
+	watcher.SetProcess(process)
 
 	logger.Info("started")
 

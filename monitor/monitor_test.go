@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"syscall"
 
 	"code.cloudfoundry.org/cf-tcp-router/monitor"
 	"code.cloudfoundry.org/lager/v3"
@@ -134,4 +135,11 @@ var _ = Describe("Monitor", func() {
 		})
 	})
 
+	Context("when signaled with SIGUSR2", func() {
+		It("does not shut down", func() {
+			process.Signal(syscall.SIGUSR2)
+
+			Consistently(process.Wait()).ShouldNot(Receive())
+		})
+	})
 })

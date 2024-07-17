@@ -2,6 +2,7 @@ package metrics_reporter_test
 
 import (
 	"os"
+	"syscall"
 	"time"
 
 	"code.cloudfoundry.org/cf-tcp-router/metrics_reporter"
@@ -29,7 +30,7 @@ var _ = Describe("Metrics Reporter", func() {
 		fakeEmitter = &emitter_fakes.FakeMetricsEmitter{}
 		clock = fakeclock.NewFakeClock(time.Now())
 		syncInterval = 1 * time.Second
-		metricsReporter = metrics_reporter.NewMetricsReporter(clock, fakeClient, fakeEmitter, syncInterval)
+		metricsReporter = metrics_reporter.NewMetricsReporter(clock, fakeClient, fakeEmitter, syncInterval, logger)
 	})
 
 	Context("on specified interval", func() {
@@ -103,4 +104,14 @@ var _ = Describe("Metrics Reporter", func() {
 		})
 	})
 
+	Context("when signaled with SIGUSR2", func() {
+		BeforeEach(func() {
+			process = ifrit.Invoke(metricsReporter)
+		})
+		It("does not shut down", func() {
+			process.Signal(syscall.SIGUSR2)
+
+			Consistently(process.Wait()).ShouldNot(Receive())
+		})
+	})
 })

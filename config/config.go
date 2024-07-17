@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	yaml "gopkg.in/yaml.v2"
 )
@@ -44,8 +45,11 @@ type Config struct {
 	HaProxyPidFile               string           `yaml:"haproxy_pid_file"`
 	IsolationSegments            []string         `yaml:"isolation_segments"`
 	ReservedSystemComponentPorts []int            `yaml:"reserved_system_component_ports"`
+	DrainWaitDuration            time.Duration    `yaml:"drain_wait"`
 	BackendTLS                   BackendTLSConfig `yaml:"backend_tls"`
 }
+
+const DrainWaitDefault = 20 * time.Second
 
 func New(path string) (*Config, error) {
 	c := &Config{}
@@ -68,6 +72,10 @@ func (c *Config) initConfigFromFile(path string) error {
 
 	if c.HaProxyPidFile == "" {
 		return errors.New("haproxy_pid_file is required")
+	}
+
+	if c.DrainWaitDuration < 0 {
+		c.DrainWaitDuration = DrainWaitDefault
 	}
 
 	if c.BackendTLS.Enabled {

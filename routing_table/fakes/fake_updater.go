@@ -9,6 +9,16 @@ import (
 )
 
 type FakeUpdater struct {
+	DrainStub        func() error
+	drainMutex       sync.RWMutex
+	drainArgsForCall []struct {
+	}
+	drainReturns struct {
+		result1 error
+	}
+	drainReturnsOnCall map[int]struct {
+		result1 error
+	}
 	HandleEventStub        func(routing_api.TcpEvent) error
 	handleEventMutex       sync.RWMutex
 	handleEventArgsForCall []struct {
@@ -40,6 +50,59 @@ type FakeUpdater struct {
 	}
 	invocations      map[string][][]interface{}
 	invocationsMutex sync.RWMutex
+}
+
+func (fake *FakeUpdater) Drain() error {
+	fake.drainMutex.Lock()
+	ret, specificReturn := fake.drainReturnsOnCall[len(fake.drainArgsForCall)]
+	fake.drainArgsForCall = append(fake.drainArgsForCall, struct {
+	}{})
+	stub := fake.DrainStub
+	fakeReturns := fake.drainReturns
+	fake.recordInvocation("Drain", []interface{}{})
+	fake.drainMutex.Unlock()
+	if stub != nil {
+		return stub()
+	}
+	if specificReturn {
+		return ret.result1
+	}
+	return fakeReturns.result1
+}
+
+func (fake *FakeUpdater) DrainCallCount() int {
+	fake.drainMutex.RLock()
+	defer fake.drainMutex.RUnlock()
+	return len(fake.drainArgsForCall)
+}
+
+func (fake *FakeUpdater) DrainCalls(stub func() error) {
+	fake.drainMutex.Lock()
+	defer fake.drainMutex.Unlock()
+	fake.DrainStub = stub
+}
+
+func (fake *FakeUpdater) DrainReturns(result1 error) {
+	fake.drainMutex.Lock()
+	defer fake.drainMutex.Unlock()
+	fake.DrainStub = nil
+	fake.drainReturns = struct {
+		result1 error
+	}{result1}
+}
+
+func (fake *FakeUpdater) DrainReturnsOnCall(i int, result1 error) {
+	fake.drainMutex.Lock()
+	defer fake.drainMutex.Unlock()
+	fake.DrainStub = nil
+	if fake.drainReturnsOnCall == nil {
+		fake.drainReturnsOnCall = make(map[int]struct {
+			result1 error
+		})
+	}
+	fake.drainReturnsOnCall[i] = struct {
+		result1 error
+	}{result1}
 }
 
 func (fake *FakeUpdater) HandleEvent(arg1 routing_api.TcpEvent) error {
@@ -207,6 +270,8 @@ func (fake *FakeUpdater) SyncingReturnsOnCall(i int, result1 bool) {
 func (fake *FakeUpdater) Invocations() map[string][][]interface{} {
 	fake.invocationsMutex.RLock()
 	defer fake.invocationsMutex.RUnlock()
+	fake.drainMutex.RLock()
+	defer fake.drainMutex.RUnlock()
 	fake.handleEventMutex.RLock()
 	defer fake.handleEventMutex.RUnlock()
 	fake.pruneStaleRoutesMutex.RLock()

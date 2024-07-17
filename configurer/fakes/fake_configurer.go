@@ -9,10 +9,11 @@ import (
 )
 
 type FakeRouterConfigurer struct {
-	ConfigureStub        func(models.RoutingTable) error
+	ConfigureStub        func(models.RoutingTable, bool) error
 	configureMutex       sync.RWMutex
 	configureArgsForCall []struct {
 		arg1 models.RoutingTable
+		arg2 bool
 	}
 	configureReturns struct {
 		result1 error
@@ -24,18 +25,19 @@ type FakeRouterConfigurer struct {
 	invocationsMutex sync.RWMutex
 }
 
-func (fake *FakeRouterConfigurer) Configure(arg1 models.RoutingTable) error {
+func (fake *FakeRouterConfigurer) Configure(arg1 models.RoutingTable, arg2 bool) error {
 	fake.configureMutex.Lock()
 	ret, specificReturn := fake.configureReturnsOnCall[len(fake.configureArgsForCall)]
 	fake.configureArgsForCall = append(fake.configureArgsForCall, struct {
 		arg1 models.RoutingTable
-	}{arg1})
+		arg2 bool
+	}{arg1, arg2})
 	stub := fake.ConfigureStub
 	fakeReturns := fake.configureReturns
-	fake.recordInvocation("Configure", []interface{}{arg1})
+	fake.recordInvocation("Configure", []interface{}{arg1, arg2})
 	fake.configureMutex.Unlock()
 	if stub != nil {
-		return stub(arg1)
+		return stub(arg1, arg2)
 	}
 	if specificReturn {
 		return ret.result1
@@ -49,17 +51,17 @@ func (fake *FakeRouterConfigurer) ConfigureCallCount() int {
 	return len(fake.configureArgsForCall)
 }
 
-func (fake *FakeRouterConfigurer) ConfigureCalls(stub func(models.RoutingTable) error) {
+func (fake *FakeRouterConfigurer) ConfigureCalls(stub func(models.RoutingTable, bool) error) {
 	fake.configureMutex.Lock()
 	defer fake.configureMutex.Unlock()
 	fake.ConfigureStub = stub
 }
 
-func (fake *FakeRouterConfigurer) ConfigureArgsForCall(i int) models.RoutingTable {
+func (fake *FakeRouterConfigurer) ConfigureArgsForCall(i int) (models.RoutingTable, bool) {
 	fake.configureMutex.RLock()
 	defer fake.configureMutex.RUnlock()
 	argsForCall := fake.configureArgsForCall[i]
-	return argsForCall.arg1
+	return argsForCall.arg1, argsForCall.arg2
 }
 
 func (fake *FakeRouterConfigurer) ConfigureReturns(result1 error) {

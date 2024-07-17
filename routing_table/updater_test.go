@@ -2,6 +2,7 @@ package routing_table_test
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"code.cloudfoundry.org/cf-tcp-router/configurer/fakes"
@@ -47,6 +48,7 @@ var _ = Describe("Updater", func() {
 		ttl                        int
 		modificationTag            apimodels.ModificationTag
 		fakeClock                  *fakeclock.FakeClock
+		drainWaitDuration          time.Duration
 	)
 
 	verifyRoutingTableEntry := func(key models.RoutingKey, entry models.RoutingTableEntry) {
@@ -69,7 +71,10 @@ var _ = Describe("Updater", func() {
 		tmpRoutingTable := models.NewRoutingTable(logger)
 		routingTable = &tmpRoutingTable
 		fakeClock = fakeclock.NewFakeClock(time.Now())
-		updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeTokenFetcher, fakeClock, defaultTTL)
+	})
+
+	JustBeforeEach(func() {
+		updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeTokenFetcher, fakeClock, defaultTTL, drainWaitDuration)
 	})
 
 	Describe("HandleEvent", func() {
@@ -100,8 +105,10 @@ var _ = Describe("Updater", func() {
 				},
 			)
 			Expect(routingTable.Set(existingRoutingKey3, existingRoutingTableEntry3)).To(BeTrue())
+		})
 
-			updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeTokenFetcher, fakeClock, defaultTTL)
+		JustBeforeEach(func() {
+			updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeTokenFetcher, fakeClock, defaultTTL, drainWaitDuration)
 		})
 
 		Context("when Upsert event is received", func() {
@@ -978,8 +985,10 @@ var _ = Describe("Updater", func() {
 			routingTableEntry = models.RoutingTableEntry{Backends: backends}
 			updated = routingTable.Set(routingKey2, routingTableEntry)
 			Expect(updated).To(BeTrue())
+		})
 
-			updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeTokenFetcher, fakeClock, defaultTTL)
+		JustBeforeEach(func() {
+			updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeTokenFetcher, fakeClock, defaultTTL, drainWaitDuration)
 		})
 
 		Context("when none of the routes are stale", func() {
@@ -1007,7 +1016,10 @@ var _ = Describe("Updater", func() {
 		Context("when some routes are stale", func() {
 			BeforeEach(func() {
 				fakeClock.IncrementBySeconds(65)
-				updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeTokenFetcher, fakeClock, 40)
+			})
+
+			JustBeforeEach(func() {
+				updater = routing_table.NewUpdater(logger, routingTable, fakeConfigurer, fakeRoutingApiClient, fakeTokenFetcher, fakeClock, 40, drainWaitDuration)
 			})
 
 			It("prunes those routes", func() {
@@ -1021,6 +1033,194 @@ var _ = Describe("Updater", func() {
 					},
 				)
 				verifyRoutingTableEntry(models.RoutingKey{Port: externalPort2}, expectedRoutingTableEntry2)
+			})
+		})
+	})
+
+	Describe("Drain", func() {
+		Context("when there is no sync going on", func() {
+			It("calls configure", func() {
+				err := updater.Drain()
+				Expect(err).NotTo(HaveOccurred())
+				Eventually(fakeConfigurer.ConfigureCallCount).Should(Equal(1))
+			})
+			Context("when drain was already called", func() {
+				JustBeforeEach(func() {
+					err := updater.Drain()
+					Expect(err).NotTo(HaveOccurred())
+				})
+				It("should only drain once", func() {
+					err := updater.Drain()
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(logger).Should(gbytes.Say("drain-already-in-progress"))
+					Consistently(fakeConfigurer.ConfigureCallCount).Should(Equal(1))
+				})
+			})
+		})
+		Context("when there is a sync going on", func() {
+			var (
+				syncChannel chan struct{}
+				doneChannel chan struct{}
+			)
+
+			invokeSync := func(doneChannel chan struct{}) {
+				defer GinkgoRecover()
+				updater.Sync()
+				close(doneChannel)
+			}
+			BeforeEach(func() {
+				syncChannel = make(chan struct{})
+				doneChannel = make(chan struct{})
+				tmpSyncChannel := syncChannel
+				tcpMappings := make([]apimodels.TcpRouteMapping, 0)
+				fakeRoutingApiClient.TcpRouteMappingsStub = func() ([]apimodels.TcpRouteMapping, error) {
+					<-tmpSyncChannel
+					return tcpMappings, nil
+				}
+			})
+
+			It("waits for the sync to finish, then calls configure", func() {
+				go invokeSync(doneChannel)
+				Eventually(updater.Syncing).Should(BeTrue())
+				go updater.Drain()
+				Eventually(logger).Should(gbytes.Say("waiting-for-sync-to-finish-before-starting-drain"))
+				Consistently(fakeConfigurer.ConfigureCallCount()).Should(Equal(0))
+				close(syncChannel)
+				Eventually(updater.Syncing).Should(BeFalse())
+				Eventually(logger).Should(gbytes.Say("drain-started"))
+				Eventually(fakeConfigurer.ConfigureCallCount()).Should(Equal(1))
+			})
+		})
+
+		It("tells the configurer to reconfigure in drain mode", func() {
+			err := updater.Drain()
+			Expect(err).NotTo(HaveOccurred())
+			_, drain := fakeConfigurer.ConfigureArgsForCall(0)
+			Expect(drain).To(BeTrue())
+		})
+
+		Context("when Configure() returns an error", func() {
+			BeforeEach(func() {
+				fakeConfigurer.ConfigureReturns(fmt.Errorf("meow"))
+			})
+
+			It("propagates the error", func() {
+				err := updater.Drain()
+				Expect(err).To(HaveOccurred())
+				Expect(err).To(MatchError("meow"))
+			})
+		})
+
+		Context("when the drain wait is larger than 0", func() {
+			BeforeEach(func() {
+				drainWaitDuration = 2 * time.Second
+			})
+
+			It("waits for the drain wait before returning", func() {
+				go updater.Drain()
+				Eventually(logger).Should(gbytes.Say("starting-drain-wait"))
+				Consistently(logger, 1*time.Second).ShouldNot(gbytes.Say("finished-drain-wait"))
+				Eventually(logger, 2*time.Second).Should(gbytes.Say("finished-drain-wait"))
+			})
+		})
+
+		Context("when Sync is called after drain", func() {
+			BeforeEach(func() {
+				tcpMappings := []apimodels.TcpRouteMapping{
+					apimodels.NewTcpRouteMappingWithModificationTag(
+						routerGroupGuid,
+						externalPort1,
+						"some-ip-1",
+						61000,
+						ttl,
+						modificationTag,
+					),
+				}
+				fakeRoutingApiClient.TcpRouteMappingsReturns(tcpMappings, nil)
+
+			})
+			It("it calls Configure with forceHealthCheckToFail == true", func() {
+				err := updater.Drain()
+				Expect(err).NotTo(HaveOccurred())
+				_, drain := fakeConfigurer.ConfigureArgsForCall(0)
+				Expect(drain).To(BeTrue())
+				updater.Sync()
+				_, drain = fakeConfigurer.ConfigureArgsForCall(1)
+				Expect(drain).To(BeTrue())
+			})
+		})
+
+		Context("when handleEvent is called after drain", func() {
+			Context("when the action is delete", func() {
+				BeforeEach(func() {
+					tcpMappings := []apimodels.TcpRouteMapping{
+						apimodels.NewTcpRouteMappingWithModificationTag(
+							routerGroupGuid,
+							externalPort1,
+							"some-ip-1",
+							61000,
+							ttl,
+							modificationTag,
+						),
+					}
+					fakeRoutingApiClient.TcpRouteMappingsReturns(tcpMappings, nil)
+
+				})
+				It("it calls Configure with forceHealthCheckToFail == true", func() {
+					// add item to the routing table
+					updater.Sync()
+					Eventually(routingTable.Size).Should(Equal(1))
+					_, drain := fakeConfigurer.ConfigureArgsForCall(0)
+					Expect(drain).To(BeFalse())
+
+					// call drain
+					err := updater.Drain()
+					Expect(err).NotTo(HaveOccurred())
+					_, drain = fakeConfigurer.ConfigureArgsForCall(1)
+					Expect(drain).To(BeTrue())
+
+					// delete item from the routing table
+					err = updater.HandleEvent(routing_api.TcpEvent{
+						Action: "Delete",
+						TcpRouteMapping: apimodels.NewTcpRouteMappingWithModificationTag(
+							routerGroupGuid,
+							externalPort1,
+							"some-ip-1",
+							61000,
+							ttl,
+							modificationTag,
+						),
+					})
+					Expect(err).NotTo(HaveOccurred())
+					Eventually(routingTable.Size).Should(Equal(0))
+
+					// see that forceHealthCheckToFail is true
+					_, drain = fakeConfigurer.ConfigureArgsForCall(2)
+					Expect(drain).To(BeTrue())
+				})
+			})
+
+			Context("when the action is upsert", func() {
+				It("it calls Configure with forceHealthCheckToFail == true", func() {
+					err := updater.Drain()
+					Expect(err).NotTo(HaveOccurred())
+					_, drain := fakeConfigurer.ConfigureArgsForCall(0)
+					Expect(drain).To(BeTrue())
+					err = updater.HandleEvent(routing_api.TcpEvent{
+						Action: "Upsert",
+						TcpRouteMapping: apimodels.NewTcpRouteMappingWithModificationTag(
+							routerGroupGuid,
+							externalPort1,
+							"some-ip-1",
+							61000,
+							ttl,
+							modificationTag,
+						),
+					})
+					Expect(err).NotTo(HaveOccurred())
+					_, drain = fakeConfigurer.ConfigureArgsForCall(1)
+					Expect(drain).To(BeTrue())
+				})
 			})
 		})
 	})

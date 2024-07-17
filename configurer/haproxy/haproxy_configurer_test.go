@@ -132,7 +132,7 @@ var _ = Describe("HaproxyConfigurer", func() {
 
 			Context("when Configure is called once", func() {
 				It("writes contents to file", func() {
-					err = haproxyConfigurer.Configure(routingTable)
+					err = haproxyConfigurer.Configure(routingTable, false)
 					Expect(err).ToNot(HaveOccurred())
 
 					currentConfigTemplateContent, err = os.ReadFile(generatedHaproxyCfgFile)
@@ -149,10 +149,10 @@ var _ = Describe("HaproxyConfigurer", func() {
 
 			Context("when Configure is called twice", func() {
 				It("overwrites the file every time (does not accumulate marshalled contents)", func() {
-					err = haproxyConfigurer.Configure(routingTable)
+					err = haproxyConfigurer.Configure(routingTable, false)
 					Expect(err).ToNot(HaveOccurred())
 
-					err = haproxyConfigurer.Configure(routingTable)
+					err = haproxyConfigurer.Configure(routingTable, false)
 					Expect(err).ToNot(HaveOccurred())
 
 					currentConfigTemplateContent, err = os.ReadFile(generatedHaproxyCfgFile)
@@ -166,6 +166,25 @@ var _ = Describe("HaproxyConfigurer", func() {
 					Expect(fakeMonitor.StopWatchingCallCount()).To(Equal(2))
 					Expect(fakeScriptRunner.RunCallCount()).To(Equal(2))
 					Expect(fakeMonitor.StartWatchingCallCount()).To(Equal(2))
+				})
+			})
+
+			Context("when Configure is called with forceHealthCheckToFail set to true", func() {
+				It("calls scriptRunner.Run() with true", func() {
+					err = haproxyConfigurer.Configure(routingTable, true)
+					Expect(err).ToNot(HaveOccurred())
+					forceHealthCheckToFail := fakeScriptRunner.RunArgsForCall(0)
+					Expect(forceHealthCheckToFail).To(BeTrue())
+
+				})
+			})
+			Context("when Configure is called with forceHealthCheckToFail set to false", func() {
+				It("calls scriptRunner.Run() with false", func() {
+					err = haproxyConfigurer.Configure(routingTable, false)
+					Expect(err).ToNot(HaveOccurred())
+					forceHealthCheckToFail := fakeScriptRunner.RunArgsForCall(0)
+					Expect(forceHealthCheckToFail).To(BeFalse())
+
 				})
 			})
 		})

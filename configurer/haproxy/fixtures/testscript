@@ -1,3 +1,5 @@
 #!/bin/bash
 
 echo "hello test"
+
+echo "IS_DRAINING=${IS_DRAINING}"

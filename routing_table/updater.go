@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"sync"
+	"time"
 
 	"code.cloudfoundry.org/cf-tcp-router/configurer"
 	"code.cloudfoundry.org/cf-tcp-router/models"
@@ -20,34 +21,38 @@ type Updater interface {
 	Sync()
 	Syncing() bool
 	PruneStaleRoutes()
+	Drain() error
 }
 
 type updater struct {
-	logger           lager.Logger
-	routingTable     *models.RoutingTable
-	configurer       configurer.RouterConfigurer
-	syncing          bool
-	routingAPIClient routing_api.Client
-	uaaTokenFetcher  uaaclient.TokenFetcher
-	cachedEvents     []routing_api.TcpEvent
-	lock             *sync.Mutex
-	klock            clock.Clock
-	defaultTTL       int
+	logger            lager.Logger
+	routingTable      *models.RoutingTable
+	configurer        configurer.RouterConfigurer
+	syncing           bool
+	routingAPIClient  routing_api.Client
+	uaaTokenFetcher   uaaclient.TokenFetcher
+	cachedEvents      []routing_api.TcpEvent
+	lock              *sync.Mutex
+	klock             clock.Clock
+	defaultTTL        int
+	drainWaitDuration time.Duration
+	isDraining        bool
 }
 
 func NewUpdater(logger lager.Logger, routingTable *models.RoutingTable, configurer configurer.RouterConfigurer,
-	routingAPIClient routing_api.Client, uaaTokenFetcher uaaclient.TokenFetcher, klock clock.Clock, defaultTTL int) Updater {
+	routingAPIClient routing_api.Client, uaaTokenFetcher uaaclient.TokenFetcher, klock clock.Clock, defaultTTL int, drainWaitDuration time.Duration) Updater {
 	return &updater{
-		logger:           logger,
-		routingTable:     routingTable,
-		configurer:       configurer,
-		lock:             new(sync.Mutex),
-		syncing:          false,
-		routingAPIClient: routingAPIClient,
-		uaaTokenFetcher:  uaaTokenFetcher,
-		cachedEvents:     nil,
-		klock:            klock,
-		defaultTTL:       defaultTTL,
+		logger:            logger,
+		routingTable:      routingTable,
+		configurer:        configurer,
+		lock:              new(sync.Mutex),
+		syncing:           false,
+		routingAPIClient:  routingAPIClient,
+		uaaTokenFetcher:   uaaTokenFetcher,
+		cachedEvents:      nil,
+		klock:             klock,
+		defaultTTL:        defaultTTL,
+		drainWaitDuration: drainWaitDuration,
 	}
 }
 
@@ -75,7 +80,7 @@ func (u *updater) Sync() {
 			tableChanged = true
 		}
 		if tableChanged {
-			_ = u.configurer.Configure(*u.routingTable)
+			_ = u.configurer.Configure(*u.routingTable, u.isDraining)
 			logger.Debug("applied-fetched-routes-to-routing-table", lager.Data{"size": u.routingTable.Size()})
 		}
 		u.syncing = false
@@ -154,6 +159,12 @@ func (u *updater) Syncing() bool {
 	return u.syncing
 }
 
+func (u *updater) IsDraining() bool {
+	u.lock.Lock()
+	defer u.lock.Unlock()
+	return u.isDraining
+}
+
 func (u *updater) HandleEvent(event routing_api.TcpEvent) error {
 	u.lock.Lock()
 	defer u.lock.Unlock()
@@ -165,6 +176,37 @@ func (u *updater) HandleEvent(event routing_api.TcpEvent) error {
 		_, err := u.handleEvent(u.logger, event)
 		return err
 	}
+	return nil
+}
+
+func (u *updater) Drain() error {
+
+	for u.Syncing() {
+		u.logger.Debug("waiting-for-sync-to-finish-before-starting-drain")
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if u.IsDraining() {
+		u.logger.Debug("drain-already-in-progress")
+		return nil
+	}
+
+	u.lock.Lock()
+	u.isDraining = true
+	u.lock.Unlock()
+
+	u.logger.Info("drain-started")
+	err := u.configurer.Configure(*u.routingTable, u.IsDraining())
+	if err != nil {
+		// if we couldn't reconfigure haproxy to gracefully drain
+		// we may as well just give up and do a hard exit
+		return err
+	}
+
+	u.logger.Debug("starting-drain-wait", lager.Data{"drain-wait-period": u.drainWaitDuration})
+	time.Sleep(u.drainWaitDuration)
+	u.logger.Debug("finished-drain-wait")
+
 	return nil
 }
 
@@ -218,7 +260,7 @@ func (u *updater) handleUpsert(logger lager.Logger, routeMapping apimodels.TcpRo
 	tableChanged := u.routingTable.UpsertBackendServerKey(routingKey, backendServerInfo)
 	if tableChanged && !u.syncing {
 		logger.Debug("calling-configurer")
-		return true, u.configurer.Configure(*u.routingTable)
+		return true, u.configurer.Configure(*u.routingTable, u.isDraining) // called from HandleEvent which already has a lock, so don't need to use IsDraining() here
 	}
 
 	return tableChanged, nil
@@ -230,7 +272,7 @@ func (u *updater) handleDelete(logger lager.Logger, routeMapping apimodels.TcpRo
 	tableChanged := u.routingTable.DeleteBackendServerKey(routingKey, backendServerInfo)
 	if tableChanged && !u.syncing {
 		logger.Debug("calling-configurer")
-		return true, u.configurer.Configure(*u.routingTable)
+		return true, u.configurer.Configure(*u.routingTable, u.isDraining) // called from HandleEvent which already has a lock, so don't need to use IsDraining() here
 	}
 
 	return tableChanged, nil

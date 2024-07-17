@@ -25,7 +25,9 @@ func (args Args) ArgSlice() []string {
 		"-tokenFetchRetryInterval", "1s",
 		"-staleRouteCheckInterval", "5s",
 		"-logLevel=debug",
+		"-syncInterval", "1s",
 		"-routingGroupCheckExit=" + strconv.FormatBool(args.RoutingGroupCheckExit),
+		"-timeFormat", "rfc3339",
 	}
 }
 

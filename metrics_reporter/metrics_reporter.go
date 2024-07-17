@@ -2,11 +2,13 @@ package metrics_reporter
 
 import (
 	"os"
+	"syscall"
 	"time"
 
 	"code.cloudfoundry.org/cf-tcp-router/metrics_reporter/haproxy_client"
 	"code.cloudfoundry.org/cf-tcp-router/models"
 	"code.cloudfoundry.org/clock"
+	"code.cloudfoundry.org/lager/v3"
 )
 
 type MetricsReport struct {
@@ -32,14 +34,16 @@ type MetricsReporter struct {
 	emitInterval   time.Duration
 	haproxyClient  haproxy_client.HaproxyClient
 	metricsEmitter MetricsEmitter
+	logger         lager.Logger
 }
 
-func NewMetricsReporter(clock clock.Clock, haproxyClient haproxy_client.HaproxyClient, metricsEmitter MetricsEmitter, interval time.Duration) *MetricsReporter {
+func NewMetricsReporter(clock clock.Clock, haproxyClient haproxy_client.HaproxyClient, metricsEmitter MetricsEmitter, interval time.Duration, logger lager.Logger) *MetricsReporter {
 	return &MetricsReporter{
 		clock:          clock,
 		haproxyClient:  haproxyClient,
 		metricsEmitter: metricsEmitter,
 		emitInterval:   interval,
+		logger:         logger.Session("metrics-reporter"),
 	}
 }
 
@@ -50,9 +54,12 @@ func (r *MetricsReporter) Run(signals <-chan os.Signal, ready chan<- struct{}) e
 		select {
 		case <-ticker.C():
 			r.emitStats()
-		case <-signals:
-			ticker.Stop()
-			return nil
+		case sig := <-signals:
+			if sig != syscall.SIGUSR2 {
+				r.logger.Info("stopping")
+				ticker.Stop()
+				return nil
+			}
 		}
 	}
 }

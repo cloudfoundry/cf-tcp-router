@@ -56,7 +56,7 @@ func NewHaProxyConfigurer(logger lager.Logger, configMarshaller ConfigMarshaller
 	}, nil
 }
 
-func (h *Configurer) Configure(routingTable models.RoutingTable) error {
+func (h *Configurer) Configure(routingTable models.RoutingTable, forceHealthCheckToFail bool) error {
 	h.monitor.StopWatching()
 	h.configFileLock.Lock()
 	defer h.configFileLock.Unlock()
@@ -97,7 +97,7 @@ func (h *Configurer) Configure(routingTable models.RoutingTable) error {
 	if h.scriptRunner != nil {
 		h.logger.Info("reloading-haproxy")
 
-		err = h.scriptRunner.Run()
+		err = h.scriptRunner.Run(forceHealthCheckToFail)
 		if err != nil {
 			h.logger.Error("failed-to-reload-haproxy", err)
 			return err

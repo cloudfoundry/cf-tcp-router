@@ -2,6 +2,7 @@ package syncer_test
 
 import (
 	"os"
+	"syscall"
 	"time"
 
 	"code.cloudfoundry.org/cf-tcp-router/syncer"
@@ -101,6 +102,17 @@ var _ = Describe("Syncer", func() {
 			Eventually(readyChannel).Should(BeClosed())
 			process = ifrit.Invoke(syncerRunner)
 			Eventually(watchChannel).Should(Receive())
+		})
+	})
+
+	Context("when signaled with SIGUSR2", func() {
+		BeforeEach(func() {
+			process = ifrit.Invoke(syncerRunner)
+		})
+		It("does not shut down", func() {
+			process.Signal(syscall.SIGUSR2)
+
+			Consistently(process.Wait()).ShouldNot(Receive())
 		})
 	})
 })

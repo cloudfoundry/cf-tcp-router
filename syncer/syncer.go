@@ -2,6 +2,7 @@ package syncer
 
 import (
 	"os"
+	"syscall"
 	"time"
 
 	"code.cloudfoundry.org/clock"
@@ -43,10 +44,12 @@ func (s *Syncer) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 		select {
 		case <-syncTicker.C():
 			s.sync()
-		case <-signals:
-			s.logger.Info("stopping")
-			syncTicker.Stop()
-			return nil
+		case sig := <-signals:
+			if sig != syscall.SIGUSR2 {
+				s.logger.Info("stopping")
+				syncTicker.Stop()
+				return nil
+			}
 		}
 	}
 }

@@ -22,4 +22,4 @@ backend_tls:
   ca_cert_path: fixtures/ca.pem
   client_cert_and_key_path: fixtures/cert_and_key.pem
 
-drain_wait: 40s
+drain_wait: -40s

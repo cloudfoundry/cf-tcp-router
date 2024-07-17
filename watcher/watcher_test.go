@@ -2,7 +2,9 @@ package watcher_test
 
 import (
 	"errors"
+	"fmt"
 	"os"
+	"syscall"
 	"time"
 
 	fake_routing_table "code.cloudfoundry.org/cf-tcp-router/routing_table/fakes"
@@ -12,6 +14,9 @@ import (
 	"code.cloudfoundry.org/routing-api/models"
 	test_uaa_client "code.cloudfoundry.org/routing-api/uaaclient/fakes"
 	"github.com/tedsuo/ifrit"
+	"github.com/tedsuo/ifrit/grouper"
+	"github.com/tedsuo/ifrit/sigmon"
+	"github.com/tedsuo/ifrit/test_helpers"
 	"golang.org/x/oauth2"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -24,16 +29,19 @@ var _ = Describe("Watcher", func() {
 		routerGroupGuid = "rtrGrp0001"
 	)
 	var (
-		eventSource      *fake_routing_api.FakeTcpEventSource
-		routingApiClient *fake_routing_api.FakeClient
-		uaaTokenFetcher  *test_uaa_client.FakeTokenFetcher
-		testWatcher      *watcher.Watcher
-		process          ifrit.Process
-		syncChannel      chan struct{}
-		updater          *fake_routing_table.FakeUpdater
+		eventSource            *fake_routing_api.FakeTcpEventSource
+		routingApiClient       *fake_routing_api.FakeClient
+		uaaTokenFetcher        *test_uaa_client.FakeTokenFetcher
+		testWatcher            *watcher.Watcher
+		process                ifrit.Process
+		syncChannel            chan struct{}
+		updater                *fake_routing_table.FakeUpdater
+		processAlreadyShutDown bool
+		signalRecorder         *test_helpers.SignalRecoder
 	)
 
 	BeforeEach(func() {
+		processAlreadyShutDown = false
 		eventSource = new(fake_routing_api.FakeTcpEventSource)
 		routingApiClient = new(fake_routing_api.FakeClient)
 		updater = new(fake_routing_table.FakeUpdater)
@@ -50,13 +58,23 @@ var _ = Describe("Watcher", func() {
 	})
 
 	JustBeforeEach(func() {
-		process = ifrit.Invoke(testWatcher)
+		signalRecorder = test_helpers.NewSignalRecorder(os.Interrupt)
+
+		group := grouper.NewParallel(os.Interrupt, grouper.Members{
+			{Name: "signalrecorder", Runner: signalRecorder},
+			{Name: "testWatcher", Runner: testWatcher},
+		})
+
+		process = ifrit.Invoke(sigmon.New(group, syscall.SIGUSR2))
+		testWatcher.SetProcess(process)
 	})
 
 	AfterEach(func() {
-		process.Signal(os.Interrupt)
-		Eventually(process.Wait()).Should(Receive())
-		Eventually(logger).Should(gbytes.Say("test.watcher.stopping"))
+		if !processAlreadyShutDown {
+			process.Signal(os.Interrupt)
+			Eventually(process.Wait()).Should(Receive())
+			Eventually(logger).Should(gbytes.Say("test.watcher.stopping"))
+		}
 	})
 
 	Context("handle UpsertEvent", func() {
@@ -212,4 +230,89 @@ var _ = Describe("Watcher", func() {
 		})
 	})
 
+	Context("when receiving a SIGUSR2", func() {
+		BeforeEach(func() {
+			updater.DrainStub = func() error {
+				time.Sleep(1 * time.Second)
+				return nil
+			}
+			tcpEvent := routing_api.TcpEvent{
+				TcpRouteMapping: models.NewTcpRouteMapping(
+					routerGroupGuid,
+					61000,
+					"some-ip-1",
+					5222,
+					0,
+				),
+				Action: "Upsert",
+			}
+			eventSource.NextReturns(tcpEvent, nil)
+
+		})
+		JustBeforeEach(func() {
+			process.Signal(syscall.SIGUSR2)
+		})
+		AfterEach(func() {
+			processAlreadyShutDown = true
+		})
+
+		It("logs that it's starting to drain", func() {
+			Eventually(logger).Should(gbytes.Say("drain-requested"))
+		})
+
+		It("calls updater.Drain", func() {
+			Eventually(updater.DrainCallCount).Should(Equal(1))
+		})
+
+		It("stops the process and signals the main ifrit process", func() {
+			Eventually(signalRecorder.ReceivedSignals, 2*time.Second).Should(ContainElement(os.Interrupt))
+			Eventually(logger, 2*time.Second).Should(gbytes.Say("stopping"))
+		})
+
+		Context("when updater.Drain() fails", func() {
+			BeforeEach(func() {
+				updater.DrainReturns(fmt.Errorf("meow"))
+			})
+
+			It("logs an error", func() {
+				Eventually(logger).Should(gbytes.Say("failed-draining"))
+			})
+			It("triggers a shutdown", func() {
+				Eventually(signalRecorder.ReceivedSignals, 2*time.Second).Should(ContainElement(os.Interrupt))
+				Eventually(logger, 2*time.Second).Should(gbytes.Say("stopping"))
+			})
+		})
+
+		It("allows subsequent syncs to occur before the drain is complete", func() {
+			Eventually(logger).Should(gbytes.Say("drain-requested"))
+			initialCallCount := updater.SyncCallCount()
+			syncChannel <- struct{}{}
+			Eventually(updater.SyncCallCount).Should(BeNumerically(">", initialCallCount))
+			Eventually(logger, 2*time.Second).Should(gbytes.Say("test.watcher.stopping"))
+			Eventually(process.Wait()).Should(Receive())
+		})
+
+		Context("when sending events after a drain has started", func() {
+			BeforeEach(func() {
+				tcpEvent := routing_api.TcpEvent{
+					TcpRouteMapping: models.NewTcpRouteMapping(
+						routerGroupGuid,
+						61000,
+						"some-ip-1",
+						5222,
+						0,
+					),
+					Action: "Upsert",
+				}
+				eventSource.NextReturns(tcpEvent, nil)
+			})
+			It("allows subsequent tcpmapping events to be handled before the drain is complete", func() {
+				Eventually(logger).Should(gbytes.Say("drain-requested"))
+				initialCallCount := updater.HandleEventCallCount()
+				Eventually(updater.HandleEventCallCount).Should(BeNumerically(">", initialCallCount))
+				Eventually(logger, 2*time.Second).Should(gbytes.Say("test.watcher.stopping"))
+				Eventually(process.Wait()).Should(Receive())
+			})
+		})
+	})
 })

@@ -16,7 +16,7 @@ const (
 
 //go:generate counterfeiter -o fakes/fake_configurer.go . RouterConfigurer
 type RouterConfigurer interface {
-	Configure(routingTable models.RoutingTable) error
+	Configure(routingTable models.RoutingTable, forceHealthCheckToFail bool) error
 }
 
 func NewConfigurer(logger lager.Logger, tcpLoadBalancer string, tcpLoadBalancerBaseCfg string, tcpLoadBalancerCfg string, monitor monitor.Monitor, scriptRunner haproxy.ScriptRunner, backendTlsCfg config.BackendTLSConfig) RouterConfigurer {

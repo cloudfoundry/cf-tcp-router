@@ -3,6 +3,7 @@ package config_test
 import (
 	"fmt"
 	"os"
+	"time"
 
 	tlshelpers "code.cloudfoundry.org/cf-routing-test-helpers/tls"
 	"code.cloudfoundry.org/cf-tcp-router/config"
@@ -64,6 +65,7 @@ var _ = Describe("Config", Serial, func() {
 	Context("when a valid config", func() {
 		It("loads the config", func() {
 			expectedCfg := config.Config{
+				DrainWaitDuration: 40 * time.Second,
 				OAuth: config.OAuthConfig{
 					TokenEndpoint:     "uaa.service.cf.internal",
 					ClientName:        "someclient",
@@ -196,6 +198,14 @@ var _ = Describe("Config", Serial, func() {
 			cfg, err := config.New("fixtures/missing_oauth_fields.yml")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(*cfg).To(Equal(expectedCfg))
+		})
+	})
+	Context("when drain_wait is a negative number", func() {
+		It("defaults to 20s", func() {
+			cfg, err := config.New("fixtures/negative_drain_wait.yml")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(cfg.DrainWaitDuration).To(Equal(20 * time.Second))
+
 		})
 	})
 })

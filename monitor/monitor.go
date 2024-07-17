@@ -52,9 +52,11 @@ func (m *monitor) Run(signals <-chan os.Signal, ready chan<- struct{}) error {
 
 	for {
 		select {
-		case <-signals:
-			m.logger.Info("stopping")
-			return nil
+		case sig := <-signals:
+			if sig != syscall.SIGUSR2 {
+				m.logger.Info("stopping")
+				return nil
+			}
 		case <-time.After(time.Second):
 			if atomic.LoadInt32(&m.stopWatching) == 0 {
 				err = watchPID(m.haproxyPIDFile, m.logger)

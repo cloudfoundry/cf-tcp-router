@@ -24,20 +24,38 @@ var _ = Describe("CommandRunner", func() {
 				cmdRunner = CreateCommandRunner("fixtures/testscript", logger)
 			})
 			It("runs script successfully", func() {
-				err := cmdRunner.Run()
+				err := cmdRunner.Run(false)
 				Expect(err).ToNot(HaveOccurred())
 				Expect(logger).Should(gbytes.Say("hello test"))
 			})
 			It("logs a useful message", func() {
-				cmdRunner.Run()
+				cmdRunner.Run(false)
 				logs := logger.(*lagertest.TestLogger).Logs()
 				Expect(len(logs)).To(Equal(1))
 				Expect(logs[0].Message).To(Equal("script-runner-test.running-script"))
 				Expect(logs[0].Data).To(Equal(lager.Data{
 					"command": "fixtures/testscript",
-					"output":  "hello test\n",
+					"output":  "hello test\nIS_DRAINING=\n",
 					"error":   nil,
 				}))
+			})
+			Context("when called with forceHealthCheckToFail set to false", func() {
+				It("launches the runnerCmd without setting IS_DRAINING=true", func() {
+					err := cmdRunner.Run(false)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(logger).ToNot(gbytes.Say("setting-drain-mode"))
+					Expect(logger).ToNot(gbytes.Say("IS_DRAINING=true"))
+
+				})
+			})
+			Context("when called with forceHealthCheckToFail set to true", func() {
+				It("launches the runnerCmd with IS_DRAINING=true", func() {
+					err := cmdRunner.Run(true)
+					Expect(err).NotTo(HaveOccurred())
+					Expect(logger).To(gbytes.Say("setting-drain-mode"))
+					Expect(logger).To(gbytes.Say("IS_DRAINING=true"))
+
+				})
 			})
 		})
 
@@ -46,7 +64,7 @@ var _ = Describe("CommandRunner", func() {
 				cmdRunner = CreateCommandRunner("fixtures/non-existent-script", logger)
 			})
 			It("throws error", func() {
-				err := cmdRunner.Run()
+				err := cmdRunner.Run(false)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("no such file or directory"))
 			})
@@ -57,7 +75,7 @@ var _ = Describe("CommandRunner", func() {
 				cmdRunner = CreateCommandRunner("fixtures/badscript", logger)
 			})
 			It("throws error", func() {
-				err := cmdRunner.Run()
+				err := cmdRunner.Run(false)
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("exit status 1"))
 				Expect(logger).Should(gbytes.Say("negative test"))

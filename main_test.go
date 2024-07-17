@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"code.cloudfoundry.org/cf-tcp-router/testrunner"
@@ -208,6 +209,62 @@ var _ = Describe("Main", func() {
 
 		It("Confirms when there are no conflicting ports", func() {
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("router-group-port-checker-success"))
+		})
+
+		Context("when signaled with SIGUSR2", func() {
+			BeforeEach(func() {
+				Eventually(session.Out, 3*time.Second).Should(gbytes.Say("applied-fetched-routes-to-routing-table"))
+				Consistently(session.Out).ShouldNot(gbytes.Say("drain-requested"))
+				session.Signal(syscall.SIGUSR2)
+				Eventually(session.Out).Should(gbytes.Say("drain-requested"))
+			})
+			Context("after waiting for the drain_wait period", func() {
+				var drain_delay time.Duration
+				BeforeEach(func() {
+					// the test tcp_router is set to 3s for drain_wait, so we set it to something slightly
+					// lower to avoid flakey tests
+					drain_delay = 2800 * time.Millisecond
+					Eventually(session.Out).Should(gbytes.Say("starting-drain-wait"))
+				})
+				It("exits the watcher", func() {
+					Consistently(session.Out, drain_delay).ShouldNot(gbytes.Say("watcher.stopping"))
+					Eventually(session.Out).Should(gbytes.Say("finished-drain-wait"))
+					Eventually(session.Out).Should(gbytes.Say("watcher.stopping"))
+				})
+				It("exits the syncer", func() {
+					Consistently(session.Out, drain_delay).ShouldNot(gbytes.Say("syncer.stopping"))
+					Eventually(session.Out).Should(gbytes.Say("finished-drain-wait"))
+					Eventually(session.Out).Should(gbytes.Say("syncer.stopping"))
+				})
+				It("exits the monitor", func() {
+					Consistently(session.Out, drain_delay).ShouldNot(gbytes.Say("monitor.stopping"))
+					Eventually(session.Out).Should(gbytes.Say("finished-drain-wait"))
+					Eventually(session.Out).Should(gbytes.Say("monitor.stopping"))
+				})
+				It("exits the metricsReporter", func() {
+					Consistently(session.Out, drain_delay).ShouldNot(gbytes.Say("metrics-reporter.stopping"))
+					Eventually(session.Out).Should(gbytes.Say("finished-drain-wait"))
+					Eventually(session.Out).Should(gbytes.Say("metrics-reporter.stopping"))
+				})
+				It("exits the entire process", func() {
+					Consistently(session.Out, drain_delay).ShouldNot(gbytes.Say("metrics-reporter.stopping"))
+					Eventually(session.Out).Should(gbytes.Say("stopping"))
+					Eventually(session.Exited, 5*time.Second).Should(BeClosed())
+				})
+			})
+			It("continues to process syncs", func() {
+				Eventually(session.Out, 2*time.Second).Should(gbytes.Say("bulk-sync.starting"))
+				Eventually(session.Out, 4*time.Second).Should(gbytes.Say("watcher.stopping"))
+				Eventually(session.Out, time.Second).Should(gbytes.Say("syncer.stopping"))
+			})
+			It("continues to process events", func() {
+				tcpRouteMapping := models.NewTcpRouteMapping(routerGroupGuid, 5222, "some-ip-2", 61000, 120)
+				err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
+				Expect(err).ToNot(HaveOccurred())
+
+				Eventually(session.Out).Should(gbytes.Say("handle-event.starting"))
+				Eventually(session.Out, 4*time.Second).Should(gbytes.Say("watcher.stopping"))
+			})
 		})
 	})
 

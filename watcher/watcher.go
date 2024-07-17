@@ -4,12 +4,14 @@ import (
 	"context"
 	"os"
 	"sync/atomic"
+	"syscall"
 	"time"
 
 	"code.cloudfoundry.org/cf-tcp-router/routing_table"
 	"code.cloudfoundry.org/lager/v3"
 	routing_api "code.cloudfoundry.org/routing-api"
 	"code.cloudfoundry.org/routing-api/uaaclient"
+	"github.com/tedsuo/ifrit"
 )
 
 type Watcher struct {
@@ -19,6 +21,7 @@ type Watcher struct {
 	subscriptionRetryInterval int
 	syncChannel               chan struct{}
 	logger                    lager.Logger
+	process                   ifrit.Process
 }
 
 func New(
@@ -109,16 +112,34 @@ func (watcher *Watcher) Run(signals <-chan os.Signal, ready chan<- struct{}) err
 		case <-watcher.syncChannel:
 			go watcher.updater.Sync()
 
-		case <-signals:
-			watcher.logger.Info("stopping")
-			atomic.StoreInt32(&stopEventSource, 1)
-			if es := eventSource.Load(); es != nil {
-				err := es.(routing_api.TcpEventSource).Close()
-				if err != nil {
-					watcher.logger.Error("failed-closing-routing-api-event-source", err)
+		case sig := <-signals:
+			if sig == syscall.SIGUSR2 {
+				go func() {
+					watcher.logger.Info("drain-requested")
+					err := watcher.updater.Drain()
+					if err != nil {
+						watcher.logger.Error("failed-draining", err)
+					}
+					if watcher.process != nil {
+						watcher.process.Signal(os.Interrupt)
+					}
+				}()
+			} else {
+				watcher.logger.Info("stopping")
+				atomic.StoreInt32(&stopEventSource, 1)
+				if es := eventSource.Load(); es != nil {
+					err := es.(routing_api.TcpEventSource).Close()
+					if err != nil {
+						watcher.logger.Error("failed-closing-routing-api-event-source", err)
+					}
 				}
+				return nil
 			}
-			return nil
+
 		}
 	}
+}
+
+func (watcher *Watcher) SetProcess(proc ifrit.Process) {
+	watcher.process = proc
 }

@@ -266,6 +266,7 @@ func generateTCPRouterConfigFile(oauthServerPort int, uaaCACertsPath string, rou
 			ClientSecret:      "somesecret",
 			Port:              oauthServerPort,
 		},
+		DrainWaitDuration: 3 * time.Second,
 		RoutingAPI: config.RoutingAPIConfig{
 			AuthDisabled: routingApiAuthDisabled,
 		},

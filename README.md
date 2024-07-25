@@ -5,7 +5,7 @@ Card](https://goreportcard.com/badge/code.cloudfoundry.org/cf-tcp-router)](https
 [![Go
 Reference](https://pkg.go.dev/badge/code.cloudfoundry.org/cf-tcp-router.svg)](https://pkg.go.dev/code.cloudfoundry.org/cf-tcp-router)
 
-TCP Router repository for Cloud Foundry. It subscribes to SSE events
+TCP Router repository for Cloud Foundry. It subscribes to Server-Sent Events ([SSE](https://en.wikipedia.org/wiki/Server-sent_events))
 from [routing-api](https://github.com/cloudfoundry/routing-api) to
 update haproxy configuration for configuring tcp routes.
 

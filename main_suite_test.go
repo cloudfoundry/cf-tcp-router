@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path"
-	"sync"
 	"testing"
 	"time"
 
@@ -62,7 +61,6 @@ var (
 
 	longRunningProcessPidFile string
 	catCmd                    *exec.Cmd
-	waitGroup                 sync.WaitGroup
 )
 
 func nextAvailPort() int {
@@ -107,15 +105,14 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 	locketPort = uint16(nextAvailPort())
 	locketDBAllocator = routingtestrunner.NewDbAllocator()
 
-	locketDbConfig, err = locketDBAllocator.Create(&waitGroup)
+	locketDbConfig, err = locketDBAllocator.Create()
 	Expect(err).NotTo(HaveOccurred())
-
 })
 
 func setupDB() {
 	dbAllocator = routingtestrunner.NewDbAllocator()
 
-	dbConfig, err := dbAllocator.Create(&waitGroup)
+	dbConfig, err := dbAllocator.Create()
 	Expect(err).NotTo(HaveOccurred())
 	dbId = dbConfig.Schema
 }
@@ -215,8 +212,8 @@ var _ = AfterEach(func() {
 	os.Remove(haproxyConfigBackupFile)
 
 	teardownLocket()
-	dbAllocator.Reset(&waitGroup)
-	locketDBAllocator.Reset(&waitGroup)
+	dbAllocator.Reset()
+	locketDBAllocator.Reset()
 	killLongRunningProcess()
 })
 

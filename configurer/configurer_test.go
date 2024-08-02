@@ -30,7 +30,7 @@ var _ = Describe("Configurer", func() {
 				routeConfigurer := configurer.NewConfigurer(logger,
 					configurer.HaProxyConfigurer, "haproxy/fixtures/haproxy.cfg.template", "haproxy/fixtures/haproxy.cfg", nil, nil, backendTlsCfg)
 				Expect(routeConfigurer).ShouldNot(BeNil())
-				expectedType := reflect.PtrTo(reflect.TypeOf(haproxy.Configurer{}))
+				expectedType := reflect.PointerTo(reflect.TypeOf(haproxy.Configurer{}))
 				value := reflect.ValueOf(routeConfigurer)
 				Expect(value.Type()).To(Equal(expectedType))
 			})

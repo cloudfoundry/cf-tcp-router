@@ -1127,11 +1127,14 @@ var _ = Describe("Updater", func() {
 		Context("when Sync is called after drain", func() {
 			BeforeEach(func() {
 				tcpMappings := []apimodels.TcpRouteMapping{
-					apimodels.NewTcpRouteMappingWithModificationTag(
+					apimodels.NewTcpRouteMapping(
 						routerGroupGuid,
 						externalPort1,
 						"some-ip-1",
 						61000,
+						61001,
+						"instance-id",
+						nil,
 						ttl,
 						modificationTag,
 					),
@@ -1154,11 +1157,14 @@ var _ = Describe("Updater", func() {
 			Context("when the action is delete", func() {
 				BeforeEach(func() {
 					tcpMappings := []apimodels.TcpRouteMapping{
-						apimodels.NewTcpRouteMappingWithModificationTag(
+						apimodels.NewTcpRouteMapping(
 							routerGroupGuid,
 							externalPort1,
 							"some-ip-1",
 							61000,
+							61001,
+							"instance-id",
+							nil,
 							ttl,
 							modificationTag,
 						),
@@ -1182,11 +1188,14 @@ var _ = Describe("Updater", func() {
 					// delete item from the routing table
 					err = updater.HandleEvent(routing_api.TcpEvent{
 						Action: "Delete",
-						TcpRouteMapping: apimodels.NewTcpRouteMappingWithModificationTag(
+						TcpRouteMapping: apimodels.NewTcpRouteMapping(
 							routerGroupGuid,
 							externalPort1,
 							"some-ip-1",
 							61000,
+							61001,
+							"instance-id",
+							nil,
 							ttl,
 							modificationTag,
 						),
@@ -1208,11 +1217,14 @@ var _ = Describe("Updater", func() {
 					Expect(drain).To(BeTrue())
 					err = updater.HandleEvent(routing_api.TcpEvent{
 						Action: "Upsert",
-						TcpRouteMapping: apimodels.NewTcpRouteMappingWithModificationTag(
+						TcpRouteMapping: apimodels.NewTcpRouteMapping(
 							routerGroupGuid,
 							externalPort1,
 							"some-ip-1",
 							61000,
+							61001,
+							"instance-id",
+							nil,
 							ttl,
 							modificationTag,
 						),

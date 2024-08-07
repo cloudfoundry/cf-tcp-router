@@ -242,7 +242,11 @@ var _ = Describe("Watcher", func() {
 					61000,
 					"some-ip-1",
 					5222,
+					5223,
+					"instance-id",
+					nil,
 					0,
+					models.ModificationTag{},
 				),
 				Action: "Upsert",
 			}
@@ -300,7 +304,11 @@ var _ = Describe("Watcher", func() {
 						61000,
 						"some-ip-1",
 						5222,
+						5223,
+						"instance-id",
+						nil,
 						0,
+						models.ModificationTag{},
 					),
 					Action: "Upsert",
 				}

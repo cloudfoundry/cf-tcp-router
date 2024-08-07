@@ -258,7 +258,7 @@ var _ = Describe("Main", func() {
 				Eventually(session.Out, time.Second).Should(gbytes.Say("syncer.stopping"))
 			})
 			It("continues to process events", func() {
-				tcpRouteMapping := models.NewTcpRouteMapping(routerGroupGuid, 5222, "some-ip-2", 61000, 120)
+				tcpRouteMapping := models.NewTcpRouteMapping(routerGroupGuid, 5222, "some-ip-2", 61000, 61001, "instance-id", nil, 120, models.ModificationTag{})
 				err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 				Expect(err).ToNot(HaveOccurred())
 

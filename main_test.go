@@ -211,7 +211,7 @@ var _ = Describe("Main", func() {
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("router-group-port-checker-success"))
 		})
 
-		Context("when signaled with SIGUSR2", func() {
+		Context("when signaled with SIGUSR2", Serial, func() {
 			BeforeEach(func() {
 				Eventually(session.Out, 3*time.Second).Should(gbytes.Say("applied-fetched-routes-to-routing-table"))
 				Consistently(session.Out).ShouldNot(gbytes.Say("drain-requested"))

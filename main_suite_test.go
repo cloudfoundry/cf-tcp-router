@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	testHelpers "code.cloudfoundry.org/routing-api/test_helpers"
 	"crypto/rsa"
 	"encoding/json"
 	"fmt"
@@ -10,57 +11,51 @@ import (
 	"testing"
 	"time"
 
-	tls_helpers "code.cloudfoundry.org/cf-routing-test-helpers/tls"
+	tlsHelpers "code.cloudfoundry.org/cf-routing-test-helpers/tls"
 	"code.cloudfoundry.org/cf-tcp-router/config"
 	"code.cloudfoundry.org/cf-tcp-router/testutil"
 	"code.cloudfoundry.org/cf-tcp-router/utils"
 	"code.cloudfoundry.org/localip"
-	locket_config "code.cloudfoundry.org/locket/cmd/locket/config"
+	locketConfig "code.cloudfoundry.org/locket/cmd/locket/config"
 	"code.cloudfoundry.org/locket/cmd/locket/testrunner"
-	routing_api "code.cloudfoundry.org/routing-api"
-	routingtestrunner "code.cloudfoundry.org/routing-api/cmd/routing-api/testrunner"
-	routing_api_config "code.cloudfoundry.org/routing-api/config"
+	routingAPI "code.cloudfoundry.org/routing-api"
+	routingAPIConfig "code.cloudfoundry.org/routing-api/config"
 	"code.cloudfoundry.org/routing-api/models"
 	"code.cloudfoundry.org/tlsconfig"
 	"github.com/onsi/gomega/gexec"
 	"github.com/tedsuo/ifrit"
 	ginkgomon "github.com/tedsuo/ifrit/ginkgomon_v2"
-	yaml "gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v2"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var (
-	tcpRouterPath           string
-	routingAPIBinPath       string
-	haproxyConfigFile       string
-	haproxyConfigBackupFile string
-	haproxyBaseConfigFile   string
-
-	dbAllocator routingtestrunner.DbAllocator
-
-	dbId string
-
-	locketDBAllocator routingtestrunner.DbAllocator
-	locketBinPath     string
-	locketProcess     ifrit.Process
-	locketPort        uint16
-	locketDbConfig    *routing_api_config.SqlDB
-
+	tcpRouterPath                  string
+	routingAPIBinPath              string
+	haproxyConfigFile              string
+	haproxyConfigBackupFile        string
+	haproxyBaseConfigFile          string
+	dbAllocator                    testHelpers.DbAllocator
+	dbId                           string
+	locketDBAllocator              testHelpers.DbAllocator
+	locketBinPath                  string
+	locketProcess                  ifrit.Process
+	locketPort                     uint16
+	locketDbConfig                 *routingAPIConfig.SqlDB
 	routingAPIAddress              string
-	routingAPIArgs                 routingtestrunner.Args
+	routingAPIArgs                 testHelpers.Args
 	routingAPIPort                 int
 	routingAPIMTLSPort             int
 	routingAPIIP                   string
-	routingApiClient               routing_api.Client
+	routingApiClient               routingAPI.Client
 	routingAPICAFileName           string
 	routingAPICAPrivateKey         *rsa.PrivateKey
 	routingAPIClientCertPath       string
 	routingAPIClientPrivateKeyPath string
-
-	longRunningProcessPidFile string
-	catCmd                    *exec.Cmd
+	longRunningProcessPidFile      string
+	catCmd                         *exec.Cmd
 )
 
 func nextAvailPort() int {
@@ -70,9 +65,9 @@ func nextAvailPort() int {
 	return int(port)
 }
 
-func TestTCPRouter(t *testing.T) {
+func TestTCPRouter(test *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "TCPRouter Suite")
+	RunSpecs(test, "TCPRouter Suite")
 }
 
 var _ = SynchronizedBeforeSuite(func() []byte {
@@ -103,7 +98,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 
 	setupDB()
 	locketPort = uint16(nextAvailPort())
-	locketDBAllocator = routingtestrunner.NewDbAllocator()
+	locketDBAllocator = testHelpers.NewDbAllocator()
 
 	locketDbConfig, err = locketDBAllocator.Create()
 	Expect(err).NotTo(HaveOccurred())
@@ -111,7 +106,7 @@ var _ = SynchronizedBeforeSuite(func() []byte {
 })
 
 func setupDB() {
-	dbAllocator = routingtestrunner.NewDbAllocator()
+	dbAllocator = testHelpers.NewDbAllocator()
 
 	dbConfig, err := dbAllocator.Create()
 	Expect(err).NotTo(HaveOccurred())
@@ -176,10 +171,10 @@ defaults
 
 	dbCACert := os.Getenv("SQL_SERVER_CA_CERT")
 
-	routingAPICAFileName, routingAPICAPrivateKey = tls_helpers.GenerateCa()
-	routingAPIServerCertPath, routingAPIServerKeyPath, _ := tls_helpers.GenerateCertAndKey(routingAPICAFileName, routingAPICAPrivateKey)
+	routingAPICAFileName, routingAPICAPrivateKey = tlsHelpers.GenerateCa()
+	routingAPIServerCertPath, routingAPIServerKeyPath, _ := tlsHelpers.GenerateCertAndKey(routingAPICAFileName, routingAPICAPrivateKey)
 
-	routingAPIArgs, err = routingtestrunner.NewRoutingAPIArgs(
+	routingAPIArgs, err = testHelpers.NewRoutingAPIArgs(
 		routingAPIIP,
 		routingAPIPort,
 		routingAPIMTLSPort,
@@ -192,7 +187,7 @@ defaults
 	)
 	Expect(err).NotTo(HaveOccurred())
 
-	routingAPIClientCertPath, routingAPIClientPrivateKeyPath, _ = tls_helpers.GenerateCertAndKey(routingAPICAFileName, routingAPICAPrivateKey)
+	routingAPIClientCertPath, routingAPIClientPrivateKeyPath, _ = tlsHelpers.GenerateCertAndKey(routingAPICAFileName, routingAPICAPrivateKey)
 
 	tlsConfig, err := tlsconfig.Build(
 		tlsconfig.WithInternalServiceDefaults(),
@@ -201,7 +196,7 @@ defaults
 		tlsconfig.WithAuthorityFromFile(routingAPICAFileName),
 	)
 	Expect(err).NotTo(HaveOccurred())
-	routingApiClient = routing_api.NewClientWithTLSConfig(routingAPIAddress, tlsConfig)
+	routingApiClient = routingAPI.NewClientWithTLSConfig(routingAPIAddress, tlsConfig)
 
 	setupLongRunningProcess()
 })
@@ -226,16 +221,27 @@ var _ = SynchronizedAfterSuite(func() {
 })
 
 func setupLocket() {
-	locketRunner := testrunner.NewLocketRunner(locketBinPath, func(c *locket_config.LocketConfig) {
-		switch os.Getenv("DB") {
-		case "postgres":
-			c.DatabaseConnectionString = "user=postgres password= host=localhost dbname=" + locketDbConfig.Schema
-			c.DatabaseDriver = "postgres"
+	locketRunner := testrunner.NewLocketRunner(locketBinPath, func(config *locketConfig.LocketConfig) {
+		switch testHelpers.Database {
+		case testHelpers.Postgres:
+			config.DatabaseConnectionString = fmt.Sprintf(
+				"user=%s password=%s host=%s dbname=%s",
+				testHelpers.PostgresUsername,
+				testHelpers.PostgresPassword,
+				testHelpers.Host,
+				locketDbConfig.Schema,
+			)
+			config.DatabaseDriver = testHelpers.Postgres
 		default:
-			c.DatabaseConnectionString = "root:password@/" + locketDbConfig.Schema
-			c.DatabaseDriver = "mysql"
+			config.DatabaseConnectionString = fmt.Sprintf(
+				"%s:%s@/%s",
+				testHelpers.MySQLUserName,
+				testHelpers.MySQLPassword,
+				locketDbConfig.Schema,
+			)
+			config.DatabaseDriver = testHelpers.MySQL
 		}
-		c.ListenAddress = fmt.Sprintf("localhost:%d", locketPort)
+		config.ListenAddress = fmt.Sprintf("%s:%d", testHelpers.Host, locketPort)
 	})
 	locketProcess = ginkgomon.Invoke(locketRunner)
 }
@@ -244,7 +250,7 @@ func teardownLocket() {
 	ginkgomon.Interrupt(locketProcess, 5*time.Second)
 }
 
-func getRouterGroupGuid(routingApiClient routing_api.Client) string {
+func getRouterGroupGuid(routingApiClient routingAPI.Client) string {
 	var routerGroups []models.RouterGroup
 	Eventually(func() error {
 		var err error
@@ -259,7 +265,7 @@ func generateTCPRouterConfigFile(oauthServerPort int, uaaCACertsPath string, rou
 	tcpRouterConfig := config.Config{
 		ReservedSystemComponentPorts: reserved_routing_ports,
 		OAuth: config.OAuthConfig{
-			TokenEndpoint:     "127.0.0.1",
+			TokenEndpoint:     testHelpers.RoutingAPIIP,
 			SkipSSLValidation: false,
 			CACerts:           uaaCACertsPath,
 			ClientName:        "someclient",
@@ -276,7 +282,7 @@ func generateTCPRouterConfigFile(oauthServerPort int, uaaCACertsPath string, rou
 		},
 	}
 
-	tcpRouterConfig.RoutingAPI.URI = "https://127.0.0.1"
+	tcpRouterConfig.RoutingAPI.URI = fmt.Sprintf("https://%s", testHelpers.RoutingAPIIP)
 	tcpRouterConfig.RoutingAPI.Port = routingAPIMTLSPort
 	tcpRouterConfig.RoutingAPI.ClientCertificatePath = routingAPIClientCertPath
 	tcpRouterConfig.RoutingAPI.ClientPrivateKeyPath = routingAPIClientPrivateKeyPath

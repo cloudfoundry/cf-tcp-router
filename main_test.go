@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	testHelpers "code.cloudfoundry.org/routing-api/test_helpers"
 	"crypto/tls"
 	"encoding/pem"
 	"fmt"
@@ -16,7 +17,6 @@ import (
 	"code.cloudfoundry.org/cf-tcp-router/testrunner"
 	"code.cloudfoundry.org/lager/v3"
 	"code.cloudfoundry.org/lager/v3/lagertest"
-	routingtestrunner "code.cloudfoundry.org/routing-api/cmd/routing-api/testrunner"
 	"code.cloudfoundry.org/routing-api/models"
 	"github.com/onsi/gomega/gbytes"
 	"github.com/onsi/gomega/gexec"
@@ -81,7 +81,7 @@ var _ = Describe("Main", func() {
 	}
 
 	routingApiServer := func(logger lager.Logger) ifrit.Process {
-		server := routingtestrunner.New(routingAPIBinPath, routingAPIArgs)
+		server := testHelpers.New(routingAPIBinPath, routingAPIArgs)
 		logger.Info("starting-routing-api-server")
 		process := ginkgomon.Invoke(server)
 		return process
@@ -152,7 +152,17 @@ var _ = Describe("Main", func() {
 				ConfigFilePath:                 configFile,
 			}
 
-			tcpRouteMapping := models.NewTcpRouteMapping(routerGroupGuid, 5222, "some-ip-1", 61000, 0, "", nil, 120, models.ModificationTag{})
+			tcpRouteMapping := models.NewTcpRouteMapping(
+				routerGroupGuid,
+				5222,
+				"some-ip-1",
+				61000,
+				0,
+				"some-instance-id",
+				nil,
+				120,
+				models.ModificationTag{},
+			)
 			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 			Expect(err).ToNot(HaveOccurred())
 
@@ -177,7 +187,17 @@ var _ = Describe("Main", func() {
 		It("starts an SSE connection to the server", func() {
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Subscribing-to-routing-api-event-stream"))
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Successfully-subscribed-to-routing-api-event-stream"))
-			tcpRouteMapping := models.NewTcpRouteMapping(routerGroupGuid, 5222, "some-ip-2", 61000, 0, "", nil, 120, models.ModificationTag{})
+			tcpRouteMapping := models.NewTcpRouteMapping(
+				routerGroupGuid,
+				5222,
+				"some-ip-2",
+				61000,
+				0,
+				"some-instance-id",
+				nil,
+				120,
+				models.ModificationTag{},
+			)
 			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("handle-event.finished"))
@@ -192,7 +212,17 @@ var _ = Describe("Main", func() {
 		It("prunes stale routes", func() {
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Subscribing-to-routing-api-event-stream"))
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Successfully-subscribed-to-routing-api-event-stream"))
-			tcpRouteMapping := models.NewTcpRouteMapping(routerGroupGuid, 5222, "some-ip-3", 61000, 0, "", nil, 6, models.ModificationTag{})
+			tcpRouteMapping := models.NewTcpRouteMapping(
+				routerGroupGuid,
+				5222,
+				"some-ip-3",
+				61000,
+				0,
+				"some-instance-id",
+				nil,
+				6,
+				models.ModificationTag{},
+			)
 			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("handle-event.finished"))
@@ -222,7 +252,7 @@ var _ = Describe("Main", func() {
 				var drain_delay time.Duration
 				BeforeEach(func() {
 					// the test tcp_router is set to 3s for drain_wait, so we set it to something slightly
-					// lower to avoid flakey tests
+					// lower to avoid flaky tests
 					drain_delay = 2800 * time.Millisecond
 					Eventually(session.Out).Should(gbytes.Say("starting-drain-wait"))
 				})
@@ -399,7 +429,17 @@ var _ = Describe("Main", func() {
 			server = routingApiServer(logger)
 			routerGroupGuid = getRouterGroupGuid(routingApiClient)
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("Successfully-subscribed-to-routing-api-event-stream"))
-			tcpRouteMapping := models.NewTcpRouteMapping(routerGroupGuid, 5222, "some-ip-3", 61000, 0, "", nil, 120, models.ModificationTag{})
+			tcpRouteMapping := models.NewTcpRouteMapping(
+				routerGroupGuid,
+				5222,
+				"some-ip-3",
+				61000,
+				0,
+				"some-instance-id",
+				nil,
+				120,
+				models.ModificationTag{},
+			)
 			err := routingApiClient.UpsertTcpRouteMappings([]models.TcpRouteMapping{tcpRouteMapping})
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(session.Out, 5*time.Second).Should(gbytes.Say("handle-event.finished"))

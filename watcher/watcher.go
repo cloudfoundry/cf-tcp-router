@@ -107,6 +107,7 @@ func (watcher *Watcher) Run(signals <-chan os.Signal, ready chan<- struct{}) err
 	for {
 		select {
 		case event := <-eventChan:
+			// #nosec G104 - the only error this would return is if an unknown event was received and that already gets logged. dont double-log
 			watcher.updater.HandleEvent(event)
 
 		case <-watcher.syncChannel:

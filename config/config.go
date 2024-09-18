@@ -68,7 +68,10 @@ func (c *Config) initConfigFromFile(path string) error {
 		return e
 	}
 
-	yaml.Unmarshal(b, &c)
+	e = yaml.Unmarshal(b, &c)
+	if e != nil {
+		return e
+	}
 
 	if c.HaProxyPidFile == "" {
 		return errors.New("haproxy_pid_file is required")

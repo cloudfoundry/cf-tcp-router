@@ -181,7 +181,11 @@ func main() {
 		for {
 			sig := <-signalChannel
 			if sig == syscall.SIGCHLD {
-				syscall.Wait4(-1, nil, syscall.WNOHANG, nil)
+				_, err := syscall.Wait4(-1, nil, syscall.WNOHANG, nil)
+				if err != nil {
+					logger.Error("failed-reaping-child-process", err)
+				}
+
 			}
 		}
 	}()

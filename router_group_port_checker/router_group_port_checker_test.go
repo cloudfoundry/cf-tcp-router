@@ -45,7 +45,7 @@ var _ = Describe("RouterGroupPortChecker", func() {
 		fakeTokenFetcher.FetchTokenReturns(token, nil)
 		fakeRoutingApiClient.RouterGroupsReturns([]models.RouterGroup{routerGroup1}, nil)
 		checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeTokenFetcher)
-		shouldExit, err := checker.Check([]int{2048})
+		shouldExit, err := checker.Check([]uint16{2048})
 
 		Expect(fakeRoutingApiClient.SetTokenArgsForCall(0)).To(Equal(token.AccessToken))
 		Expect(err).To(BeNil())
@@ -56,7 +56,7 @@ var _ = Describe("RouterGroupPortChecker", func() {
 		fakeTokenFetcher.FetchTokenReturns(token, nil)
 		fakeRoutingApiClient.RouterGroupsReturns([]models.RouterGroup{routerGroup1}, nil)
 		checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeTokenFetcher)
-		shouldExit, err := checker.Check([]int{1026})
+		shouldExit, err := checker.Check([]uint16{1026})
 
 		Expect(fakeRoutingApiClient.SetTokenArgsForCall(0)).To(Equal(token.AccessToken))
 
@@ -69,7 +69,7 @@ var _ = Describe("RouterGroupPortChecker", func() {
 		fakeTokenFetcher.FetchTokenReturns(token, nil)
 		fakeRoutingApiClient.RouterGroupsReturns([]models.RouterGroup{routerGroup1, routerGroup2}, nil)
 		checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeTokenFetcher)
-		shouldExit, err := checker.Check([]int{1026, 1027, 2001, 2002})
+		shouldExit, err := checker.Check([]uint16{1026, 1027, 2001, 2002})
 
 		Expect(fakeRoutingApiClient.SetTokenArgsForCall(0)).To(Equal(token.AccessToken))
 
@@ -91,14 +91,14 @@ var _ = Describe("RouterGroupPortChecker", func() {
 
 			It("doesn't error when there is no overlap and should not exit", func() {
 				checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeTokenFetcher)
-				shouldExit, err := checker.Check([]int{2048})
+				shouldExit, err := checker.Check([]uint16{2048})
 				Expect(err).To(BeNil())
 				Expect(shouldExit).To(BeFalse())
 			})
 
 			It("returns an error when there is an overlap and should exit", func() {
 				checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeTokenFetcher)
-				shouldExit, err := checker.Check([]int{1026})
+				shouldExit, err := checker.Check([]uint16{1026})
 				msg := "The reserved ports for router group 'router-group-1' contains the following reserved system component port(s): '1026'. Please update your router group accordingly."
 				Expect(err).To(MatchError(msg))
 				Expect(shouldExit).To(BeTrue())
@@ -113,7 +113,7 @@ var _ = Describe("RouterGroupPortChecker", func() {
 
 			It("returns an error and should not exit", func() {
 				checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeTokenFetcher)
-				shouldExit, err := checker.Check([]int{})
+				shouldExit, err := checker.Check([]uint16{})
 				Expect(err).To(MatchError("error-fetching-routing-groups: \"oh no!\""))
 				Expect(shouldExit).To(BeFalse())
 			})
@@ -131,14 +131,14 @@ var _ = Describe("RouterGroupPortChecker", func() {
 
 			It("doesn't error when there is no overlap and should not exit", func() {
 				checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeTokenFetcher)
-				shouldExit, err := checker.Check([]int{2048})
+				shouldExit, err := checker.Check([]uint16{2048})
 				Expect(err).To(BeNil())
 				Expect(shouldExit).To(BeFalse())
 			})
 
 			It("returns an error when there is an overlap and should exit", func() {
 				checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeTokenFetcher)
-				shouldExit, err := checker.Check([]int{1026})
+				shouldExit, err := checker.Check([]uint16{1026})
 				msg := "The reserved ports for router group 'router-group-1' contains the following reserved system component port(s): '1026'. Please update your router group accordingly."
 				Expect(err).To(MatchError(msg))
 				Expect(shouldExit).To(BeTrue())
@@ -150,7 +150,7 @@ var _ = Describe("RouterGroupPortChecker", func() {
 			})
 			It("returns an error and should not exit", func() {
 				checker := router_group_port_checker.NewPortChecker(fakeRoutingApiClient, fakeTokenFetcher)
-				shouldExit, err := checker.Check([]int{})
+				shouldExit, err := checker.Check([]uint16{})
 				Expect(err).To(MatchError("error-fetching-uaa-token: \"oh no!\""))
 				Expect(shouldExit).To(BeFalse())
 			})

@@ -16,7 +16,7 @@ import (
 
 type RoutingAPIConfig struct {
 	URI          string `yaml:"uri"`
-	Port         int    `yaml:"port"`
+	Port         uint16 `yaml:"port"`
 	AuthDisabled bool   `yaml:"auth_disabled"`
 
 	ClientCertificatePath string `yaml:"client_cert_path"`
@@ -26,7 +26,7 @@ type RoutingAPIConfig struct {
 
 type OAuthConfig struct {
 	TokenEndpoint     string `yaml:"token_endpoint"`
-	Port              int    `yaml:"port"`
+	Port              uint16 `yaml:"port"`
 	SkipSSLValidation bool   `yaml:"skip_ssl_validation"`
 	ClientName        string `yaml:"client_name"`
 	ClientSecret      string `yaml:"client_secret"`
@@ -44,7 +44,7 @@ type Config struct {
 	RoutingAPI                   RoutingAPIConfig `yaml:"routing_api"`
 	HaProxyPidFile               string           `yaml:"haproxy_pid_file"`
 	IsolationSegments            []string         `yaml:"isolation_segments"`
-	ReservedSystemComponentPorts []int            `yaml:"reserved_system_component_ports"`
+	ReservedSystemComponentPorts []uint16         `yaml:"reserved_system_component_ports"`
 	DrainWaitDuration            time.Duration    `yaml:"drain_wait"`
 	BackendTLS                   BackendTLSConfig `yaml:"backend_tls"`
 }

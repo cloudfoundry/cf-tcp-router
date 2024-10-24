@@ -50,8 +50,8 @@ var (
 
 	routingAPIAddress              string
 	routingAPIArgs                 routingtestrunner.Args
-	routingAPIPort                 int
-	routingAPIMTLSPort             int
+	routingAPIPort                 uint16
+	routingAPIMTLSPort             uint16
 	routingAPIIP                   string
 	routingApiClient               routing_api.Client
 	routingAPICAFileName           string
@@ -63,11 +63,11 @@ var (
 	catCmd                    *exec.Cmd
 )
 
-func nextAvailPort() int {
+func nextAvailPort() uint16 {
 	port, err := localip.LocalPort()
 	Expect(err).ToNot(HaveOccurred())
 
-	return int(port)
+	return port
 }
 
 func TestTCPRouter(t *testing.T) {
@@ -255,7 +255,7 @@ func getRouterGroupGuid(routingApiClient routing_api.Client) string {
 	return routerGroups[0].Guid
 }
 
-func generateTCPRouterConfigFile(oauthServerPort int, uaaCACertsPath string, routingApiAuthDisabled bool, reserved_routing_ports ...int) string {
+func generateTCPRouterConfigFile(oauthServerPort uint16, uaaCACertsPath string, routingApiAuthDisabled bool, reserved_routing_ports ...uint16) string {
 	tcpRouterConfig := config.Config{
 		ReservedSystemComponentPorts: reserved_routing_ports,
 		OAuth: config.OAuthConfig{

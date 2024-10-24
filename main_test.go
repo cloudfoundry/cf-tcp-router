@@ -33,16 +33,16 @@ var _ = Describe("Main", func() {
 		routerGroupGuid string
 	)
 
-	getServerPort := func(serverURL string) int {
+	getServerPort := func(serverURL string) uint16 {
 		u, err := url.Parse(serverURL)
 		Expect(err).NotTo(HaveOccurred())
 
 		_, portStr, err := net.SplitHostPort(u.Host)
 		Expect(err).NotTo(HaveOccurred())
 
-		port, err := strconv.Atoi(portStr)
+		port, err := strconv.ParseUint(portStr, 10, 16)
 		Expect(err).NotTo(HaveOccurred())
-		return port
+		return uint16(port)
 	}
 
 	oAuthServer := func(logger lager.Logger, serverCert tls.Certificate) *ghttp.Server {
@@ -325,7 +325,7 @@ var _ = Describe("Main", func() {
 		var (
 			tcpRouterArgs   testrunner.Args
 			configFile      string
-			oauthServerPort int
+			oauthServerPort uint16
 		)
 		BeforeEach(func() {
 			server = routingApiServer(logger)

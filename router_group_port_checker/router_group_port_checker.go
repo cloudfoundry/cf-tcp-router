@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strconv"
 	"strings"
 
 	routing_api "code.cloudfoundry.org/routing-api"
@@ -25,7 +24,7 @@ func NewPortChecker(routingAPIClient routing_api.Client, uaaTokenFetcher uaaclie
 	}
 }
 
-func (pc *PortChecker) Check(systemComponentPorts []int) (bool, error) {
+func (pc *PortChecker) Check(systemComponentPorts []uint16) (bool, error) {
 	routerGroups, err := pc.getRouterGroups()
 	if err != nil {
 		return false, err
@@ -67,7 +66,7 @@ func (pc *PortChecker) getRouterGroups() ([]models.RouterGroup, error) {
 	return nil, fmt.Errorf("error-fetching-routing-groups: \"%s\"", err.Error())
 }
 
-func validateRouterGroups(routerGroups []models.RouterGroup, systemComponentPorts []int) (bool, []string) {
+func validateRouterGroups(routerGroups []models.RouterGroup, systemComponentPorts []uint16) (bool, []string) {
 	var errors []string
 	shouldExit := false
 
@@ -78,10 +77,9 @@ func validateRouterGroups(routerGroups []models.RouterGroup, systemComponentPort
 			start, end := r.Endpoints()
 
 			overlappingPorts := []string{}
-			for _, portInt := range systemComponentPorts {
-				port := uint64(portInt)
+			for _, port := range systemComponentPorts {
 				if port >= start && port <= end {
-					overlappingPorts = append(overlappingPorts, strconv.FormatUint(port, 10))
+					overlappingPorts = append(overlappingPorts, fmt.Sprintf("%d", port))
 				}
 			}
 

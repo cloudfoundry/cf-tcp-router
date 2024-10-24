@@ -4,6 +4,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"math"
 	"os"
 	"os/signal"
 	"strings"
@@ -209,6 +210,10 @@ func main() {
 		TokenEndpoint:     cfg.OAuth.TokenEndpoint,
 	}
 
+	if *tokenFetchExpirationBufferTime > math.MaxInt64 {
+		logger.Fatal("initialize-token-fetcher", fmt.Errorf("token fetch expiration buffer time exceeds MaxInt64 value"))
+	}
+	// #nosec G115 - overflow guarded against above
 	uaaTokenFetcher, err := uaaclient.NewTokenFetcher(cfg.RoutingAPI.AuthDisabled, uaaConfig, clock, uint(*tokenFetchMaxRetries), *tokenFetchRetryInterval, int64(*tokenFetchExpirationBufferTime), logger)
 	if err != nil {
 		logger.Fatal("initialize-token-fetcher", err)

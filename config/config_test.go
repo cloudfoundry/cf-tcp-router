@@ -85,7 +85,7 @@ var _ = Describe("Config", Serial, func() {
 				},
 				HaProxyPidFile:               "/path/to/pid/file",
 				IsolationSegments:            []string{"foo-iso-seg"},
-				ReservedSystemComponentPorts: []int{8080, 8081},
+				ReservedSystemComponentPorts: []uint16{8080, 8081},
 				BackendTLS: config.BackendTLSConfig{
 					Enabled:              true,
 					CACertificatePath:    caFile,
